@@ -1,6 +1,6 @@
 # core-data 模块详细设计
 
-蘑菇打卡应用 core-data 模块详细设计。
+蘑菇大冒险应用 core-data 模块详细设计。
 
 该模块是数据层实现，包含 Room 数据库、所有 DAO、DB 实体定义（与 Domain 实体分离）、Mapper、Repository 实现。
 

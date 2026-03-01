@@ -1,6 +1,6 @@
 # core-domain 模块详细设计
 
-蘑菇打卡应用 core-domain 模块详细设计。
+蘑菇大冒险应用 core-domain 模块详细设计。
 
 该模块是整个应用的业务核心层，包含所有领域实体、Repository 接口、服务接口定义，纯 Kotlin，不依赖 Android SDK。
 

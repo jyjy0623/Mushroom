@@ -1,4 +1,4 @@
-# 蘑菇打卡 - core-logging 模块详细设计
+# 蘑菇大冒险 - core-logging 模块详细设计
 
 **版本**：v1.2
 **日期**：2026-03-01
@@ -298,7 +298,7 @@ class LogExporter @Inject constructor(
     }
 
     private fun buildAnalysisBrief(summary: DiagnosticSummary, logFiles: List<File>): String = """
-        # 蘑菇打卡 - 诊断日志分析入口
+        # 蘑菇大冒险 - 诊断日志分析入口
 
         ## 如何分析本包
 

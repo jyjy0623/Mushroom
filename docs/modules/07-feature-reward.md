@@ -1,6 +1,6 @@
 # feature-reward 模块详细设计
 
-蘑菇打卡应用 feature-reward 模块详细设计
+蘑菇大冒险应用 feature-reward 模块详细设计
 
 ---
 
