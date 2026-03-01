@@ -1,6 +1,6 @@
 # 蘑菇打卡 - core-logging 模块详细设计
 
-**版本**：v1.1
+**版本**：v1.2
 **日期**：2026-03-01
 **状态**：待审核
 
@@ -9,6 +9,7 @@
 |-----|------|---------|
 | v1.0 | 2026-03-01 | 初版 |
 | v1.1 | 2026-03-01 | Release 版本仅输出 ERROR；INFO 设计原则化（只记录模块边界事件、事件数量上限、清单约束）；日志文件总上限 512KB、保留 2 天 |
+| v1.2 | 2026-03-01 | 导出包新增 Claude 分析入口文档和错误索引，日志文件加入 Session 分隔标记，面向 Claude Code CLI 直接分析设计 |
 
 ---
 
@@ -19,7 +20,7 @@
 - 按构建类型（Debug / Release）控制日志级别和输出目标
 - 将 WARN 及以上级别日志滚动写入本地文件，支持近2天留存（Debug 构建含 INFO）
 - 收集设备和应用诊断摘要，辅助问题复现
-- 提供日志导出功能（ZIP 打包，系统分享）
+- 提供日志导出功能（ZIP 打包，系统分享），导出包设计为可直接输入 Claude Code CLI 进行自动分析
 
 ### 边界
 - 不包含任何业务逻辑
@@ -263,9 +264,11 @@ class LogExporter @Inject constructor(
     private val fileWriter: LogFileWriter
 ) {
     // 打包近2天日志 + 诊断摘要为 ZIP，返回可分享的 FileProvider URI
+    // 导出包结构设计为可直接输入 Claude Code CLI 进行自动分析
     suspend fun export(): Result<Uri> = runCatching {
         val summary = diagnosticCollector.collect()
         val zipFile = createZip(summary)
+        MushroomLogger.i(TAG, "日志导出完成 size=${zipFile.length() / 1024}KB")
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
     }.onFailure { e ->
         MushroomLogger.e(TAG, "日志导出失败", e)
@@ -274,12 +277,19 @@ class LogExporter @Inject constructor(
     private suspend fun createZip(summary: DiagnosticSummary): File {
         val zipName = "mushroom_diagnostics_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.zip"
         val zipFile = File(context.cacheDir, zipName)
+        val logFiles = logDir.listFiles()?.sortedBy { it.name } ?: emptyList()
         ZipOutputStream(zipFile.outputStream()).use { zip ->
-            // 写入诊断摘要
+            // 1. 分析入口文档（Claude 首先读取此文件）
+            zip.putNextEntry(ZipEntry("CLAUDE_ANALYSIS_BRIEF.md"))
+            zip.write(buildAnalysisBrief(summary, logFiles).toByteArray())
+            // 2. 诊断摘要
             zip.putNextEntry(ZipEntry("diagnostic_summary.txt"))
             zip.write(summary.toReadableString().toByteArray())
-            // 写入日志文件
-            logDir.listFiles()?.forEach { logFile ->
+            // 3. 错误索引（预提取所有 ERROR/WARN 行）
+            zip.putNextEntry(ZipEntry("error_index.txt"))
+            zip.write(buildErrorIndex(logFiles).toByteArray())
+            // 4. 原始日志文件
+            logFiles.forEach { logFile ->
                 zip.putNextEntry(ZipEntry("logs/${logFile.name}"))
                 logFile.inputStream().copyTo(zip)
             }
@@ -287,13 +297,154 @@ class LogExporter @Inject constructor(
         return zipFile
     }
 
-    companion object { private const val TAG = "LogExporter" }
+    private fun buildAnalysisBrief(summary: DiagnosticSummary, logFiles: List<File>): String = """
+        # 蘑菇打卡 - 诊断日志分析入口
+
+        ## 如何分析本包
+
+        本 ZIP 包专为输入 Claude Code CLI 设计。建议按以下顺序读取文件：
+
+        1. **此文件（CLAUDE_ANALYSIS_BRIEF.md）** — 了解整体结构和分析策略
+        2. **error_index.txt** — 查看所有 ERROR/WARN 的预提取索引，快速定位问题
+        3. **diagnostic_summary.txt** — 查看设备环境和应用状态
+        4. **logs/*.txt** — 按需查阅原始日志上下文
+
+        ## 应用信息
+
+        - 应用版本：${summary.appVersion} (build ${summary.buildCode})
+        - 数据库版本：${summary.dbVersion}
+        - 设备：${summary.deviceModel} / Android ${summary.androidVersion} (API ${summary.apiLevel})
+        - 可用存储：${summary.availableStorageMB} MB
+        - 导出时间：${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}
+
+        ## 日志文件列表
+
+        ${logFiles.joinToString("\n") { "- logs/${it.name}（${it.length() / 1024} KB）" }.ifEmpty { "- （无日志文件）" }}
+
+        ## 日志格式说明
+
+        ```
+        {yyyy-MM-dd HH:mm:ss.SSS} {LEVEL}/{TAG}: {message}
+        ```
+
+        级别：V（Verbose）< D（Debug）< I（Info）< W（Warn）< E（Error）
+
+        ## Tag 索引（按模块）
+
+        | Tag | 模块 | 关注内容 |
+        |-----|------|---------|
+        | APP | 应用启动 | 版本号、启动成功与否 |
+        | DB | core-data | Migration、数据库操作异常 |
+        | TASK | feature-task | 任务创建、删除 |
+        | CHECKIN | feature-checkin | 打卡触发、完成、提前标识 |
+        | MUSHROOM | feature-mushroom | 蘑菇发放、扣除、余额变化 |
+        | REWARD | feature-reward | 拼图解锁进度 |
+        | MILESTONE | feature-milestone | 成绩录入、里程碑达成 |
+        | STATS | feature-statistics | 统计数据刷新 |
+        | NOTIF | service-notification | 提醒调度 |
+        | LOG_EXPORT | core-logging | 日志导出 |
+
+        ## Session 分隔
+
+        每次应用启动在日志中写入分隔标记：
+        ```
+        ════════════════════════════════════════════════════════════
+        SESSION START  ${summary.appVersion}  {timestamp}
+        ════════════════════════════════════════════════════════════
+        ```
+        通过搜索 `SESSION START` 可区分不同启动周期。
+
+        ## 推荐分析策略
+
+        - **定位崩溃**：查看 error_index.txt，找最近的 E/ 行，再到原始日志查看前后上下文
+        - **还原操作流程**：在日志中搜索 `SESSION START`，找到问题所在的启动周期，按时间线阅读 I/ 行
+        - **蘑菇数据异常**：搜索 `MUSHROOM` tag，关注 balance 字段变化是否合理
+        - **数据库问题**：搜索 `DB` tag，关注 Migration 和 ERROR 行
+    """.trimIndent()
+
+    private fun buildErrorIndex(logFiles: List<File>): String {
+        val sb = StringBuilder()
+        sb.appendLine("# 错误与警告索引")
+        sb.appendLine("# 格式：[文件名:行号] LEVEL/TAG: message")
+        sb.appendLine("# 生成时间：${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
+        sb.appendLine()
+        var hasAny = false
+        logFiles.forEach { file ->
+            file.useLines { lines ->
+                lines.forEachIndexed { index, line ->
+                    if (line.contains(" E/") || line.contains(" W/")) {
+                        sb.appendLine("[${file.name}:${index + 1}] $line")
+                        hasAny = true
+                    }
+                }
+            }
+        }
+        if (!hasAny) sb.appendLine("（无 ERROR 或 WARN 记录）")
+        return sb.toString()
+    }
+
+    companion object { private const val TAG = "LOG_EXPORT" }
 }
 ```
 
 ---
 
-## 五、Tag 命名规范
+## 五、面向 Claude 分析的日志格式约定
+
+### 5.1 Session 分隔标记
+
+每次应用启动时，在写入第一条日志前先写入 Session 分隔线，使 Claude 能将日志按启动周期切割分析：
+
+```kotlin
+// Application.onCreate 中，init 之后立即写入
+private fun writeSessionStart(fileWriter: LogFileWriter, version: String) {
+    val sep = "═".repeat(60)
+    val ts  = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    fileWriter.write(sep)
+    fileWriter.write("SESSION START  $version  $ts")
+    fileWriter.write(sep)
+}
+```
+
+实际日志效果：
+```
+════════════════════════════════════════════════════════════
+SESSION START  1.2.0  2026-03-01 08:30:00
+════════════════════════════════════════════════════════════
+2026-03-01 08:30:00.123 I/APP: 应用启动 version=1.2.0
+2026-03-01 08:30:00.456 I/DB: Migration 2→3 完成
+...
+════════════════════════════════════════════════════════════
+SESSION START  1.2.0  2026-03-01 18:45:12
+════════════════════════════════════════════════════════════
+2026-03-01 18:45:12.001 I/APP: 应用启动 version=1.2.0
+```
+
+### 5.2 导出 ZIP 包结构
+
+```
+mushroom_diagnostics_20260301.zip
+├── CLAUDE_ANALYSIS_BRIEF.md    ← Claude 首先读取，含分析策略和 Tag 索引
+├── diagnostic_summary.txt      ← 设备信息、应用状态摘要
+├── error_index.txt             ← 所有 ERROR/WARN 行预提取索引（含文件名和行号）
+└── logs/
+    ├── mushroom_log_20260228.txt
+    └── mushroom_log_20260301.txt
+```
+
+### 5.3 用户使用方式
+
+用户将 ZIP 包解压后，在终端执行：
+
+```bash
+claude "请分析 CLAUDE_ANALYSIS_BRIEF.md 和 error_index.txt，告诉我应用发生了什么问题"
+```
+
+Claude Code CLI 读取 `CLAUDE_ANALYSIS_BRIEF.md` 后，即可了解包结构、Tag 含义和分析策略，无需用户额外解释，直接给出问题定位结论。
+
+---
+
+## 六、Tag 命名规范
 
 各模块使用固定 Tag 标识，便于日志过滤定界：
 
@@ -319,7 +470,7 @@ companion object {
 
 ---
 
-## 六、日志输出格式
+## 七、日志输出格式
 
 ```
 {timestamp} {level}/{tag}: {message}
@@ -339,9 +490,9 @@ companion object {
 
 ---
 
-## 七、各模块日志接入规范
+## 八、各模块日志接入规范
 
-### 7.1 Use Case 统一异常处理模板
+### 8.1 Use Case 统一异常处理模板
 
 ```kotlin
 class SomeUseCase(...) {
@@ -357,7 +508,7 @@ class SomeUseCase(...) {
 }
 ```
 
-### 7.2 Repository 实现异常处理模板
+### 8.2 Repository 实现异常处理模板
 
 ```kotlin
 class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRepository {
@@ -375,7 +526,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 }
 ```
 
-### 7.3 关键业务节点 INFO 日志要求
+### 8.3 关键业务节点 INFO 日志要求
 
 以下场景**必须**输出 INFO 级别日志：
 - 任务创建 / 删除
@@ -388,7 +539,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 
 ---
 
-## 八、Settings 页面集成
+## 九、Settings 页面集成
 
 在 `SettingsScreen` 中新增"诊断与帮助"入口：
 
@@ -402,7 +553,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 
 ---
 
-## 九、Hilt 依赖注入配置
+## 十、Hilt 依赖注入配置
 
 ```kotlin
 // core-logging/src/main/java/com/mushroom/logging/di/LoggingModule.kt
@@ -431,25 +582,35 @@ class MushroomApp : Application() {
     override fun onCreate() {
         super.onCreate()
         MushroomLogger.init(logWriter)
-        MushroomLogger.i("APP", "应用启动 version=${BuildConfig.VERSION_NAME}")
+        // 先写 Session 分隔标记，再写启动日志，便于 Claude 按启动周期切割分析
+        writeSessionStart(logFileWriter, BuildConfig.VERSION_NAME)
+        MushroomLogger.i("APP", "应用启动 version=${BuildConfig.VERSION_NAME} db=${getDatabaseVersion()}")
         // 清理过期日志
         logFileWriter.purgeAndRotate()
+    }
+
+    private fun writeSessionStart(fileWriter: LogFileWriter, version: String) {
+        val sep = "═".repeat(60)
+        val ts  = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        fileWriter.write(sep)
+        fileWriter.write("SESSION START  $version  $ts")
+        fileWriter.write(sep)
     }
 }
 ```
 
 ---
 
-## 十、包结构
+## 十一、包结构
 
 ```
 core-logging/src/main/java/com/mushroom/logging/
 ├── MushroomLogger.kt          # 日志门面（全局单例）
 ├── LogLevel.kt                # 日志级别枚举
 ├── LogWriter.kt               # 输出策略接口 + Debug/Release 实现
-├── LogFileWriter.kt           # 滚动文件写入
+├── LogFileWriter.kt           # 滚动文件写入 + Session 分隔标记
 ├── DiagnosticCollector.kt     # 诊断摘要收集
-├── LogExporter.kt             # 日志打包导出
+├── LogExporter.kt             # 日志打包导出（含 CLAUDE_ANALYSIS_BRIEF 生成）
 └── di/
     └── LoggingModule.kt       # Hilt Module
 ```
