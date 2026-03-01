@@ -1,8 +1,141 @@
 # 蘑菇大冒险 - 开发策略
 
-**版本**：v1.0
+**版本**：v1.1
 **日期**：2026-03-01
 **状态**：待审核
+
+**变更记录**：
+| 版本 | 日期 | 变更内容 |
+|------|------|---------|
+| v1.0 | 2026-03-01 | 初版 |
+| v1.1 | 2026-03-01 | 新增：开发环境搭建与验证（Sprint 0）；与测试策略的环境检查脚本联动 |
+
+---
+
+## 零、开发环境搭建（Sprint 0）
+
+**所有开发工作在 Sprint 1 之前必须完成本章，并通过环境验证脚本。** 环境搭建只需做一次，但每位新加入的开发者都必须独立完成。
+
+### 0.1 硬件与系统要求
+
+| 项目 | 最低要求 | 推荐 |
+|------|---------|------|
+| 内存 | 8 GB | 16 GB |
+| 磁盘空闲空间 | 20 GB | 40 GB（含 Android SDK、Gradle 缓存、模拟器镜像） |
+| 操作系统 | Windows 10 / macOS 12 / Ubuntu 20.04 | 最新稳定版 |
+| 网络 | 首次 Gradle 依赖下载需要访问 Maven Central、Google Maven | 建议使用镜像加速（见 0.4） |
+
+### 0.2 工具安装步骤
+
+**Step 1：安装 JDK 17**
+```bash
+# macOS（使用 Homebrew）
+brew install openjdk@17
+# Windows：从 https://adoptium.net 下载 Temurin JDK 17 安装包
+# Linux
+sudo apt install openjdk-17-jdk
+```
+
+**Step 2：安装 Android Studio**
+- 下载地址：https://developer.android.com/studio（Hedgehog 或更新版本）
+- 安装完成后，打开 Android Studio → SDK Manager，安装：
+  - **SDK Platform**：Android 14.0 (API Level 34)
+  - **SDK Build-Tools**：34.0.0
+  - **Android Emulator**（用于手动验收测试，非 UT 必需）
+
+**Step 3：配置环境变量**
+```bash
+# 追加到 ~/.bashrc 或 ~/.zshrc（macOS/Linux）
+export JAVA_HOME=/path/to/jdk-17
+export ANDROID_HOME=$HOME/Library/Android/sdk          # macOS
+# export ANDROID_HOME=$HOME/Android/Sdk               # Linux
+# Windows 通过"系统属性 → 环境变量"设置，值为 C:\Users\<user>\AppData\Local\Android\Sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools/bin
+
+# 使配置生效
+source ~/.bashrc
+```
+
+**Step 4：克隆项目并初始化**
+```bash
+git clone https://github.com/jyjy0623/Mushroom.git
+cd Mushroom
+
+# 授权脚本执行权限（macOS/Linux）
+chmod +x scripts/check-env.sh
+chmod +x scripts/run-tests.sh
+
+# 首次同步依赖（约 5-10 分钟，需要网络）
+./gradlew dependencies --configuration debugRuntimeClasspath
+```
+
+### 0.3 环境验证（必须通过）
+
+```bash
+# 运行环境检查脚本
+./scripts/check-env.sh
+```
+
+期望输出（全部 ✅）：
+```
+========================================
+  蘑菇大冒险 - 环境检查
+========================================
+
+[ JDK ]
+  ✅  JDK 版本 = 17
+  ✅  javac 可用
+
+[ Android SDK ]
+  ✅  ANDROID_HOME 已设置
+  ✅  platform android-34
+  ✅  build-tools 34.0.0
+  ✅  adb 可用
+
+[ Gradle ]
+  ✅  Gradle Wrapper 可用
+
+[ 构建验证 ]
+  ✅  assembleDebug 成功
+
+[ 测试环境 ]
+  ✅  UT 可运行（core-domain）
+  ✅  UT 可运行（core-data）
+
+========================================
+  结果：全部通过 ✅  (10 项)
+  环境就绪，可以开始开发。
+========================================
+```
+
+如有 ❌ 项，按错误提示修复后重新运行，**直到全部通过才能进入 Sprint 1**。
+
+### 0.4 国内镜像加速（可选但推荐）
+
+在项目根目录 `settings.gradle.kts` 中添加镜像仓库，避免依赖下载过慢：
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        maven { url = uri("https://maven.aliyun.com/repository/central") }
+        maven { url = uri("https://maven.aliyun.com/repository/google") }
+        mavenCentral()
+        google()
+    }
+}
+```
+
+### 0.5 IDE 推荐配置
+
+打开 Android Studio 后建议配置：
+
+| 配置项 | 路径 | 推荐值 |
+|-------|------|-------|
+| Gradle JVM | Settings → Build → Gradle → Gradle JVM | JDK 17 |
+| 编码 | Settings → Editor → File Encodings | UTF-8（所有选项） |
+| 行尾 | Settings → Editor → Code Style → Line separator | Unix (\n) |
+| 自动导入 | Settings → Editor → Auto Import | 全部勾选 |
 
 ---
 
