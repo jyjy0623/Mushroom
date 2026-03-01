@@ -1,9 +1,15 @@
 # 蘑菇打卡 - 学习激励成长应用
 ## 总体架构设计文档
 
-版本 v2.0，日期 2026-03-01，待审核
+版本 v2.1，日期 2026-03-01，待审核
 
-变更记录：v1.0初版，v1.1同步需求v1.1~v1.3，v2.0重构为总体架构文档+模块分离
+变更记录：
+| 版本 | 日期 | 变更内容 |
+|-----|------|---------|
+| v1.0 | 2026-03-01 | 初版 |
+| v1.1 | 2026-03-01 | 同步需求v1.1~v1.3 |
+| v2.0 | 2026-03-01 | 重构为总体架构文档+模块分离 |
+| v2.1 | 2026-03-01 | 新增设计原则：数据版本兼容、DFX可维护性、分级日志 |
 
 ---
 
@@ -83,6 +89,254 @@ class LLMTaskGeneratorService @Inject constructor(
 
 ---
 
+### 原则8：数据版本兼容与升级安全
+
+**目标**：每次版本升级新增功能时，不破坏用户已有数据，确保从任意旧版本升级后数据完整、功能正常。
+
+#### 8.1 数据库 Migration 策略
+
+采用 Room Migration 机制管理数据库版本演进，**禁止**使用 `fallbackToDestructiveMigration()`（该方式会清空用户数据）。
+
+```kotlin
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // 只允许增量操作：ADD COLUMN、CREATE TABLE、CREATE INDEX
+        // 禁止：DROP TABLE、DROP COLUMN、修改已有列类型
+        database.execSQL(
+            "ALTER TABLE tasks ADD COLUMN template_type TEXT DEFAULT NULL"
+        )
+    }
+}
+
+val db = Room.databaseBuilder(context, MushroomDatabase::class.java, "mushroom_database")
+    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)  // 逐版本注册
+    .build()
+```
+
+#### 8.2 字段扩展规则
+
+| 变更类型 | 允许 | 处理方式 |
+|---------|------|---------|
+| 新增表 | ✅ | `CREATE TABLE` in Migration |
+| 新增可空字段 | ✅ | `ALTER TABLE ADD COLUMN ... DEFAULT NULL` |
+| 新增带默认值字段 | ✅ | `ALTER TABLE ADD COLUMN ... DEFAULT <value>` |
+| 删除字段 | ❌ | 保留字段，标记废弃（加 `_deprecated` 后缀注释） |
+| 删除表 | ❌ | 保留表结构，业务层停止读写 |
+| 修改字段类型 | ❌ | 新增字段存新值，旧字段保留 |
+| 重命名字段/表 | ❌ | 新增字段/表，迁移数据，保留旧结构 |
+
+#### 8.3 配置数据的向前兼容
+
+系统预设数据（蘑菇等级配置、预设扣分项、预设模板）采用**幂等 Upsert** 策略：
+
+```kotlin
+// 每次应用启动时执行，OnConflictStrategy.IGNORE 保证不覆盖用户已修改的配置
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+suspend fun insertIfNotExists(config: MushroomConfigEntity)
+```
+
+新版本新增的预设配置项，通过版本号标记控制只插入一次：
+
+```kotlin
+// app_metadata 表记录已执行的初始化版本
+if (appMetadata.lastSeedVersion < CURRENT_SEED_VERSION) {
+    seedNewConfigs()
+    appMetadata.lastSeedVersion = CURRENT_SEED_VERSION
+}
+```
+
+#### 8.4 数据备份与恢复
+
+- 支持将数据库导出为 JSON 文件（人工可读格式），用于跨设备迁移和紧急数据恢复
+- 导出格式按 Domain Entity 序列化，不依赖数据库内部结构，具备跨版本兼容性
+- 导入时执行版本校验，字段缺失时使用默认值填充，多余字段忽略
+
+```kotlin
+data class BackupPayload(
+    val exportVersion: Int,          // 导出格式版本，独立于 DB 版本
+    val exportedAt: String,
+    val tasks: List<Task>,
+    val mushrooms: List<MushroomTransaction>,
+    val rewards: List<Reward>,
+    val milestones: List<Milestone>
+    // 新版本新增字段加在末尾，旧版导入时自动忽略
+)
+```
+
+---
+
+### 原则9：DFX——可维护性与快速问题定界
+
+**目标**：应用发生异常时，能够通过日志和诊断信息快速定界（发生在哪个模块）、定位（发生在哪行代码），减少问题排查时间。
+
+#### 9.1 整体 DFX 架构
+
+```
+用户反馈问题
+    │
+    ▼
+用户在 APP 内导出日志文件（Settings → 诊断 → 导出日志）
+    │
+    ▼
+日志文件（mushroom_log_yyyyMMdd.txt）+ 设备信息摘要
+    │
+    ▼
+开发者分析：
+    ├── 按模块 Tag 过滤日志（快速定界）
+    ├── 查看 ERROR 级别栈跟踪（定位代码行）
+    └── 结合操作时间线还原现场
+```
+
+#### 9.2 模块健康状态监控
+
+每个 feature 模块在关键节点输出 INFO 级别日志，标识正常工作状态，便于通过日志时间线还原用户操作路径：
+
+| 模块 | 关键 INFO 日志示例 |
+|-----|-----------------|
+| feature-task | `[TASK] 任务创建成功 id=42 title=数学作业 date=2026-03-01` |
+| feature-checkin | `[CHECKIN] 打卡完成 taskId=42 isEarly=true earlyMin=35` |
+| feature-mushroom | `[MUSHROOM] 发放蘑菇 SMALL×1 source=TASK sourceId=42 balance={SMALL:12}` |
+| feature-reward | `[REWARD] 拼图更新 rewardId=3 unlocked=8/20 (40%)` |
+| feature-milestone | `[MILESTONE] 成绩录入 id=5 score=92 reward=GOLD×2` |
+| core-data | `[DB] Migration 1→2 执行完成` |
+
+#### 9.3 异常快速定位
+
+所有 Use Case 和 Repository 实现统一捕获异常，输出 ERROR 级别日志（含完整栈跟踪），并将错误状态传递给 ViewModel 展示给用户：
+
+```kotlin
+// Use Case 统一异常处理模板
+class CheckInTaskUseCase(...) {
+    suspend operator fun invoke(taskId: Long): Result<CheckIn> = runCatching {
+        // 业务逻辑
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "打卡失败 taskId=$taskId", e)  // ERROR + 栈跟踪
+    }
+    companion object { private const val TAG = "CheckInTaskUseCase" }
+}
+```
+
+#### 9.4 诊断信息收集
+
+导出日志时附带设备诊断摘要，辅助问题复现：
+
+```
+=== 诊断摘要 ===
+APP 版本：1.2.0 (build 45)
+数据库版本：3
+Android 版本：14 (API 34)
+设备型号：Xiaomi 14
+可用存储：12.3 GB
+任务总数：128 / 已完成：95
+蘑菇余额：小蘑菇×23 中蘑菇×5 大蘑菇×1
+最近错误：[ERROR] 2026-03-01 08:32:11 CheckInTaskUseCase - ...
+```
+
+---
+
+### 原则10：分级日志设计
+
+**目标**：通过统一的日志模块（`core-logging`），在不同场景下输出适量、有价值的日志信息；发布版本日常运行不影响性能，出现问题时具备完整的诊断信息。
+
+#### 10.1 日志级别定义
+
+| 级别 | 用途 | 输出条件 | 示例场景 |
+|-----|------|---------|---------|
+| `VERBOSE` | 详细调试信息 | 仅 Debug 构建 | Flow 每次 emit、UI 每次重组 |
+| `DEBUG` | 开发调试 | 仅 Debug 构建 | 函数入参、中间计算结果 |
+| `INFO` | 关键业务节点 | Debug + Release | 打卡成功、蘑菇发放、里程碑录入 |
+| `WARN` | 非预期但可恢复的情况 | Debug + Release | 余额不足降级扣分、Migration 字段缺失用默认值 |
+| `ERROR` | 异常和错误 | Debug + Release | 数据库操作失败、Use Case 抛出异常 |
+
+#### 10.2 统一日志接口
+
+在 `core-logging` 模块中定义，所有模块依赖此接口，不直接调用 `android.util.Log`：
+
+```kotlin
+// core-logging/src/main/java/com/mushroom/logging/MushroomLogger.kt
+
+object MushroomLogger {
+    // Release 版本：INFO 及以上写入文件，VERBOSE/DEBUG 只在 Debug 构建输出
+    fun v(tag: String, message: String)
+    fun d(tag: String, message: String)
+    fun i(tag: String, message: String)
+    fun w(tag: String, message: String, throwable: Throwable? = null)
+    fun e(tag: String, message: String, throwable: Throwable? = null)
+}
+
+// Tag 命名规范：[MODULE_NAME] 大写模块标识
+// 示例：MushroomLogger.i("CHECKIN", "打卡完成 taskId=$taskId")
+```
+
+#### 10.3 日志输出策略
+
+```
+Debug 构建（开发阶段）：
+    VERBOSE / DEBUG → Android Logcat（不写文件，不影响性能）
+    INFO / WARN / ERROR → Logcat + 滚动文件
+
+Release 构建（用户设备）：
+    VERBOSE / DEBUG → 不输出（编译时裁剪）
+    INFO → 滚动文件（仅记录，不输出 Logcat）
+    WARN / ERROR → 滚动文件 + 结构化错误记录
+```
+
+#### 10.4 日志文件管理
+
+```kotlin
+// 文件存储位置：应用私有目录（用户无法直接访问，需通过APP导出）
+// Context.getFilesDir() / logs / mushroom_log_20260301.txt
+
+// 滚动策略
+LogFilePolicy(
+    maxFileSizeKB = 512,        // 单文件最大 512KB
+    maxRetainDays = 7,          // 保留最近7天
+    rotateAtMidnight = true     // 每天0点新建日志文件
+)
+```
+
+日志格式（结构化，便于解析）：
+```
+2026-03-01 08:32:11.234 I/CHECKIN: 打卡完成 taskId=42 isEarly=true earlyMin=35
+2026-03-01 08:32:11.267 I/MUSHROOM: 发放蘑菇 SMALL×1 source=TASK sourceId=42
+2026-03-01 08:32:11.891 E/DB: 数据库写入失败 table=check_ins
+    java.io.IOException: disk full
+        at com.mushroom.data.repository.CheckInRepositoryImpl.recordCheckIn(CheckInRepositoryImpl.kt:45)
+        at com.mushroom.feature.checkin.usecase.CheckInTaskUseCase.invoke(CheckInTaskUseCase.kt:32)
+```
+
+#### 10.5 日志导出流程
+
+```
+Settings → 诊断与帮助 → 导出日志
+    │
+    ▼
+收集近7天日志文件 + 生成诊断摘要
+    │
+    ▼
+打包为 ZIP（mushroom_diagnostics_20260301.zip）
+    │
+    ▼
+调用系统分享对话框（发邮件/微信/钉钉给开发者）
+```
+
+#### 10.6 core-logging 模块在 Gradle 中的位置
+
+```
+mushroom-app/
+├── core/
+│   ├── core-logging/     # 新增：统一日志模块
+│   │   ├── MushroomLogger（日志门面）
+│   │   ├── LogFileWriter（文件滚动写入）
+│   │   ├── DiagnosticCollector（诊断摘要收集）
+│   │   └── LogExporter（日志打包导出）
+│   ├── core-ui/
+│   ├── core-data/
+│   └── core-domain/
+```
+
+> 所有模块（core-data、feature-* 等）均依赖 `core-logging`，不依赖 Android 的 `Log` 类，确保日志策略统一可控。
+
 ## 二、技术选型
 
 ### 核心技术栈
@@ -117,6 +371,7 @@ class LLMTaskGeneratorService @Inject constructor(
 mushroom-app/
 ├── app/                          # 应用入口、DI装配、NavGraph
 ├── core/
+│   ├── core-logging/             # 统一日志（MushroomLogger、文件滚动、日志导出）
 │   ├── core-ui/                  # 公共UI组件（蘑菇图标、拼图组件、通用动画）
 │   ├── core-data/                # 数据库基础设施（Room、DAO基类、Mapper基类）
 │   └── core-domain/              # 共享实体、Repository接口、服务接口定义
@@ -134,6 +389,7 @@ mushroom-app/
 
 ### 模块依赖规则
 
+- **所有模块**均依赖 `core-logging`，通过 `MushroomLogger` 统一输出日志，不直接调用 `android.util.Log`
 - feature 模块只依赖 core-domain，不互相依赖
 - core-data 实现 core-domain 中的 Repository 接口
 - app 模块负责依赖注入的装配（Hilt Module绑定）
@@ -145,6 +401,7 @@ mushroom-app/
 
 | 模块 | 职责说明 | 详细设计文档 |
 |------|---------|------------|
+| core-logging | 统一日志门面、文件滚动写入、日志导出 | [模块设计/00-core-logging.md] |
 | core-domain | 所有共享实体、Repository接口、服务接口 | [模块设计/01-core-domain.md] |
 | core-data | 数据库、DAO、Repository实现 | [模块设计/02-core-data.md] |
 | core-ui | 公共UI组件库 | [模块设计/03-core-ui.md] |
