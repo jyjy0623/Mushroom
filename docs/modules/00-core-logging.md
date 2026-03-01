@@ -1,8 +1,14 @@
 # 蘑菇打卡 - core-logging 模块详细设计
 
-**版本**：v1.0
+**版本**：v1.1
 **日期**：2026-03-01
 **状态**：待审核
+
+**变更记录**：
+| 版本 | 日期 | 变更内容 |
+|-----|------|---------|
+| v1.0 | 2026-03-01 | 初版 |
+| v1.1 | 2026-03-01 | Release 版本仅输出 ERROR；INFO 设计原则化（只记录模块边界事件、事件数量上限、清单约束）；日志文件总上限 512KB、保留 2 天 |
 
 ---
 
@@ -11,7 +17,7 @@
 ### 职责
 - 提供全应用统一的日志输出门面（`MushroomLogger`），屏蔽底层实现
 - 按构建类型（Debug / Release）控制日志级别和输出目标
-- 将 INFO 及以上级别日志滚动写入本地文件，支持近7天留存
+- 将 WARN 及以上级别日志滚动写入本地文件，支持近2天留存（Debug 构建含 INFO）
 - 收集设备和应用诊断摘要，辅助问题复现
 - 提供日志导出功能（ZIP 打包，系统分享）
 
@@ -31,21 +37,84 @@ core-data  core-ui  feature-*  service-*
 
 ---
 
-## 二、日志级别定义
+## 二、日志级别定义与输出策略
 
-| 级别 | 枚举值 | 用途 | Debug构建 | Release构建 |
-|-----|-------|------|----------|------------|
-| VERBOSE | `LogLevel.V` | 详细调试（Flow emit、UI重组） | Logcat | 不输出 |
+| 级别 | 枚举值 | 用途 | Debug 构建 | Release 构建 |
+|-----|-------|------|-----------|------------|
+| VERBOSE | `LogLevel.V` | 详细调试（Flow emit、UI 重组） | Logcat | 不输出 |
 | DEBUG | `LogLevel.D` | 开发调试（入参、中间值） | Logcat | 不输出 |
-| INFO | `LogLevel.I` | 关键业务节点正常状态 | Logcat + 文件 | 仅文件 |
-| WARN | `LogLevel.W` | 非预期但可恢复的情况 | Logcat + 文件 | Logcat + 文件 |
-| ERROR | `LogLevel.E` | 异常和错误（含栈跟踪） | Logcat + 文件 | Logcat + 文件 |
+| INFO | `LogLevel.I` | 各模块关键流程节点（见第三章） | Logcat + 文件 | **不输出** |
+| WARN | `LogLevel.W` | 非预期但可恢复的情况 | Logcat + 文件 | 文件 |
+| ERROR | `LogLevel.E` | 异常和错误（含完整栈跟踪） | Logcat + 文件 | **Logcat + 文件** |
+
+**Release 版本只输出 ERROR 和 WARN**，INFO 及以下完全关闭。ERROR 含完整栈跟踪，是线上问题定位的唯一手段。
 
 ---
 
-## 三、核心接口设计
+## 三、INFO 日志设计原则
 
-### 3.1 MushroomLogger（日志门面）
+INFO 日志只在 Debug 构建下记录，用于开发阶段通过日志时间线还原各模块关键流程，**不是**记录所有操作的流水账。
+
+### 原则一：只记录模块边界事件，不记录内部步骤
+
+每个模块只在两类位置输出 INFO：
+- **流程入口**：Use Case 被调用，表明某项用户行为触发了该模块
+- **流程结果**：Use Case 执行完成，表明该模块关键状态发生了变化
+
+中间步骤（数据库读取、数据转换、规则计算过程）使用 DEBUG，不用 INFO。
+
+```kotlin
+// ✅ 正确：入口 + 结果各一条 INFO
+class CheckInTaskUseCase(...) {
+    suspend operator fun invoke(taskId: Long): Result<CheckIn> = runCatching {
+        MushroomLogger.i(TAG, "打卡 taskId=$taskId")
+        val checkIn = doCheckIn(taskId)
+        MushroomLogger.i(TAG, "打卡完成 isEarly=${checkIn.isEarly} earlyMin=${checkIn.earlyMinutes}")
+        checkIn
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "打卡失败 taskId=$taskId", e)
+    }
+}
+
+// ❌ 错误：中间步骤不用 INFO
+MushroomLogger.i(TAG, "开始查询任务")        // ❌ 内部步骤
+MushroomLogger.i(TAG, "计算是否提前完成")    // ❌ 内部步骤
+```
+
+### 原则二：每个模块 INFO 事件数量有上限
+
+| 模块规模 | INFO 事件上限 |
+|---------|------------|
+| 核心模块（task、checkin、mushroom） | 每模块 ≤ 5 个 |
+| 普通模块（reward、milestone、statistics） | 每模块 ≤ 3 个 |
+| 基础设施（core-data、core-logging） | ≤ 2 个 |
+
+超出上限的场景一律使用 DEBUG。
+
+### 原则三：INFO 事件清单在模块文档中明确定义
+
+各模块详细设计文档必须列出该模块允许的全部 INFO 事件，形成约束清单，禁止随意新增。
+
+**全局 INFO 事件清单**（所有模块汇总）：
+
+| 模块 | INFO 事件 | 日志示例 |
+|-----|---------|---------|
+| APP 启动 | 应用启动（1个） | `[APP] 启动 v1.2.0 db=3` |
+| core-data | DB Migration 完成（1个） | `[DB] Migration 1→2 完成` |
+| feature-task | 任务创建、任务删除（2个） | `[TASK] 创建 id=42 date=2026-03-01` |
+| feature-checkin | 打卡触发、打卡完成（2个） | `[CHECKIN] 完成 taskId=42 isEarly=true earlyMin=35` |
+| feature-mushroom | 蘑菇发放、蘑菇扣除（2个） | `[MUSHROOM] 发放 SMALL×1 src=TASK balance={S:12,M:3}` |
+| feature-reward | 拼图解锁（1个） | `[REWARD] 解锁 rewardId=3 progress=8/20` |
+| feature-milestone | 成绩录入（1个） | `[MILESTONE] 录入 id=5 score=92` |
+| core-logging | 日志导出完成（1个） | `[LOG] 导出完成 size=128KB` |
+
+**合计：全局至多 13 个 INFO 事件**，保持日志精简。
+
+---
+
+## 四、核心接口设计
+
+### 4.1 MushroomLogger（日志门面）
 
 ```kotlin
 // core-logging/src/main/java/com/mushroom/logging/MushroomLogger.kt
@@ -77,7 +146,7 @@ object MushroomLogger {
 enum class LogLevel { V, D, I, W, E }
 ```
 
-### 3.2 LogWriter（输出策略接口）
+### 4.2 LogWriter（输出策略接口）
 
 ```kotlin
 interface LogWriter {
@@ -93,18 +162,18 @@ class DebugLogWriter(private val fileWriter: LogFileWriter) : LogWriter {
     }
 }
 
-// Release 构建实现：VERBOSE/DEBUG 不输出，INFO 及以上写文件，WARN/ERROR 同时输出 Logcat
+// Release 构建实现：只输出 WARN 和 ERROR，INFO 及以下全部裁剪
 class ReleaseLogWriter(private val fileWriter: LogFileWriter) : LogWriter {
     override fun log(level: LogLevel, tag: String, message: String, throwable: Throwable?) {
-        if (level < LogLevel.I) return   // VERBOSE / DEBUG 裁剪
+        if (level < LogLevel.W) return   // VERBOSE / DEBUG / INFO 全部不输出
         val formatted = formatMessage(level, tag, message, throwable)
         fileWriter.write(formatted)
-        if (level >= LogLevel.W) android.util.Log.println(level.androidPriority, tag, message)
+        android.util.Log.println(level.androidPriority, tag, formatted)
     }
 }
 ```
 
-### 3.3 LogFileWriter（滚动文件写入）
+### 4.3 LogFileWriter（滚动文件写入）
 
 ```kotlin
 class LogFileWriter(private val context: Context) {
@@ -112,13 +181,13 @@ class LogFileWriter(private val context: Context) {
     // 文件路径：<filesDir>/logs/mushroom_log_20260301.txt
     private val logDir: File = File(context.filesDir, "logs")
 
-    // 策略
-    private val maxFileSizeKB = 512
-    private val maxRetainDays = 7
+    companion object {
+        const val MAX_TOTAL_SIZE_KB = 512    // 所有日志文件总大小上限
+        const val MAX_RETAIN_DAYS   = 2      // 保留最近2天
+    }
 
     fun write(message: String) {
         val file = getCurrentLogFile()
-        if (file.length() > maxFileSizeKB * 1024) rotateFile()
         file.appendText(message + "\n")
     }
 
@@ -127,18 +196,25 @@ class LogFileWriter(private val context: Context) {
         return File(logDir, "mushroom_log_$dateStr.txt").also { it.parentFile?.mkdirs() }
     }
 
-    fun purgeOldFiles() {
-        // 删除 maxRetainDays 天前的日志文件（在 Application.onCreate 调用）
-        val cutoff = LocalDate.now().minusDays(maxRetainDays.toLong())
-        logDir.listFiles()?.forEach { file ->
-            val date = parseFileDate(file.name) ?: return@forEach
-            if (date.isBefore(cutoff)) file.delete()
+    fun purgeAndRotate() {
+        val cutoff = LocalDate.now().minusDays(MAX_RETAIN_DAYS.toLong())
+        // 1. 删除2天前的日志文件
+        logDir.listFiles()
+            ?.filter { parseFileDate(it.name)?.isBefore(cutoff) == true }
+            ?.forEach { it.delete() }
+        // 2. 若所有剩余文件总大小仍超过512KB，按时间从旧到新继续删除直到达标
+        val files = logDir.listFiles()?.sortedBy { it.name } ?: return
+        var totalKB = files.sumOf { it.length() } / 1024
+        for (file in files) {
+            if (totalKB <= MAX_TOTAL_SIZE_KB) break
+            totalKB -= file.length() / 1024
+            file.delete()
         }
     }
 }
 ```
 
-### 3.4 DiagnosticCollector（诊断摘要收集）
+### 4.4 DiagnosticCollector（诊断摘要收集）
 
 ```kotlin
 class DiagnosticCollector @Inject constructor(
@@ -178,7 +254,7 @@ data class DiagnosticSummary(
 )
 ```
 
-### 3.5 LogExporter（日志打包导出）
+### 4.5 LogExporter（日志打包导出）
 
 ```kotlin
 class LogExporter @Inject constructor(
@@ -186,7 +262,7 @@ class LogExporter @Inject constructor(
     private val diagnosticCollector: DiagnosticCollector,
     private val fileWriter: LogFileWriter
 ) {
-    // 打包近7天日志 + 诊断摘要为 ZIP，返回可分享的 FileProvider URI
+    // 打包近2天日志 + 诊断摘要为 ZIP，返回可分享的 FileProvider URI
     suspend fun export(): Result<Uri> = runCatching {
         val summary = diagnosticCollector.collect()
         val zipFile = createZip(summary)
@@ -217,7 +293,7 @@ class LogExporter @Inject constructor(
 
 ---
 
-## 四、Tag 命名规范
+## 五、Tag 命名规范
 
 各模块使用固定 Tag 标识，便于日志过滤定界：
 
@@ -243,7 +319,7 @@ companion object {
 
 ---
 
-## 五、日志输出格式
+## 六、日志输出格式
 
 ```
 {timestamp} {level}/{tag}: {message}
@@ -263,15 +339,14 @@ companion object {
 
 ---
 
-## 六、各模块日志接入规范
+## 七、各模块日志接入规范
 
-### 6.1 Use Case 统一异常处理模板
+### 7.1 Use Case 统一异常处理模板
 
 ```kotlin
 class SomeUseCase(...) {
     suspend operator fun invoke(param: Type): Result<Output> = runCatching {
-        MushroomLogger.i(TAG, "开始执行 param=$param")
-        // 业务逻辑
+        // 业务逻辑（内部步骤使用 DEBUG，不用 INFO）
         val result = doSomething(param)
         MushroomLogger.i(TAG, "执行完成 result=$result")
         result
@@ -282,7 +357,7 @@ class SomeUseCase(...) {
 }
 ```
 
-### 6.2 Repository 实现异常处理模板
+### 7.2 Repository 实现异常处理模板
 
 ```kotlin
 class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRepository {
@@ -300,7 +375,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 }
 ```
 
-### 6.3 关键业务节点 INFO 日志要求
+### 7.3 关键业务节点 INFO 日志要求
 
 以下场景**必须**输出 INFO 级别日志：
 - 任务创建 / 删除
@@ -313,7 +388,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 
 ---
 
-## 七、Settings 页面集成
+## 八、Settings 页面集成
 
 在 `SettingsScreen` 中新增"诊断与帮助"入口：
 
@@ -327,7 +402,7 @@ class SomeRepositoryImpl @Inject constructor(private val dao: SomeDao) : SomeRep
 
 ---
 
-## 八、Hilt 依赖注入配置
+## 九、Hilt 依赖注入配置
 
 ```kotlin
 // core-logging/src/main/java/com/mushroom/logging/di/LoggingModule.kt
@@ -351,20 +426,21 @@ object LoggingModule {
 // Application.onCreate 中初始化
 class MushroomApp : Application() {
     @Inject lateinit var logWriter: LogWriter
+    @Inject lateinit var logFileWriter: LogFileWriter
 
     override fun onCreate() {
         super.onCreate()
         MushroomLogger.init(logWriter)
         MushroomLogger.i("APP", "应用启动 version=${BuildConfig.VERSION_NAME}")
         // 清理过期日志
-        logWriter.purgeOldFiles()
+        logFileWriter.purgeAndRotate()
     }
 }
 ```
 
 ---
 
-## 九、包结构
+## 十、包结构
 
 ```
 core-logging/src/main/java/com/mushroom/logging/

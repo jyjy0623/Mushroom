@@ -236,36 +236,159 @@ Android 版本：14 (API 34)
 
 ### 原则10：分级日志设计
 
-**目标**：通过统一的日志模块（`core-logging`），在不同场景下输出适量、有价值的日志信息；发布版本日常运行不影响性能，出现问题时具备完整的诊断信息。
+**目标**：通过统一的日志模块（`core-logging`），输出精简、有价值的日志信息。Release 版本日常运行只记录 ERROR，对用户设备性能和存储影响最小；Debug 版本开放完整日志辅助开发。出现问题时，ERROR 日志结合诊断摘要足以快速定界定位。
 
-#### 10.1 日志级别定义
+#### 10.1 日志级别定义与输出策略
 
-| 级别 | 用途 | 输出条件 | 示例场景 |
-|-----|------|---------|---------|
-| `VERBOSE` | 详细调试信息 | 仅 Debug 构建 | Flow 每次 emit、UI 每次重组 |
-| `DEBUG` | 开发调试 | 仅 Debug 构建 | 函数入参、中间计算结果 |
-| `INFO` | 关键业务节点 | Debug + Release | 打卡成功、蘑菇发放、里程碑录入 |
-| `WARN` | 非预期但可恢复的情况 | Debug + Release | 余额不足降级扣分、Migration 字段缺失用默认值 |
-| `ERROR` | 异常和错误 | Debug + Release | 数据库操作失败、Use Case 抛出异常 |
+| 级别 | 用途 | Debug 构建 | Release 构建 |
+|-----|------|-----------|------------|
+| `VERBOSE` | 详细调试（Flow emit、UI 重组） | Logcat | 不输出 |
+| `DEBUG` | 开发调试（入参、中间计算结果） | Logcat | 不输出 |
+| `INFO` | **各模块关键流程节点**（见 10.2） | Logcat + 文件 | **不输出** |
+| `WARN` | 非预期但可恢复的情况 | Logcat + 文件 | 文件 |
+| `ERROR` | 异常和错误（含完整栈跟踪） | Logcat + 文件 | **Logcat + 文件** |
 
-#### 10.2 统一日志接口
+> **Release 版本只记录 ERROR 和 WARN**，INFO 及以下全部关闭。ERROR 日志含完整栈跟踪，是线上问题定位的唯一手段。
 
-在 `core-logging` 模块中定义，所有模块依赖此接口，不直接调用 `android.util.Log`：
+#### 10.2 INFO 日志设计原则
+
+INFO 日志的核心价值是**在 Debug 阶段通过日志时间线还原各模块的关键流程**，不是记录所有操作。遵循以下原则：
+
+**原则一：只记录模块边界事件，不记录内部步骤**
+
+每个模块只在以下两类位置输出 INFO：
+- **流程入口**：Use Case 被调用，表明某项用户行为触发了该模块
+- **流程结果**：Use Case 执行完成，表明该模块的关键状态发生了变化
+
+中间步骤（数据库读取、数据转换、规则计算过程）使用 DEBUG 级别，不用 INFO。
 
 ```kotlin
-// core-logging/src/main/java/com/mushroom/logging/MushroomLogger.kt
-
-object MushroomLogger {
-    // Release 版本：INFO 及以上写入文件，VERBOSE/DEBUG 只在 Debug 构建输出
-    fun v(tag: String, message: String)
-    fun d(tag: String, message: String)
-    fun i(tag: String, message: String)
-    fun w(tag: String, message: String, throwable: Throwable? = null)
-    fun e(tag: String, message: String, throwable: Throwable? = null)
+// ✅ 正确：只在入口和结果输出 INFO
+class CheckInTaskUseCase(...) {
+    suspend operator fun invoke(taskId: Long): Result<CheckIn> = runCatching {
+        MushroomLogger.i(TAG, "打卡 taskId=$taskId")        // 入口：用户行为触发
+        val checkIn = doCheckIn(taskId)
+        MushroomLogger.i(TAG, "打卡完成 isEarly=${checkIn.isEarly} earlyMin=${checkIn.earlyMinutes}")  // 结果：状态变化
+        checkIn
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "打卡失败 taskId=$taskId", e)
+    }
 }
 
-// Tag 命名规范：[MODULE_NAME] 大写模块标识
-// 示例：MushroomLogger.i("CHECKIN", "打卡完成 taskId=$taskId")
+// ❌ 错误：中间步骤不使用 INFO
+class CheckInTaskUseCase(...) {
+    suspend operator fun invoke(taskId: Long): Result<CheckIn> = runCatching {
+        MushroomLogger.i(TAG, "开始查询任务")               // ❌ 内部步骤不用 INFO
+        val task = taskRepository.getById(taskId)
+        MushroomLogger.i(TAG, "计算是否提前完成")           // ❌ 内部步骤不用 INFO
+        ...
+    }
+}
+```
+
+**原则二：每个模块的 INFO 事件数量有上限**
+
+每个 feature 模块**至多**定义以下数量的 INFO 事件，超出则降为 DEBUG：
+
+| 模块规模 | INFO 事件上限 |
+|---------|------------|
+| 核心模块（task、checkin、mushroom） | 每模块 ≤ 5 个 |
+| 普通模块（reward、milestone、statistics） | 每模块 ≤ 3 个 |
+| 基础设施（core-data、core-logging） | ≤ 2 个（Migration、启动） |
+
+**原则三：INFO 事件清单需在模块设计文档中明确定义**
+
+每个模块的详细设计文档中必须列出该模块允许的全部 INFO 事件，形成约束清单。未在清单中的场景一律使用 DEBUG，禁止随意新增 INFO 日志。
+
+各模块允许的 INFO 事件（完整清单）：
+
+| 模块 | 允许的 INFO 事件 | 日志示例 |
+|-----|---------------|---------|
+| APP启动 | 应用启动（1个） | `[APP] 启动 v1.2.0 db=3` |
+| core-data | DB Migration 完成（1个） | `[DB] Migration 1→2 完成` |
+| feature-task | 任务创建、任务删除（2个） | `[TASK] 创建 id=42 date=2026-03-01` |
+| feature-checkin | 打卡触发、打卡完成（2个） | `[CHECKIN] 完成 taskId=42 isEarly=true earlyMin=35` |
+| feature-mushroom | 蘑菇发放、蘑菇扣除（2个） | `[MUSHROOM] 发放 SMALL×1 src=TASK balance={S:12,M:3}` |
+| feature-reward | 拼图解锁（1个） | `[REWARD] 解锁 rewardId=3 progress=8/20` |
+| feature-milestone | 成绩录入（1个） | `[MILESTONE] 录入 id=5 score=92` |
+| core-logging | 日志导出完成（1个） | `[LOG] 导出完成 size=128KB` |
+
+#### 10.3 ERROR 日志规范
+
+ERROR 是 Release 版本唯一的日志输出，必须包含足够的上下文：
+
+```kotlin
+// ERROR 必须包含：操作名称 + 关键参数 + 完整异常栈
+MushroomLogger.e(TAG, "打卡失败 taskId=$taskId", exception)
+
+// WARN 用于可恢复的异常情况（无需栈跟踪）
+MushroomLogger.w(TAG, "余额不足，扣分降级 需要=$required 实际=$actual")
+```
+
+#### 10.4 日志文件管理策略
+
+```
+整体日志存储策略：
+  总容量上限：512 KB（所有日志文件之和）
+  保留时长：最近 2 天
+  文件组织：每天一个文件（mushroom_log_20260301.txt）
+  超出策略：总大小超过 512KB 时，优先删除最旧文件
+
+日志写入时序：
+  应用启动 → purgeOldFiles()（清理2天前文件）
+           → checkTotalSize()（若总大小超512KB，删最旧文件至达标）
+           → 正常写入
+```
+
+```kotlin
+class LogFileWriter(private val context: Context) {
+    private val logDir = File(context.filesDir, "logs")
+
+    companion object {
+        const val MAX_TOTAL_SIZE_KB = 512       // 所有日志文件总上限
+        const val MAX_RETAIN_DAYS  = 2          // 保留最近2天
+    }
+
+    fun purgeAndRotate() {
+        val cutoff = LocalDate.now().minusDays(MAX_RETAIN_DAYS.toLong())
+        // 1. 删除2天前的文件
+        logDir.listFiles()?.filter { parseFileDate(it.name)?.isBefore(cutoff) == true }
+              ?.forEach { it.delete() }
+        // 2. 若总大小仍超512KB，按时间从旧到新继续删除，直到达标
+        val files = logDir.listFiles()?.sortedBy { it.name } ?: return
+        var totalKB = files.sumOf { it.length() } / 1024
+        for (file in files) {
+            if (totalKB <= MAX_TOTAL_SIZE_KB) break
+            totalKB -= file.length() / 1024
+            file.delete()
+        }
+    }
+}
+```
+
+#### 10.5 统一日志接口
+
+```kotlin
+object MushroomLogger {
+    fun v(tag: String, message: String)                              // Debug 构建 Logcat
+    fun d(tag: String, message: String)                              // Debug 构建 Logcat
+    fun i(tag: String, message: String)                              // Debug 构建 Logcat + 文件
+    fun w(tag: String, message: String, throwable: Throwable? = null) // Debug + Release 文件
+    fun e(tag: String, message: String, throwable: Throwable? = null) // Debug + Release Logcat + 文件
+}
+```
+
+Release 构建的 `LogWriter` 实现中，INFO 调用直接返回（编译后开销接近于零）：
+
+```kotlin
+class ReleaseLogWriter(private val fileWriter: LogFileWriter) : LogWriter {
+    override fun log(level: LogLevel, tag: String, message: String, throwable: Throwable?) {
+        if (level < LogLevel.W) return   // VERBOSE / DEBUG / INFO 全部裁剪
+        val formatted = formatMessage(level, tag, message, throwable)
+        fileWriter.write(formatted)
+        android.util.Log.println(level.androidPriority, tag, formatted)
+    }
+}
 ```
 
 #### 10.3 日志输出策略
