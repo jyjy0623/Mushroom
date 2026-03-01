@@ -45,10 +45,23 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.robolectric)
+    testImplementation(libs.robolectric.junit5)
     testImplementation(libs.room.testing)
     testImplementation(libs.androidx.test.core)
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Robolectric 需要此配置才能在 JVM 上运行 Android 代码
+android {
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                it.jvmArgs("-Drobolectric.logging=stderr")
+            }
+        }
+    }
 }

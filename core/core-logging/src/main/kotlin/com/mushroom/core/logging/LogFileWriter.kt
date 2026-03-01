@@ -14,16 +14,16 @@ import java.time.format.DateTimeFormatter
  * - 每次写入前检查并滚动/清理
  * - 文件名格式：mushroom_log_yyyyMMdd.txt
  */
-class LogFileWriter(private val context: Context) {
+open class LogFileWriter(private val context: Context) {
 
     companion object {
         const val MAX_TOTAL_SIZE_KB = 512L
         const val MAX_RETAIN_DAYS = 2L
-        private val DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd")
+        internal val DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd")
         private val TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
     }
 
-    private val logDir: File
+    protected open val logDir: File
         get() = File(context.filesDir, "logs").also { it.mkdirs() }
 
     private val todayFile: File

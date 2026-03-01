@@ -18,6 +18,7 @@ junit5 = "5.10.3"
 mockk = "1.13.11"
 turbine = "1.1.0"
 robolectric = "4.13"
+robolectricJunit5 = "0.5.0"
 androidxTestCore = "1.6.1"
 androidxTestRunner = "1.6.1"
 espresso = "3.6.1"
@@ -76,6 +77,7 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 
 # Integration / Robolectric
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+robolectric-junit5 = { group = "org.robolectric", name = "robolectric-junit5", version.ref = "robolectricJunit5" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
