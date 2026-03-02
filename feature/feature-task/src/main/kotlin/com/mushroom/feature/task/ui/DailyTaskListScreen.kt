@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -197,6 +198,7 @@ fun DailyTaskListScreen(
                         TaskCard(
                             task = task,
                             onEdit = { onNavigateToEditTask(task.id) },
+                            onCheckIn = { viewModel.checkIn(task.id) },
                             onDelete = {
                                 if (task.hasRepeat) {
                                     pendingDelete = task
@@ -300,6 +302,7 @@ private fun TaskProgressCard(completed: Int, total: Int) {
 private fun TaskCard(
     task: TaskUiModel,
     onEdit: () -> Unit,
+    onCheckIn: () -> Unit,
     onDelete: () -> Unit
 ) {
     // 完成时图标做一个缩放弹跳动画
@@ -320,39 +323,57 @@ private fun TaskCard(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (task.isEarlyDone) {
-                Text("⚡", fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
-            } else {
-                // 任务完成打勾动画
-                Text(
-                    "✓", fontSize = 20.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .scale(iconScale)
-                        .padding(end = 8.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (task.isDone) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SubjectChip(task.subjectLabel)
-                    if (task.hasRepeat) SubjectChip("🔄")
-                    task.deadlineDisplay?.let { SubjectChip(it) }
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (task.isEarlyDone) {
+                    Text("⚡", fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
+                } else {
+                    // 任务完成打勾动画
+                    Text(
+                        "✓", fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .scale(iconScale)
+                            .padding(end = 8.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = task.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = if (task.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SubjectChip(task.subjectLabel)
+                        if (task.hasRepeat) SubjectChip("🔄")
+                        task.deadlineDisplay?.let { SubjectChip(it) }
+                    }
+                }
+                // 打卡按钮（仅未完成任务显示）
+                if (!task.isDone) {
+                    IconButton(onClick = onCheckIn) {
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "打卡完成",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error)
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error)
+            // 奖励预览（仅未完成时显示）
+            if (!task.isDone) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = task.rewardPreview,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
             }
         }
     }

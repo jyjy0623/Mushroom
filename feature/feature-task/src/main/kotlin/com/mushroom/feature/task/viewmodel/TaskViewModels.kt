@@ -14,6 +14,7 @@ import com.mushroom.core.domain.entity.MushroomRewardConfig
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.feature.task.model.TaskUiModel
 import com.mushroom.feature.task.model.toUiModel
+import com.mushroom.feature.task.usecase.CheckInTaskUseCase
 import com.mushroom.feature.task.usecase.ApplyTaskTemplateUseCase
 import com.mushroom.feature.task.usecase.CopyTasksUseCase
 import com.mushroom.feature.task.usecase.CreateTaskUseCase
@@ -63,7 +64,8 @@ class DailyTaskViewModel @Inject constructor(
     private val getDailyTasksUseCase: GetDailyTasksUseCase,
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val copyTasksUseCase: CopyTasksUseCase,
-    private val applyTemplateUseCase: ApplyTaskTemplateUseCase
+    private val applyTemplateUseCase: ApplyTaskTemplateUseCase,
+    private val checkInTaskUseCase: CheckInTaskUseCase
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -96,6 +98,14 @@ class DailyTaskViewModel @Inject constructor(
             deleteTaskUseCase(taskId, mode).onFailure {
                 _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
             }
+        }
+    }
+
+    fun checkIn(taskId: Long) {
+        viewModelScope.launch {
+            checkInTaskUseCase(taskId)
+                .onSuccess { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡成功！🍄")) }
+                .onFailure { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡失败，请重试")) }
         }
     }
 

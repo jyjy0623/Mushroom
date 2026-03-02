@@ -1,10 +1,14 @@
 package com.mushroom.feature.task.usecase
 
+import com.mushroom.core.domain.entity.CheckIn
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Task
 import com.mushroom.core.domain.entity.TaskStatus
 import com.mushroom.core.domain.entity.TaskTemplate
 import com.mushroom.core.domain.entity.TaskTemplateType
+import com.mushroom.core.domain.event.AppEvent
+import com.mushroom.core.domain.event.AppEventBus
+import com.mushroom.core.domain.repository.CheckInRepository
 import com.mushroom.core.domain.repository.TaskRepository
 import com.mushroom.core.domain.repository.TaskTemplateRepository
 import com.mushroom.core.logging.MushroomLogger
@@ -169,6 +173,46 @@ class GetTaskByIdUseCase @Inject constructor(
     private val repo: TaskRepository
 ) {
     suspend operator fun invoke(id: Long): Task? = repo.getTaskById(id)
+}
+
+// ---------------------------------------------------------------------------
+// 10. 打卡（任务完成）
+// ---------------------------------------------------------------------------
+class CheckInTaskUseCase @Inject constructor(
+    private val taskRepo: TaskRepository,
+    private val checkInRepo: CheckInRepository,
+    private val eventBus: AppEventBus
+) {
+    suspend operator fun invoke(taskId: Long): Result<Unit> = runCatching {
+        val task = taskRepo.getTaskById(taskId) ?: error("Task not found: $taskId")
+        val now = LocalDateTime.now()
+        val deadline = task.deadline
+        val isEarly = deadline != null && now.isBefore(deadline)
+        val earlyMinutes = if (isEarly)
+            java.time.Duration.between(now, deadline!!).toMinutes().toInt().coerceAtLeast(0)
+        else 0
+        val newStatus = if (isEarly) TaskStatus.EARLY_DONE else TaskStatus.ON_TIME_DONE
+        taskRepo.updateTask(task.copy(status = newStatus))
+        val checkIn = CheckIn(
+            taskId = taskId,
+            date = now.toLocalDate(),
+            checkedAt = now,
+            isEarly = isEarly,
+            earlyMinutes = earlyMinutes,
+            note = null,
+            imageUris = emptyList()
+        )
+        checkInRepo.insertCheckIn(checkIn)
+        eventBus.emit(AppEvent.TaskCheckedIn(
+            taskId = taskId,
+            checkInTime = now,
+            isEarly = isEarly,
+            earlyMinutes = earlyMinutes
+        ))
+        MushroomLogger.i(TAG, "[TASK] 打卡 id=$taskId isEarly=$isEarly earlyMinutes=$earlyMinutes")
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "打卡失败 id=$taskId", e)
+    }
 }
 
 // ---------------------------------------------------------------------------
