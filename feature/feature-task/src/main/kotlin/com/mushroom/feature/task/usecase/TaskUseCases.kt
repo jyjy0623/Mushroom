@@ -156,7 +156,9 @@ class ApplyTaskTemplateUseCase @Inject constructor(
                 date = date,
                 deadline = deadline,
                 templateType = template.type,
-                status = TaskStatus.PENDING
+                status = TaskStatus.PENDING,
+                customRewardConfig = template.rewardConfig.baseReward,
+                customEarlyRewardConfig = template.rewardConfig.bonusReward
             )
             val id = taskRepo.insertTask(task)
             MushroomLogger.i(TAG, "[TASK] 创建 title=${template.name} date=$date (from template)")
