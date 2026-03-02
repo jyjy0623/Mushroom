@@ -1,6 +1,7 @@
 package com.mushroom.adventure
 
 import android.app.Application
+import com.mushroom.core.data.seed.DeductionConfigSeed
 import com.mushroom.core.data.seed.TaskTemplateSeed
 import com.mushroom.core.domain.service.TaskGeneratorService
 import com.mushroom.core.logging.LogFileWriter
@@ -23,6 +24,7 @@ class MushroomApp : Application() {
     @Inject lateinit var logWriter: LogWriter
     @Inject lateinit var logFileWriter: LogFileWriter
     @Inject lateinit var taskTemplateSeed: TaskTemplateSeed
+    @Inject lateinit var deductionConfigSeed: DeductionConfigSeed
     @Inject lateinit var mushroomRewardEngine: MushroomRewardEngine
     @Inject lateinit var taskGeneratorService: TaskGeneratorService
 
@@ -35,6 +37,7 @@ class MushroomApp : Application() {
         MushroomLogger.i(TAG, "MushroomApp.onCreate — application started")
 
         appScope.launch { taskTemplateSeed.seed() }
+        appScope.launch { deductionConfigSeed.seed() }
 
         // 每次 App 启动时为今天生成重复任务（幂等，多次调用无害）
         appScope.launch {

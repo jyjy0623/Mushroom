@@ -106,6 +106,9 @@ interface DeductionConfigDao {
     @Query("SELECT * FROM deduction_config WHERE is_enabled = 1 ORDER BY is_built_in DESC, id")
     fun getEnabledConfigs(): Flow<List<DeductionConfigEntity>>
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(config: DeductionConfigEntity): Long
+
     @Update
     suspend fun update(config: DeductionConfigEntity)
 }
