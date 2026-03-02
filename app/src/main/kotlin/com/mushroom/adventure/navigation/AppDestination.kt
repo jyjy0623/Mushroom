@@ -18,6 +18,7 @@ sealed class AppDestination(val route: String) {
     object CheckInHistory : AppDestination("checkin_history")
 
     // 奖品相关
+    object RewardCreate : AppDestination("reward_create")
     object RewardDetail : AppDestination("reward_detail/{rewardId}") {
         const val ARG_REWARD_ID = "rewardId"
         fun route(rewardId: Long) = "reward_detail/$rewardId"

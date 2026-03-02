@@ -20,6 +20,7 @@ import com.mushroom.feature.milestone.ui.MilestoneListScreen
 import com.mushroom.feature.mushroom.ui.DeductionConfigScreen
 import com.mushroom.feature.mushroom.ui.DeductionRecordScreen
 import com.mushroom.feature.mushroom.ui.MushroomLedgerScreen
+import com.mushroom.feature.reward.ui.RewardCreateScreen
 import com.mushroom.feature.reward.ui.RewardDetailScreen
 import com.mushroom.feature.reward.ui.RewardListScreen
 import com.mushroom.feature.statistics.ui.StatisticsScreen
@@ -91,7 +92,15 @@ fun AppNavGraph(
             RewardListScreen(
                 onNavigateToDetail = { rewardId ->
                     navController.navigate(AppDestination.RewardDetail.route(rewardId))
+                },
+                onNavigateToCreate = {
+                    navController.navigate(AppDestination.RewardCreate.route)
                 }
+            )
+        }
+        composable(AppDestination.RewardCreate.route) {
+            RewardCreateScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(
