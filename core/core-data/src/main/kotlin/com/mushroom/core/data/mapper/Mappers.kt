@@ -246,6 +246,62 @@ object MilestoneMapper {
         }
 }
 
+object TaskTemplateMapper {
+    fun toDomain(e: TaskTemplateEntity): TaskTemplate = TaskTemplate(
+        id = e.id,
+        name = e.name,
+        type = TaskTemplateType.valueOf(e.type),
+        subject = Subject.valueOf(e.subject),
+        estimatedMinutes = e.estimatedMinutes,
+        description = e.description,
+        defaultDeadlineOffset = e.defaultDeadlineOffset,
+        rewardConfig = TemplateRewardConfig(
+            baseReward = MushroomRewardConfig(MushroomLevel.valueOf(e.baseRewardLevel), e.baseRewardAmount),
+            bonusReward = if (e.bonusRewardLevel != null && e.bonusRewardAmount != null)
+                MushroomRewardConfig(MushroomLevel.valueOf(e.bonusRewardLevel), e.bonusRewardAmount)
+            else null,
+            bonusCondition = decodeBonusCondition(e.bonusConditionType, e.bonusConditionValue)
+        ),
+        isBuiltIn = e.isBuiltIn
+    )
+
+    fun toDb(d: TaskTemplate): TaskTemplateEntity = TaskTemplateEntity(
+        id = d.id,
+        name = d.name,
+        type = d.type.name,
+        subject = d.subject.name,
+        estimatedMinutes = d.estimatedMinutes,
+        description = d.description,
+        defaultDeadlineOffset = d.defaultDeadlineOffset,
+        baseRewardLevel = d.rewardConfig.baseReward.level.name,
+        baseRewardAmount = d.rewardConfig.baseReward.amount,
+        bonusRewardLevel = d.rewardConfig.bonusReward?.level?.name,
+        bonusRewardAmount = d.rewardConfig.bonusReward?.amount,
+        bonusConditionType = d.rewardConfig.bonusCondition?.let { conditionType(it) },
+        bonusConditionValue = d.rewardConfig.bonusCondition?.let { conditionValue(it) },
+        isBuiltIn = d.isBuiltIn
+    )
+
+    private fun conditionType(c: BonusCondition): String = when (c) {
+        is BonusCondition.WithinMinutesAfterStart -> "WITHIN_MINUTES"
+        is BonusCondition.ConsecutiveDays -> "CONSECUTIVE_DAYS"
+        is BonusCondition.AllItemsDone -> "ALL_ITEMS_DONE"
+    }
+
+    private fun conditionValue(c: BonusCondition): Int? = when (c) {
+        is BonusCondition.WithinMinutesAfterStart -> c.minutes
+        is BonusCondition.ConsecutiveDays -> c.days
+        is BonusCondition.AllItemsDone -> null
+    }
+
+    private fun decodeBonusCondition(type: String?, value: Int?): BonusCondition? = when (type) {
+        "WITHIN_MINUTES" -> BonusCondition.WithinMinutesAfterStart(value ?: 0)
+        "CONSECUTIVE_DAYS" -> BonusCondition.ConsecutiveDays(value ?: 0)
+        "ALL_ITEMS_DONE" -> BonusCondition.AllItemsDone
+        else -> null
+    }
+}
+
 object KeyDateMapper {
     fun toDomain(e: KeyDateEntity): KeyDate = KeyDate(
         id = e.id,

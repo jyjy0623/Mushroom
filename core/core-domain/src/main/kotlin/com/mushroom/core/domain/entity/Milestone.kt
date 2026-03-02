@@ -23,6 +23,13 @@ data class ScoringRule(
     val rewardConfig: MushroomRewardConfig
 )
 
+data class MilestoneScorePoint(
+    val date: LocalDate,
+    val score: Int,
+    val type: MilestoneType,
+    val name: String
+)
+
 data class KeyDate(
     val id: Long = 0,
     val name: String,

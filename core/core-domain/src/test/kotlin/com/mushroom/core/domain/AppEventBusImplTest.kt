@@ -53,19 +53,19 @@ class AppEventBusImplTest {
     }
 
     @Test
-    fun `when_two_subscribers_exist_both_should_receive_same_event`() = runTest {
+    fun `when_two_subscribers_exist_both_should_receive_same_event`() = runTest(
+        context = kotlinx.coroutines.test.UnconfinedTestDispatcher()
+    ) {
         val event = AppEvent.MilestoneScored(milestoneId = 10L, score = 95)
 
         val received1 = mutableListOf<AppEvent>()
         val received2 = mutableListOf<AppEvent>()
 
+        // UnconfinedTestDispatcher 下 launch 立即执行到第一个挂起点（collect 开始订阅）
         val job1 = launch { bus.events.collect { received1.add(it) } }
         val job2 = launch { bus.events.collect { received2.add(it) } }
 
         bus.emit(event)
-
-        // 给协程时间处理
-        testScheduler.advanceUntilIdle()
 
         assertEquals(1, received1.size)
         assertEquals(1, received2.size)

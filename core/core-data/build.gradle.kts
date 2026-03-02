@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    id("jacoco")
 }
 
 android {
@@ -52,6 +53,11 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("-Djunit.platform.launcher.interceptors.enabled=true")
+    configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = mutableListOf("jdk.internal.*")
+    }
 }
 
 // Robolectric 需要此配置才能在 JVM 上运行 Android 代码

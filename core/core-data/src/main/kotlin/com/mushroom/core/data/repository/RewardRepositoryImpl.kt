@@ -1,0 +1,96 @@
+package com.mushroom.core.data.repository
+
+import com.mushroom.core.data.db.dao.RewardDao
+import com.mushroom.core.data.db.dao.RewardExchangeDao
+import com.mushroom.core.data.db.dao.TimeRewardUsageDao
+import com.mushroom.core.data.db.entity.RewardExchangeEntity
+import com.mushroom.core.data.db.entity.TimeRewardUsageEntity
+import com.mushroom.core.data.mapper.RewardMapper
+import com.mushroom.core.domain.entity.PuzzleProgress
+import com.mushroom.core.domain.entity.Reward
+import com.mushroom.core.domain.entity.RewardExchange
+import com.mushroom.core.domain.entity.TimeRewardBalance
+import com.mushroom.core.domain.repository.RewardRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class RewardRepositoryImpl @Inject constructor(
+    private val rewardDao: RewardDao,
+    private val rewardExchangeDao: RewardExchangeDao,
+    private val timeRewardUsageDao: TimeRewardUsageDao
+) : RewardRepository {
+
+    override fun getActiveRewards(): Flow<List<Reward>> =
+        rewardDao.getActiveRewards().map { list -> list.map(RewardMapper::toDomain) }
+
+    override suspend fun getRewardById(id: Long): Reward? =
+        rewardDao.getRewardById(id)?.let(RewardMapper::toDomain)
+
+    override suspend fun insertReward(reward: Reward): Long =
+        rewardDao.insert(RewardMapper.toDb(reward))
+
+    override suspend fun updateReward(reward: Reward) =
+        rewardDao.update(RewardMapper.toDb(reward))
+
+    override fun getPuzzleProgress(rewardId: Long): Flow<PuzzleProgress> {
+        val rewardFlow = rewardDao.getActiveRewards()
+            .map { list -> list.firstOrNull { it.id == rewardId } }
+        val unlockedFlow = rewardExchangeDao.getUnlockedPieces(rewardId)
+        return combine(rewardFlow, unlockedFlow) { entity, unlocked ->
+            val totalPieces = entity?.puzzlePieces ?: 1
+            PuzzleProgress(
+                rewardId = rewardId,
+                totalPieces = totalPieces,
+                unlockedPieces = unlocked ?: 0
+            )
+        }
+    }
+
+    override suspend fun getTimeRewardBalance(rewardId: Long, periodStart: LocalDate): TimeRewardBalance? {
+        val usage = timeRewardUsageDao.getUsage(rewardId, periodStart.toString()) ?: return null
+        return TimeRewardBalance(
+            rewardId = rewardId,
+            periodStart = LocalDate.parse(usage.periodStart),
+            maxMinutes = usage.maxMinutes,
+            usedMinutes = usage.usedMinutes
+        )
+    }
+
+    override suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedMinutes: Int) {
+        val existing = timeRewardUsageDao.getUsage(rewardId, periodStart.toString())
+        if (existing != null) {
+            timeRewardUsageDao.updateUsedMinutes(rewardId, periodStart.toString(), usedMinutes)
+        } else {
+            val reward = rewardDao.getRewardById(rewardId)
+            val maxMinutes = reward?.let { r ->
+                val config = r.timeLimitConfig?.let { RewardMapper.toDomain(r).timeLimitConfig }
+                config?.maxMinutesPerPeriod ?: 0
+            } ?: 0
+            timeRewardUsageDao.upsert(
+                TimeRewardUsageEntity(
+                    rewardId = rewardId,
+                    periodStart = periodStart.toString(),
+                    maxMinutes = maxMinutes,
+                    usedMinutes = usedMinutes
+                )
+            )
+        }
+    }
+
+    override suspend fun insertExchange(exchange: RewardExchange): Long =
+        rewardExchangeDao.insert(
+            RewardExchangeEntity(
+                rewardId = exchange.rewardId,
+                mushroomLevel = exchange.mushroomLevel.name,
+                mushroomCount = exchange.mushroomCount,
+                puzzlePiecesUnlocked = exchange.puzzlePiecesUnlocked,
+                minutesGained = exchange.minutesGained,
+                createdAt = exchange.createdAt.toString()
+            )
+        )
+}

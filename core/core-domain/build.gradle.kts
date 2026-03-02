@@ -1,5 +1,6 @@
 plugins {
     id("java-library")
+    id("jacoco")
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -9,12 +10,12 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-kotlinOptions {
-    jvmTarget = "17"
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions.jvmTarget = "17"
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit5.api)
@@ -27,4 +28,12 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.withType<Test>())
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }

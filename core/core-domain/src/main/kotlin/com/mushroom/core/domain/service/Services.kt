@@ -1,6 +1,7 @@
 package com.mushroom.core.domain.service
 
 import com.mushroom.core.domain.entity.*
+import com.mushroom.core.domain.event.MushroomReward
 import com.mushroom.core.domain.event.RewardEvent
 import java.time.LocalDate
 

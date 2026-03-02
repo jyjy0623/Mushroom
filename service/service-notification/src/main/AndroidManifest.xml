@@ -1,2 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 13+ 需要明确请求通知权限 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- AlarmManager setWindow 不需要额外权限；如需精确闹钟可申请 SCHEDULE_EXACT_ALARM -->
+
+    <application>
+        <receiver
+            android:name=".DeadlineReminderReceiver"
+            android:exported="false" />
+    </application>
+
+</manifest>

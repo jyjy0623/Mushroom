@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    id("jacoco")
 }
 
 android {
@@ -32,10 +33,12 @@ android {
 dependencies {
     implementation(project(":core:core-logging"))
     implementation(project(":core:core-domain"))
+    implementation(project(":core:core-data"))
     implementation(project(":core:core-ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -61,4 +64,8 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = mutableListOf("jdk.internal.*")
+    }
 }

@@ -18,7 +18,7 @@ junit5 = "5.10.3"
 mockk = "1.13.11"
 turbine = "1.1.0"
 robolectric = "4.13"
-robolectricJunit5 = "0.5.0"
+robolectricJunit5 = "0.9.0"
 androidxTestCore = "1.6.1"
 androidxTestRunner = "1.6.1"
 espresso = "3.6.1"
@@ -27,6 +27,7 @@ espresso = "3.6.1"
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
@@ -56,6 +57,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 # Coroutines
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
@@ -77,7 +79,7 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 
 # Integration / Robolectric
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
-robolectric-junit5 = { group = "org.robolectric", name = "robolectric-junit5", version.ref = "robolectricJunit5" }
+robolectric-junit5 = { group = "tech.apter.junit5.jupiter", name = "robolectric-extension", version.ref = "robolectricJunit5" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }

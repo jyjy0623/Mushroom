@@ -1,0 +1,322 @@
+package com.mushroom.feature.task.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mushroom.feature.task.model.TaskUiModel
+import com.mushroom.feature.task.usecase.DeleteMode
+import com.mushroom.feature.task.viewmodel.DailyTaskViewEvent
+import com.mushroom.feature.task.viewmodel.DailyTaskViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import java.time.format.DateTimeFormatter
+
+private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DailyTaskListScreen(
+    onNavigateToAddTask: () -> Unit,
+    onNavigateToEditTask: (Long) -> Unit,
+    onNavigateToTemplates: () -> Unit,
+    viewModel: DailyTaskViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 庆祝横幅：全部完成时显示，3 秒后自动消失
+    var showCelebration by remember { mutableStateOf(false) }
+    val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
+
+    LaunchedEffect(isAllDone, uiState.date) {
+        if (isAllDone) {
+            showCelebration = true
+            delay(3_000)
+            showCelebration = false
+        } else {
+            showCelebration = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.viewEvent.collectLatest { event ->
+            when (event) {
+                is DailyTaskViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is DailyTaskViewEvent.NavigateToAddTask -> onNavigateToAddTask()
+            }
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            val date = uiState.date
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { viewModel.navigatePreviousDay() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "前一天")
+                        }
+                        Text(
+                            text = date.format(DATE_FMT),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { viewModel.navigateNextDay() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
+                        }
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(
+                    onClick = onNavigateToTemplates,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text("模板", style = MaterialTheme.typography.labelSmall)
+                }
+                Spacer(Modifier.height(8.dp))
+                FloatingActionButton(onClick = onNavigateToAddTask) {
+                    Icon(Icons.Filled.Add, contentDescription = "新建任务")
+                }
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        val state = uiState
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 12.dp)
+            ) {
+                item {
+                    if (state.totalCount > 0) {
+                        TaskProgressCard(state.completedCount, state.totalCount)
+                    }
+                }
+                if (state.tasks.isEmpty()) {
+                    item { EmptyTasksPlaceholder(onNavigateToAddTask) }
+                } else {
+                    items(state.tasks, key = { it.id }) { task ->
+                        TaskCard(
+                            task = task,
+                            onEdit = { onNavigateToEditTask(task.id) },
+                            onDelete = { viewModel.deleteTask(task.id, DeleteMode.SINGLE) }
+                        )
+                    }
+                }
+            }
+
+            // 庆祝横幅（全部完成动画，3s）
+            AnimatedVisibility(
+                visible = showCelebration,
+                enter = fadeIn(animationSpec = tween(400)) +
+                        scaleIn(initialScale = 0.7f, animationSpec = tween(400, easing = FastOutSlowInEasing)),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                CelebrationBanner()
+            }
+        }
+    }
+}
+
+@Composable
+private fun CelebrationBanner() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("🎉", fontSize = 48.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "全部完成！",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            Text(
+                "今天的任务全部搞定了 🍄",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskProgressCard(completed: Int, total: Int) {
+    val progress = if (total > 0) completed.toFloat() / total else 0f
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "今日进度 $completed / $total",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth(),
+                color = if (progress >= 1f) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TaskCard(
+    task: TaskUiModel,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    // 完成时图标做一个缩放弹跳动画
+    val iconScale by animateFloatAsState(
+        targetValue = if (task.isDone) 1f else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "done_icon_scale"
+    )
+
+    val containerColor = when {
+        task.isEarlyDone -> MaterialTheme.colorScheme.tertiaryContainer
+        task.isDone -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surface
+    }
+    Card(
+        onClick = onEdit,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (task.isEarlyDone) {
+                Text("⚡", fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
+            } else {
+                // 任务完成打勾动画
+                Text(
+                    "✓", fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .scale(iconScale)
+                        .padding(end = 8.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = if (task.isDone) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SubjectChip(task.subjectLabel)
+                    if (task.hasRepeat) SubjectChip("🔄")
+                    task.deadlineDisplay?.let { SubjectChip(it) }
+                }
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Filled.Delete, contentDescription = "删除",
+                    tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubjectChip(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(4.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    )
+}
+
+@Composable
+private fun EmptyTasksPlaceholder(onAdd: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("今天还没有任务 🍄", style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.height(16.dp))
+        FilledTonalButton(onClick = onAdd) { Text("添加任务") }
+    }
+}

@@ -1,10 +1,10 @@
 package com.mushroom.adventure.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,9 +23,9 @@ private data class BottomNavItem(
 
 private val bottomNavItems = listOf(
     BottomNavItem("任务", Icons.Default.CheckCircle, AppDestination.DailyTaskList),
-    BottomNavItem("蘑菇", Icons.Default.Spa, AppDestination.MushroomLedger),
-    BottomNavItem("奖品", Icons.Default.CardGiftcard, AppDestination.RewardList),
-    BottomNavItem("统计", Icons.Default.BarChart, AppDestination.Statistics),
+    BottomNavItem("蘑菇", Icons.Default.Home, AppDestination.MushroomLedger),
+    BottomNavItem("奖品", Icons.Default.ShoppingCart, AppDestination.RewardList),
+    BottomNavItem("统计", Icons.Default.Star, AppDestination.Statistics),
 )
 
 @Composable

@@ -36,4 +36,5 @@ object DatabaseModule {
     @Provides fun provideMilestoneDao(db: MushroomDatabase) = db.milestoneDao()
     @Provides fun provideScoringRuleDao(db: MushroomDatabase) = db.scoringRuleDao()
     @Provides fun provideKeyDateDao(db: MushroomDatabase) = db.keyDateDao()
+    @Provides fun provideBackupDao(db: MushroomDatabase) = db.backupDao()
 }

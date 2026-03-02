@@ -33,6 +33,7 @@ interface CheckInRepository {
 interface MushroomRepository {
     fun getBalance(): Flow<MushroomBalance>
     fun getLedger(limit: Int = 100): Flow<List<MushroomTransaction>>
+    fun getLedgerByDateRange(from: LocalDate, to: LocalDate): Flow<List<MushroomTransaction>>
     suspend fun recordTransaction(transaction: MushroomTransaction)
     suspend fun recordTransactions(transactions: List<MushroomTransaction>)
 }

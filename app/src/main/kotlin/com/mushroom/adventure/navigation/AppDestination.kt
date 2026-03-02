@@ -36,4 +36,5 @@ sealed class AppDestination(val route: String) {
 
     // 设置
     object Settings : AppDestination("settings")
+    object PinSetup : AppDestination("pin_setup")
 }

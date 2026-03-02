@@ -77,6 +77,9 @@ interface MushroomLedgerDao {
     @Query("SELECT * FROM mushroom_ledger ORDER BY created_at DESC LIMIT :limit")
     fun getLedger(limit: Int): Flow<List<MushroomLedgerEntity>>
 
+    @Query("SELECT * FROM mushroom_ledger WHERE date(created_at) >= :from AND date(created_at) <= :to ORDER BY created_at ASC")
+    fun getLedgerByDateRange(from: String, to: String): Flow<List<MushroomLedgerEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: MushroomLedgerEntity)
 
@@ -195,4 +198,94 @@ interface KeyDateDao {
 
     @Query("DELETE FROM key_dates WHERE id = :id")
     suspend fun deleteById(id: Long)
+}
+
+@Dao
+interface BackupDao {
+    @Query("SELECT * FROM tasks")
+    suspend fun getAllTasks(): List<TaskEntity>
+
+    @Query("SELECT * FROM task_templates")
+    suspend fun getAllTemplates(): List<TaskTemplateEntity>
+
+    @Query("SELECT * FROM check_ins")
+    suspend fun getAllCheckIns(): List<CheckInEntity>
+
+    @Query("SELECT * FROM mushroom_ledger")
+    suspend fun getAllLedger(): List<MushroomLedgerEntity>
+
+    @Query("SELECT * FROM deduction_config")
+    suspend fun getAllDeductionConfigs(): List<DeductionConfigEntity>
+
+    @Query("SELECT * FROM deduction_records")
+    suspend fun getAllDeductionRecords(): List<DeductionRecordEntity>
+
+    @Query("SELECT * FROM rewards")
+    suspend fun getAllRewards(): List<RewardEntity>
+
+    @Query("SELECT * FROM reward_exchanges")
+    suspend fun getAllExchanges(): List<RewardExchangeEntity>
+
+    @Query("SELECT * FROM milestones")
+    suspend fun getAllMilestones(): List<MilestoneEntity>
+
+    @Query("SELECT * FROM scoring_rules")
+    suspend fun getAllScoringRules(): List<ScoringRuleEntity>
+
+    @Query("SELECT * FROM key_dates")
+    suspend fun getAllKeyDates(): List<KeyDateEntity>
+
+    @Query("DELETE FROM tasks")
+    suspend fun clearTasks()
+
+    @Query("DELETE FROM check_ins")
+    suspend fun clearCheckIns()
+
+    @Query("DELETE FROM mushroom_ledger")
+    suspend fun clearLedger()
+
+    @Query("DELETE FROM deduction_records")
+    suspend fun clearDeductionRecords()
+
+    @Query("DELETE FROM rewards")
+    suspend fun clearRewards()
+
+    @Query("DELETE FROM reward_exchanges")
+    suspend fun clearExchanges()
+
+    @Query("DELETE FROM milestones")
+    suspend fun clearMilestones()
+
+    @Query("DELETE FROM scoring_rules")
+    suspend fun clearScoringRules()
+
+    @Query("DELETE FROM key_dates")
+    suspend fun clearKeyDates()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTasks(tasks: List<TaskEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCheckIns(checkIns: List<CheckInEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLedger(entries: List<MushroomLedgerEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDeductionRecords(records: List<DeductionRecordEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRewards(rewards: List<RewardEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExchanges(exchanges: List<RewardExchangeEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMilestones(milestones: List<MilestoneEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScoringRules(rules: List<ScoringRuleEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertKeyDates(keyDates: List<KeyDateEntity>)
 }

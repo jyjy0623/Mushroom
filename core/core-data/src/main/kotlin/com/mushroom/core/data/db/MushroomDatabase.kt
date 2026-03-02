@@ -38,4 +38,5 @@ abstract class MushroomDatabase : RoomDatabase() {
     abstract fun milestoneDao(): MilestoneDao
     abstract fun scoringRuleDao(): ScoringRuleDao
     abstract fun keyDateDao(): KeyDateDao
+    abstract fun backupDao(): BackupDao
 }

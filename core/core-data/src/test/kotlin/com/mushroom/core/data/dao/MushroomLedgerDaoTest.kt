@@ -13,7 +13,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.robolectric.annotation.Config
-import org.robolectric.junit5.RobolectricExtension
+import tech.apter.junit.jupiter.robolectric.RobolectricExtension
 
 @ExtendWith(RobolectricExtension::class)
 @Config(sdk = [34])

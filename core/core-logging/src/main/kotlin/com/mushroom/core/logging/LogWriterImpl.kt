@@ -43,10 +43,7 @@ class ReleaseLogWriter(
 
         when (level) {
             LogLevel.W -> fileWriter.write(level, tag, message, throwable)
-            LogLevel.E -> {
-                Log.e(tag, message, throwable)
-                fileWriter.write(level, tag, message, throwable)
-            }
+            LogLevel.E -> fileWriter.write(level, tag, message, throwable)
             else -> { /* V/D/I 不到这里 */ }
         }
     }

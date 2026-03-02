@@ -11,6 +11,21 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.mushroom.adventure.parent.ui.PinSetupScreen
+import com.mushroom.adventure.ui.settings.SettingsScreen
+import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
+import com.mushroom.feature.milestone.ui.MilestoneEditScreen
+import com.mushroom.feature.milestone.ui.MilestoneListScreen
+import com.mushroom.feature.mushroom.ui.DeductionConfigScreen
+import com.mushroom.feature.mushroom.ui.DeductionRecordScreen
+import com.mushroom.feature.mushroom.ui.MushroomLedgerScreen
+import com.mushroom.feature.reward.ui.RewardDetailScreen
+import com.mushroom.feature.reward.ui.RewardListScreen
+import com.mushroom.feature.statistics.ui.StatisticsScreen
+import com.mushroom.feature.task.ui.DailyTaskListScreen
+import com.mushroom.feature.task.ui.TaskEditScreen
+import com.mushroom.feature.task.ui.TaskTemplateScreen
+import java.time.LocalDate
 
 @Composable
 fun AppNavGraph(
@@ -22,42 +37,86 @@ fun AppNavGraph(
         startDestination = AppDestination.DailyTaskList.route,
         modifier = modifier
     ) {
+        // ---- 任务模块 ----
         composable(AppDestination.DailyTaskList.route) {
-            PlaceholderScreen("每日任务列表")
-        }
-        composable(AppDestination.MushroomLedger.route) {
-            PlaceholderScreen("蘑菇账本")
-        }
-        composable(AppDestination.RewardList.route) {
-            PlaceholderScreen("奖品列表")
-        }
-        composable(AppDestination.Statistics.route) {
-            PlaceholderScreen("数据统计")
+            DailyTaskListScreen(
+                onNavigateToAddTask = {
+                    navController.navigate(AppDestination.TaskEdit.route())
+                },
+                onNavigateToEditTask = { taskId ->
+                    navController.navigate(AppDestination.TaskEdit.route(taskId))
+                },
+                onNavigateToTemplates = {
+                    navController.navigate(AppDestination.TaskTemplate.route)
+                }
+            )
         }
         composable(
             route = AppDestination.TaskEdit.route,
             arguments = listOf(navArgument(AppDestination.TaskEdit.ARG_TASK_ID) {
                 type = NavType.LongType
+                defaultValue = -1L
             })
         ) {
-            PlaceholderScreen("任务编辑")
+            TaskEditScreen(
+                date = LocalDate.now(),
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         composable(AppDestination.TaskTemplate.route) {
-            PlaceholderScreen("任务模板")
+            TaskTemplateScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onTemplateApplied = { navController.popBackStack() }
+            )
         }
-        composable(AppDestination.CheckInHistory.route) {
-            PlaceholderScreen("打卡历史")
+
+        // ---- 蘑菇 ----
+        composable(AppDestination.MushroomLedger.route) {
+            MushroomLedgerScreen()
+        }
+
+        // ---- 奖品 ----
+        composable(AppDestination.RewardList.route) {
+            RewardListScreen(
+                onNavigateToDetail = { rewardId ->
+                    navController.navigate(AppDestination.RewardDetail.route(rewardId))
+                }
+            )
         }
         composable(
             route = AppDestination.RewardDetail.route,
             arguments = listOf(navArgument(AppDestination.RewardDetail.ARG_REWARD_ID) {
                 type = NavType.LongType
             })
-        ) {
-            PlaceholderScreen("奖品详情")
+        ) { backStackEntry ->
+            val rewardId = backStackEntry.arguments?.getLong(AppDestination.RewardDetail.ARG_REWARD_ID)
+                ?: return@composable
+            RewardDetailScreen(
+                rewardId = rewardId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
+
+        // ---- 统计 ----
+        composable(AppDestination.Statistics.route) {
+            StatisticsScreen()
+        }
+
+        // ---- 打卡历史 ----
+        composable(AppDestination.CheckInHistory.route) {
+            CheckInCalendarScreen()
+        }
+
+        // ---- 里程碑 ----
         composable(AppDestination.MilestoneList.route) {
-            PlaceholderScreen("里程碑列表")
+            MilestoneListScreen(
+                onNavigateToEdit = { milestoneId ->
+                    navController.navigate(AppDestination.MilestoneEdit.route(milestoneId))
+                },
+                onNavigateToCreate = {
+                    navController.navigate(AppDestination.MilestoneEdit.route())
+                }
+            )
         }
         composable(
             route = AppDestination.MilestoneEdit.route,
@@ -65,26 +124,34 @@ fun AppNavGraph(
                 type = NavType.LongType
             })
         ) {
-            PlaceholderScreen("里程碑编辑")
+            MilestoneEditScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
+
+        // ---- 扣分 ----
         composable(AppDestination.DeductionRecord.route) {
-            PlaceholderScreen("扣分记录")
+            DeductionRecordScreen()
         }
         composable(AppDestination.DeductionConfig.route) {
-            PlaceholderScreen("扣分配置")
+            DeductionConfigScreen()
         }
-        composable(AppDestination.Settings.route) {
-            PlaceholderScreen("设置")
-        }
-    }
-}
 
-@Composable
-private fun PlaceholderScreen(name: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = name)
+        // ---- 设置（Sprint 5 实装）----
+        composable(AppDestination.Settings.route) {
+            SettingsScreen(
+                onNavigateToPinSetup = {
+                    navController.navigate(AppDestination.PinSetup.route)
+                },
+                onNavigateToMilestoneList = {
+                    navController.navigate(AppDestination.MilestoneList.route)
+                }
+            )
+        }
+        composable(AppDestination.PinSetup.route) {
+            PinSetupScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }
