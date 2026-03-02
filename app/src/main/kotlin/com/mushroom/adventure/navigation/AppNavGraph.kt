@@ -154,9 +154,6 @@ fun AppNavGraph(
                 onNavigateToPinSetup = {
                     navController.navigate(AppDestination.PinSetup.route)
                 },
-                onNavigateToMilestoneList = {
-                    navController.navigate(AppDestination.MilestoneList.route)
-                },
                 onCheckUpdate = {
                     updateViewModel.checkForUpdate(forceShow = true)
                 }

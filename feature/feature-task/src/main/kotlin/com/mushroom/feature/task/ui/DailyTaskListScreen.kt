@@ -80,22 +80,26 @@ fun DailyTaskListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 待确认删除的任务（id, title, hasRepeat）
+    // 待确认删除的任务
     var pendingDelete by remember { mutableStateOf<TaskUiModel?>(null) }
 
     // FAB 展开状态
     var fabExpanded by remember { mutableStateOf(false) }
 
-    // 庆祝横幅：全部完成时显示，3 秒后自动消失
+    // 打卡奖励弹窗
+    var rewardDialogText by remember { mutableStateOf<String?>(null) }
+
+    // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
 
     LaunchedEffect(isAllDone, uiState.date) {
-        if (isAllDone) {
+        if (isAllDone && !uiState.celebrationShown) {
+            viewModel.markCelebrationShown()
             showCelebration = true
             delay(3_000)
             showCelebration = false
-        } else {
+        } else if (!isAllDone) {
             showCelebration = false
         }
     }
@@ -104,6 +108,7 @@ fun DailyTaskListScreen(
         viewModel.viewEvent.collectLatest { event ->
             when (event) {
                 is DailyTaskViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is DailyTaskViewEvent.ShowRewardDialog -> rewardDialogText = event.rewardSummary
                 is DailyTaskViewEvent.NavigateToAddTask -> onNavigateToAddTask()
             }
         }
@@ -240,6 +245,29 @@ fun DailyTaskListScreen(
                     viewModel.deleteTask(task.id, DeleteMode.SINGLE)
                     pendingDelete = null
                 }) { Text("只删今天") }
+            }
+        )
+    }
+
+    // 打卡奖励弹窗
+    rewardDialogText?.let { summary ->
+        AlertDialog(
+            onDismissRequest = { rewardDialogText = null },
+            title = { Text("打卡成功！") },
+            text = {
+                Column {
+                    Text("🍄 获得奖励：", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        summary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { rewardDialogText = null }) { Text("太棒了！") }
             }
         )
     }

@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,7 +47,6 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun SettingsScreen(
     onNavigateToPinSetup: () -> Unit = {},
-    onNavigateToMilestoneList: () -> Unit = {},
     onCheckUpdate: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -96,13 +94,6 @@ fun SettingsScreen(
                     title = "设置家长 PIN",
                     subtitle = "用于授权兑换奖品、录入成绩等家长操作",
                     onClick = onNavigateToPinSetup
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                SettingsItem(
-                    icon = Icons.Default.Star,
-                    title = "管理里程碑",
-                    subtitle = "创建、编辑考试里程碑和奖励规则",
-                    onClick = onNavigateToMilestoneList
                 )
             }
 

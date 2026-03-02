@@ -183,7 +183,8 @@ class CheckInTaskUseCase @Inject constructor(
     private val checkInRepo: CheckInRepository,
     private val eventBus: AppEventBus
 ) {
-    suspend operator fun invoke(taskId: Long): Result<Unit> = runCatching {
+    /** 返回打卡成功后获得的奖励描述文字，供 UI 展示 */
+    suspend operator fun invoke(taskId: Long): Result<String> = runCatching {
         val task = taskRepo.getTaskById(taskId) ?: error("Task not found: $taskId")
         val now = LocalDateTime.now()
         val deadline = task.deadline
@@ -210,8 +211,35 @@ class CheckInTaskUseCase @Inject constructor(
             earlyMinutes = earlyMinutes
         ))
         MushroomLogger.i(TAG, "[TASK] 打卡 id=$taskId isEarly=$isEarly earlyMinutes=$earlyMinutes")
+        buildRewardSummary(task, isEarly, earlyMinutes)
     }.onFailure { e ->
         MushroomLogger.e(TAG, "打卡失败 id=$taskId", e)
+    }
+
+    /** 根据任务属性和打卡情况计算奖励文字（与 RewardRuleChain 保持同步） */
+    private fun buildRewardSummary(
+        task: com.mushroom.core.domain.entity.Task,
+        isEarly: Boolean,
+        earlyMinutes: Int
+    ): String {
+        val rewards = mutableListOf<String>()
+        // 基础或模板奖励
+        when (task.templateType) {
+            TaskTemplateType.MORNING_READING    -> rewards += "小蘑菇×2"
+            TaskTemplateType.HOMEWORK_AT_SCHOOL -> rewards += "小蘑菇×2"
+            TaskTemplateType.HOMEWORK_MEMO      -> rewards += "小蘑菇×1"
+            else                                -> rewards += "小蘑菇×1"
+        }
+        // 提前完成额外奖励
+        if (isEarly) {
+            val bonus = when {
+                earlyMinutes > 180 -> "中蘑菇×1"
+                earlyMinutes >= 60 -> "小蘑菇×2"
+                else               -> "小蘑菇×1"
+            }
+            rewards += "提前${earlyMinutes}分钟 $bonus"
+        }
+        return rewards.joinToString(" + ")
     }
 }
 

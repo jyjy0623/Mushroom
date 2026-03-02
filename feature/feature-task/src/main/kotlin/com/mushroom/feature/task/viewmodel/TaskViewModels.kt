@@ -51,11 +51,14 @@ data class DailyTaskUiState(
     val completedCount: Int = 0,
     val totalCount: Int = 0,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    // true 表示今天已展示过"全部完成"横幅，UI 不再重复展示
+    val celebrationShown: Boolean = false
 )
 
 sealed class DailyTaskViewEvent {
     data class ShowSnackbar(val message: String) : DailyTaskViewEvent()
+    data class ShowRewardDialog(val rewardSummary: String) : DailyTaskViewEvent()
     object NavigateToAddTask : DailyTaskViewEvent()
 }
 
@@ -69,6 +72,8 @@ class DailyTaskViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
+    // 记录已展示过"全部完成"横幅的日期，避免重入页面重复显示
+    private val celebrationShownDates = mutableSetOf<LocalDate>()
 
     val uiState: StateFlow<DailyTaskUiState> = _date.flatMapLatest { date ->
         getDailyTasksUseCase(date).map { tasks ->
@@ -77,7 +82,8 @@ class DailyTaskViewModel @Inject constructor(
                 date = date,
                 tasks = uiModels,
                 completedCount = uiModels.count { it.isDone },
-                totalCount = uiModels.size
+                totalCount = uiModels.size,
+                celebrationShown = celebrationShownDates.contains(date)
             )
         }
     }.stateIn(
@@ -104,9 +110,16 @@ class DailyTaskViewModel @Inject constructor(
     fun checkIn(taskId: Long) {
         viewModelScope.launch {
             checkInTaskUseCase(taskId)
-                .onSuccess { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡成功！🍄")) }
+                .onSuccess { rewardSummary ->
+                    _viewEvent.emit(DailyTaskViewEvent.ShowRewardDialog(rewardSummary))
+                }
                 .onFailure { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡失败，请重试")) }
         }
+    }
+
+    /** UI 调用：标记今天的"全部完成"横幅已展示，避免重入重复显示 */
+    fun markCelebrationShown() {
+        celebrationShownDates.add(_date.value)
     }
 
     fun copyTasksToDate(targetDate: LocalDate) {
