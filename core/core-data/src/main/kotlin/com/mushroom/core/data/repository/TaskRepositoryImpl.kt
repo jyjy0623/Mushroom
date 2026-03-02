@@ -36,6 +36,9 @@ class TaskRepositoryImpl @Inject constructor(
     override suspend fun deleteTask(id: Long) =
         taskDao.deleteById(id)
 
+    override suspend fun deleteRecurringByTitle(title: String, fromDate: LocalDate) =
+        taskDao.deleteRecurringByTitle(title, fromDate.toString())
+
     /**
      * 为带重复规则的模板任务展开指定范围内的所有日期任务实例。
      * 幂等：同一日期已有同标题任务则跳过（OnConflictStrategy.IGNORE 在 DAO 层保证）。

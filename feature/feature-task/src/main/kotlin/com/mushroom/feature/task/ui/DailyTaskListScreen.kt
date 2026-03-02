@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -40,6 +41,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,6 +76,9 @@ fun DailyTaskListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // 待确认删除的任务（id, title, hasRepeat）
+    var pendingDelete by remember { mutableStateOf<TaskUiModel?>(null) }
 
     // 庆祝横幅：全部完成时显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
@@ -160,7 +165,13 @@ fun DailyTaskListScreen(
                         TaskCard(
                             task = task,
                             onEdit = { onNavigateToEditTask(task.id) },
-                            onDelete = { viewModel.deleteTask(task.id, DeleteMode.SINGLE) }
+                            onDelete = {
+                                if (task.hasRepeat) {
+                                    pendingDelete = task
+                                } else {
+                                    viewModel.deleteTask(task.id, DeleteMode.SINGLE)
+                                }
+                            }
                         )
                     }
                 }
@@ -176,6 +187,27 @@ fun DailyTaskListScreen(
                 CelebrationBanner()
             }
         }
+    }
+
+    // 重复任务删除确认弹窗
+    pendingDelete?.let { task ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除「${task.title}」") },
+            text = { Text("这是一个重复任务，请选择删除范围：") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteTask(task.id, DeleteMode.ALL_RECURRING)
+                    pendingDelete = null
+                }) { Text("删除全部重复", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.deleteTask(task.id, DeleteMode.SINGLE)
+                    pendingDelete = null
+                }) { Text("只删今天") }
+            }
+        )
     }
 }
 

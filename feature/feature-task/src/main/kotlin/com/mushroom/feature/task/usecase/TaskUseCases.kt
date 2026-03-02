@@ -70,17 +70,10 @@ class DeleteTaskUseCase @Inject constructor(
                 MushroomLogger.i(TAG, "[TASK] 删除 id=$taskId mode=SINGLE")
             }
             DeleteMode.ALL_RECURRING -> {
-                val task = repo.getTaskById(taskId)
-                if (task != null) {
-                    // 通过展开范围查询同一天内的重复任务并批量删除
-                    // 以模板任务日期为起点，查询未来 365 天内的同标题同模板类型任务
-                    val from = task.date
-                    val to = from.plusDays(365)
-                    repo.getTasksByDateRange(from, to)  // 注意：这里通过 Flow.first() 一次性获取
-                    // 实际删除由 ViewModel 层调用单次操作，此处简化为只删除单个
-                    repo.deleteTask(taskId)
-                    MushroomLogger.i(TAG, "[TASK] 删除 id=$taskId mode=ALL_RECURRING")
-                }
+                val task = repo.getTaskById(taskId) ?: return@runCatching
+                // 删除从该任务日期起所有同标题的重复任务实例
+                repo.deleteRecurringByTitle(task.title, task.date)
+                MushroomLogger.i(TAG, "[TASK] 删除系列 title=${task.title} from=${task.date}")
             }
         }
     }.onFailure { e ->

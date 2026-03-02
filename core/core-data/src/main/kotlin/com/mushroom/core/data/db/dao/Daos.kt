@@ -24,6 +24,9 @@ interface TaskDao {
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM tasks WHERE title = :title AND repeat_rule_type != 'NONE' AND date >= :fromDate")
+    suspend fun deleteRecurringByTitle(title: String, fromDate: String)
+
     @Query("SELECT * FROM tasks WHERE date = :date AND repeat_rule_type != 'NONE'")
     suspend fun getRepeatTasksForDate(date: String): List<TaskEntity>
 }
