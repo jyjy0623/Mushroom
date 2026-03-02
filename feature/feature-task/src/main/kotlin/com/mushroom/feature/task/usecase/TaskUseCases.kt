@@ -223,14 +223,14 @@ class CheckInTaskUseCase @Inject constructor(
         earlyMinutes: Int
     ): String {
         val rewards = mutableListOf<String>()
-        // 基础或模板奖励
+        // 基础或模板奖励（与 RewardRules.kt 保持一致）
         when (task.templateType) {
-            TaskTemplateType.MORNING_READING    -> rewards += "小蘑菇×2"
-            TaskTemplateType.HOMEWORK_AT_SCHOOL -> rewards += "小蘑菇×2"
+            TaskTemplateType.MORNING_READING    -> rewards += "小蘑菇×1"
+            TaskTemplateType.HOMEWORK_AT_SCHOOL -> rewards += "中蘑菇×1"
             TaskTemplateType.HOMEWORK_MEMO      -> rewards += "小蘑菇×1"
             else                                -> rewards += "小蘑菇×1"
         }
-        // 提前完成额外奖励
+        // 提前完成额外奖励（与 EarlyCompletionRule 保持一致）
         if (isEarly) {
             val bonus = when {
                 earlyMinutes > 180 -> "中蘑菇×1"

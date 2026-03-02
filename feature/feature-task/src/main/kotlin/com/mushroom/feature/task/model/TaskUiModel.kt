@@ -35,15 +35,14 @@ fun Task.toUiModel(): TaskUiModel = TaskUiModel(
     rewardPreview = computeRewardPreview(this)
 )
 
-/** 根据规则预估奖励文字（不写入DB，仅展示用） */
+/** 根据规则预估奖励文字（不写入DB，仅展示用，与 RewardRules.kt 保持一致） */
 private fun computeRewardPreview(task: Task): String {
     val base = when (task.templateType) {
-        TaskTemplateType.MORNING_READING    -> "小蘑菇×2"   // MorningReadingRule
-        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "小蘑菇×2"   // HomeworkAtSchoolRule
+        TaskTemplateType.MORNING_READING    -> "小蘑菇×1"   // MorningReadingRule
+        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"   // HomeworkAtSchoolRule
         TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"   // HomeworkMemoRule
         TaskTemplateType.CUSTOM, null       -> "小蘑菇×1"   // DailyTaskCompleteRule
     }
-    // 有截止时间才有可能触发提前奖励（打卡时 isEarly 决定是否实际发放）
     val earlyHint = if (task.deadline != null) " + 截止前完成可得提前奖励" else ""
     return "🍄 $base$earlyHint"
 }

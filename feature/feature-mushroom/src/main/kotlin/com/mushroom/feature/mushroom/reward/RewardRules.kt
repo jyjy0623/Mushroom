@@ -71,7 +71,7 @@ class EarlyCompletionRule : RewardRule {
 }
 
 // ---------------------------------------------------------------------------
-// Rule 3: 晨读模板奖励
+// Rule 3: 晨读模板奖励（小蘑菇×1）
 // ---------------------------------------------------------------------------
 
 class MorningReadingRule : RewardRule {
@@ -84,7 +84,7 @@ class MorningReadingRule : RewardRule {
         return listOf(
             MushroomReward(
                 level = MushroomLevel.SMALL,
-                amount = 2,
+                amount = 1,
                 reason = "完成晨读任务「${e.task.title}」",
                 sourceType = MushroomSource.TEMPLATE_BONUS
             )
@@ -93,7 +93,7 @@ class MorningReadingRule : RewardRule {
 }
 
 // ---------------------------------------------------------------------------
-// Rule 4: 作业备忘录模板奖励
+// Rule 4: 作业备忘录模板奖励（小蘑菇×1）
 // ---------------------------------------------------------------------------
 
 class HomeworkMemoRule : RewardRule {
@@ -115,7 +115,7 @@ class HomeworkMemoRule : RewardRule {
 }
 
 // ---------------------------------------------------------------------------
-// Rule 5: 在校完成作业模板奖励
+// Rule 5: 在校完成作业模板奖励（中蘑菇×1）
 // ---------------------------------------------------------------------------
 
 class HomeworkAtSchoolRule : RewardRule {
@@ -127,8 +127,8 @@ class HomeworkAtSchoolRule : RewardRule {
         val e = event as RewardEvent.TaskCompleted
         return listOf(
             MushroomReward(
-                level = MushroomLevel.SMALL,
-                amount = 2,
+                level = MushroomLevel.MEDIUM,
+                amount = 1,
                 reason = "在校完成作业「${e.task.title}」",
                 sourceType = MushroomSource.TEMPLATE_BONUS
             )
