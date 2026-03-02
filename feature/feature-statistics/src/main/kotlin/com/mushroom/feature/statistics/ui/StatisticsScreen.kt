@@ -270,14 +270,12 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>) {
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Subject.values().forEach { subject ->
-                item {
-                    FilterChip(
-                        selected = selectedSubject == subject,
-                        onClick = { selectedSubject = subject },
-                        label = { Text(subjectLabel(subject)) }
-                    )
-                }
+            items(Subject.values()) { subject ->
+                FilterChip(
+                    selected = selectedSubject == subject,
+                    onClick = { selectedSubject = subject },
+                    label = { Text(subjectLabel(subject)) }
+                )
             }
         }
 

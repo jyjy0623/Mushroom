@@ -3,6 +3,7 @@ package com.mushroom.adventure.ui.settings
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.mushroom.adventure.BuildConfig
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
@@ -47,6 +49,7 @@ import kotlinx.coroutines.flow.collectLatest
 fun SettingsScreen(
     onNavigateToPinSetup: () -> Unit = {},
     onNavigateToMilestoneList: () -> Unit = {},
+    onCheckUpdate: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -148,9 +151,16 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("蘑菇大冒险", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                    Text("版本 1.0.0", style = MaterialTheme.typography.bodySmall,
+                    Text("版本 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.Refresh,
+                    title = "检查更新",
+                    subtitle = "当前版本 ${BuildConfig.VERSION_NAME}，点击检测是否有新版本",
+                    onClick = onCheckUpdate
+                )
             }
         }
     }

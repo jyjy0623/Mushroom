@@ -20,7 +20,7 @@ class UpdateViewModel @Inject constructor(
     // Memory-only flag: don't re-show the same version in the same session
     private var shownVersion: String? = null
 
-    fun checkForUpdate() {
+    fun checkForUpdate(forceShow: Boolean = false) {
         viewModelScope.launch {
             val info = updateChecker.checkForUpdate(
                 owner = BuildConfig.UPDATE_CHECK_OWNER,
@@ -29,7 +29,7 @@ class UpdateViewModel @Inject constructor(
                 enabled = BuildConfig.UPDATE_CHECK_ENABLED,
             ) ?: return@launch
 
-            if (info.remoteVersion == shownVersion) return@launch
+            if (!forceShow && info.remoteVersion == shownVersion) return@launch
             shownVersion = info.remoteVersion
             _updateInfo.value = info
         }

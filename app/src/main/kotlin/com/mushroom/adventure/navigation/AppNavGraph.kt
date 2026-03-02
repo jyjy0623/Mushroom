@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.mushroom.adventure.parent.ui.PinSetupScreen
 import com.mushroom.adventure.ui.settings.SettingsScreen
+import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
 import com.mushroom.feature.milestone.ui.MilestoneEditScreen
 import com.mushroom.feature.milestone.ui.MilestoneListScreen
@@ -30,6 +31,7 @@ import java.time.LocalDate
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
+    updateViewModel: UpdateViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -145,6 +147,9 @@ fun AppNavGraph(
                 },
                 onNavigateToMilestoneList = {
                     navController.navigate(AppDestination.MilestoneList.route)
+                },
+                onCheckUpdate = {
+                    updateViewModel.checkForUpdate(forceShow = true)
                 }
             )
         }

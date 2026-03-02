@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
         AppDestination.MushroomLedger.route,
         AppDestination.RewardList.route,
         AppDestination.Statistics.route,
+        AppDestination.Settings.route,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     AppNavGraph(
                         navController = navController,
+                        updateViewModel = updateViewModel,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
