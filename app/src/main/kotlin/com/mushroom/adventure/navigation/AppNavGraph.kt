@@ -50,6 +50,9 @@ fun AppNavGraph(
                 },
                 onNavigateToTemplates = {
                     navController.navigate(AppDestination.TaskTemplate.route)
+                },
+                onNavigateToAddMilestone = {
+                    navController.navigate(AppDestination.MilestoneEdit.route())
                 }
             )
         }
@@ -68,7 +71,13 @@ fun AppNavGraph(
         composable(AppDestination.TaskTemplate.route) {
             TaskTemplateScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onTemplateApplied = { navController.popBackStack() }
+                onTemplateApplied = { navController.popBackStack() },
+                onNavigateToMilestoneList = {
+                    navController.navigate(AppDestination.MilestoneList.route)
+                },
+                onNavigateToMilestoneCreate = {
+                    navController.navigate(AppDestination.MilestoneEdit.route())
+                }
             )
         }
 

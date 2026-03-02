@@ -4,7 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,8 @@ import java.time.LocalDate
 fun TaskTemplateScreen(
     onNavigateBack: () -> Unit,
     onTemplateApplied: (Long) -> Unit,
+    onNavigateToMilestoneList: () -> Unit = {},
+    onNavigateToMilestoneCreate: () -> Unit = {},
     viewModel: TaskTemplateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -39,13 +42,21 @@ fun TaskTemplateScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("任务模板") },
+                title = { Text("模板") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            // 里程碑 Tab 时显示新建里程碑按钮
+            if (selectedTab == 2) {
+                FloatingActionButton(onClick = onNavigateToMilestoneCreate) {
+                    Icon(Icons.Default.Add, contentDescription = "新建里程碑")
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -55,6 +66,8 @@ fun TaskTemplateScreen(
                     text = { Text("系统预设") })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 },
                     text = { Text("我的模板") })
+                Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 },
+                    text = { Text("里程碑") })
             }
 
             val builtIn = uiState.builtInTemplates
@@ -66,6 +79,10 @@ fun TaskTemplateScreen(
                     templates = custom,
                     onApply = { showDatePicker = it },
                     emptyMessage = "还没有自定义模板"
+                )
+                2 -> MilestoneShortcutPanel(
+                    onNavigateToList = onNavigateToMilestoneList,
+                    onNavigateToCreate = onNavigateToMilestoneCreate
                 )
             }
         }
@@ -88,6 +105,48 @@ fun TaskTemplateScreen(
                 TextButton(onClick = { showDatePicker = null }) { Text("取消") }
             }
         )
+    }
+}
+
+@Composable
+private fun MilestoneShortcutPanel(
+    onNavigateToList: () -> Unit,
+    onNavigateToCreate: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.weight(1f))
+        Text(
+            "考试里程碑",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "记录期中、期末等考试，成绩录入后自动发放蘑菇奖励",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onNavigateToCreate,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("新建里程碑")
+        }
+        OutlinedButton(
+            onClick = onNavigateToList,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("查看所有里程碑")
+        }
+        Spacer(Modifier.weight(1f))
     }
 }
 

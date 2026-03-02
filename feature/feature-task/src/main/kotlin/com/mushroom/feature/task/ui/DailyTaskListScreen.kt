@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,6 +73,7 @@ fun DailyTaskListScreen(
     onNavigateToAddTask: () -> Unit,
     onNavigateToEditTask: (Long) -> Unit,
     onNavigateToTemplates: () -> Unit,
+    onNavigateToAddMilestone: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -79,6 +81,9 @@ fun DailyTaskListScreen(
 
     // 待确认删除的任务（id, title, hasRepeat）
     var pendingDelete by remember { mutableStateOf<TaskUiModel?>(null) }
+
+    // FAB 展开状态
+    var fabExpanded by remember { mutableStateOf(false) }
 
     // 庆祝横幅：全部完成时显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
@@ -126,15 +131,42 @@ fun DailyTaskListScreen(
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
-                SmallFloatingActionButton(
-                    onClick = onNavigateToTemplates,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Text("模板", style = MaterialTheme.typography.labelSmall)
+                // 展开后显示的次级按钮
+                if (fabExpanded) {
+                    SmallFloatingActionButton(
+                        onClick = {
+                            fabExpanded = false
+                            onNavigateToAddMilestone()
+                        },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Icon(Icons.Filled.Star, contentDescription = "添加里程碑")
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "添加里程碑",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SmallFloatingActionButton(
+                        onClick = onNavigateToTemplates,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text("模板", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.height(8.dp))
-                FloatingActionButton(onClick = onNavigateToAddTask) {
-                    Icon(Icons.Filled.Add, contentDescription = "新建任务")
+                FloatingActionButton(onClick = {
+                    if (fabExpanded) {
+                        fabExpanded = false
+                        onNavigateToAddTask()
+                    } else {
+                        fabExpanded = true
+                    }
+                }) {
+                    Icon(Icons.Filled.Add, contentDescription = "新建")
                 }
             }
         },
