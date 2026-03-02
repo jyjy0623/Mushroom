@@ -90,14 +90,44 @@ class TaskDaoTest {
         assertEquals(2, tasks.size)
     }
 
+    @Test
+    fun `when_deleteRecurringByTitle_should_remove_matching_repeat_tasks_from_date`() = runTest {
+        // 插入3条重复任务（DAILY），日期各不相同
+        db.taskDao().insert(buildTaskEntity(date = "2026-03-01", repeatRuleType = "DAILY"))
+        db.taskDao().insert(buildTaskEntity(date = "2026-03-02", repeatRuleType = "DAILY"))
+        db.taskDao().insert(buildTaskEntity(date = "2026-03-03", repeatRuleType = "DAILY"))
+        // 插入1条 NONE 类型（不应被删除）
+        db.taskDao().insert(buildTaskEntity(date = "2026-03-01", repeatRuleType = "NONE", title = "普通任务"))
+
+        // 从 03-02 起删除所有标题="做数学作业" 的重复任务
+        db.taskDao().deleteRecurringByTitle("做数学作业", "2026-03-02")
+
+        val all = db.taskDao().getTasksByDateRange("2026-03-01", "2026-03-05").first()
+        // 03-01 的重复任务保留（在 fromDate 之前），03-02/03-03 被删，普通任务保留
+        assertEquals(2, all.size) // 03-01 DAILY + 普通任务
+        assertTrue(all.any { it.date == "2026-03-01" && it.repeatRuleType == "DAILY" })
+        assertTrue(all.any { it.title == "普通任务" })
+    }
+
+    @Test
+    fun `when_deleteRecurringByTitle_with_wrong_title_should_not_delete_anything`() = runTest {
+        db.taskDao().insert(buildTaskEntity(date = "2026-03-01", repeatRuleType = "DAILY"))
+
+        db.taskDao().deleteRecurringByTitle("不存在的任务", "2026-03-01")
+
+        val tasks = db.taskDao().getTasksByDate("2026-03-01").first()
+        assertEquals(1, tasks.size)
+    }
+
     private fun buildTaskEntity(
         date: String = "2026-03-01",
-        title: String = "做数学作业"
+        title: String = "做数学作业",
+        repeatRuleType: String = "NONE"
     ) = TaskEntity(
         title = title,
         subject = "MATH",
         estimatedMinutes = 60,
-        repeatRuleType = "NONE",
+        repeatRuleType = repeatRuleType,
         repeatRuleDays = null,
         date = date,
         deadlineAt = null,

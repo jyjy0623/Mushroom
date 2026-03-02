@@ -1,7 +1,6 @@
 package com.mushroom.feature.task.usecase
 
 import app.cash.turbine.test
-import com.mushroom.core.domain.entity.BonusCondition
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomRewardConfig
 import com.mushroom.core.domain.entity.RepeatRule
@@ -23,9 +22,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 class TaskUseCasesTest {
 
@@ -83,6 +80,29 @@ class TaskUseCasesTest {
     }
 
     // -----------------------------------------------------------------------
+    // GetTaskByIdUseCase
+    // -----------------------------------------------------------------------
+    @Nested
+    inner class GetTaskByIdUseCaseTest {
+        @Test
+        fun `should return task when found`() = runTest {
+            val task = buildTask(id = 42)
+            coEvery { taskRepo.getTaskById(42L) } returns task
+
+            val result = GetTaskByIdUseCase(taskRepo)(42L)
+            assertEquals(task, result)
+        }
+
+        @Test
+        fun `should return null when not found`() = runTest {
+            coEvery { taskRepo.getTaskById(999L) } returns null
+
+            val result = GetTaskByIdUseCase(taskRepo)(999L)
+            assertNull(result)
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // UpdateTaskUseCase
     // -----------------------------------------------------------------------
     @Nested
@@ -95,6 +115,36 @@ class TaskUseCasesTest {
             val result = UpdateTaskUseCase(taskRepo)(task)
             assertTrue(result.isSuccess)
             coVerify(exactly = 1) { taskRepo.updateTask(task) }
+        }
+
+        @Test
+        fun `should call generateRepeatTasks when repeatRule is Daily`() = runTest {
+            val task = buildTask(id = 5, repeatRule = RepeatRule.Daily)
+            coEvery { taskRepo.updateTask(task) } returns Unit
+
+            val result = UpdateTaskUseCase(taskRepo)(task)
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 1) { taskRepo.generateRepeatTasks(5L, task.date.plusDays(30)) }
+        }
+
+        @Test
+        fun `should call generateRepeatTasks when repeatRule is Weekdays`() = runTest {
+            val task = buildTask(id = 6, repeatRule = RepeatRule.Weekdays)
+            coEvery { taskRepo.updateTask(task) } returns Unit
+
+            val result = UpdateTaskUseCase(taskRepo)(task)
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 1) { taskRepo.generateRepeatTasks(6L, task.date.plusDays(30)) }
+        }
+
+        @Test
+        fun `should NOT call generateRepeatTasks when repeatRule is None`() = runTest {
+            val task = buildTask(id = 7, repeatRule = RepeatRule.None)
+            coEvery { taskRepo.updateTask(task) } returns Unit
+
+            val result = UpdateTaskUseCase(taskRepo)(task)
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 0) { taskRepo.generateRepeatTasks(any(), any()) }
         }
     }
 
@@ -111,23 +161,33 @@ class TaskUseCasesTest {
         }
 
         @Test
-        fun `ALL_RECURRING mode on non-existing task should not throw`() = runTest {
+        fun `ALL_RECURRING mode on non-existing task should do nothing`() = runTest {
             coEvery { taskRepo.getTaskById(99L) } returns null
 
             val result = DeleteTaskUseCase(taskRepo)(taskId = 99L, deleteMode = DeleteMode.ALL_RECURRING)
             assertTrue(result.isSuccess)
-            coVerify(exactly = 0) { taskRepo.deleteTask(any()) }
+            coVerify(exactly = 0) { taskRepo.deleteRecurringByTitle(any(), any()) }
         }
 
         @Test
-        fun `ALL_RECURRING mode on existing task should delete`() = runTest {
-            val task = buildTask(id = 10)
+        fun `ALL_RECURRING mode calls deleteRecurringByTitle with task title and date`() = runTest {
+            val task = buildTask(id = 10, date = LocalDate.of(2026, 3, 1))
             coEvery { taskRepo.getTaskById(10L) } returns task
-            every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(emptyList())
 
             val result = DeleteTaskUseCase(taskRepo)(taskId = 10L, deleteMode = DeleteMode.ALL_RECURRING)
             assertTrue(result.isSuccess)
-            coVerify(exactly = 1) { taskRepo.deleteTask(10L) }
+            coVerify(exactly = 1) {
+                taskRepo.deleteRecurringByTitle("测试任务", LocalDate.of(2026, 3, 1))
+            }
+        }
+
+        @Test
+        fun `ALL_RECURRING mode should NOT call deleteTask (single)`() = runTest {
+            val task = buildTask(id = 10)
+            coEvery { taskRepo.getTaskById(10L) } returns task
+
+            DeleteTaskUseCase(taskRepo)(taskId = 10L, deleteMode = DeleteMode.ALL_RECURRING)
+            coVerify(exactly = 0) { taskRepo.deleteTask(any()) }
         }
     }
 
@@ -245,13 +305,14 @@ class TaskUseCasesTest {
     private fun buildTask(
         id: Long = 0,
         date: LocalDate = LocalDate.of(2026, 3, 1),
-        status: TaskStatus = TaskStatus.PENDING
+        status: TaskStatus = TaskStatus.PENDING,
+        repeatRule: RepeatRule = RepeatRule.None
     ) = Task(
         id = id,
         title = "测试任务",
         subject = Subject.MATH,
         estimatedMinutes = 60,
-        repeatRule = RepeatRule.None,
+        repeatRule = repeatRule,
         date = date,
         deadline = null,
         templateType = null,
