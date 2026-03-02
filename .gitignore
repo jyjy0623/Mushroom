@@ -1,11 +1,13 @@
 app/build/
-app/proguard-rules.pro
 core/*/build/
 feature/*/build/
 service/*/build/
 build/
 .gradle/
 local.properties
+*.jks
+*.keystore
+*.jks.b64
 *.iml
 .idea/
 .DS_Store

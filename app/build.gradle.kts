@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,16 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
+
+// Read signing credentials from local.properties (never committed to git)
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+
+// Read signing credentials: CI uses env vars, local dev uses local.properties
+fun prop(envKey: String, localKey: String = envKey): String =
+    System.getenv(envKey) ?: localProps.getProperty(localKey, "")
 
 android {
     namespace = "com.mushroom.adventure"
@@ -14,18 +26,35 @@ android {
         applicationId = "com.mushroom.adventure"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        // Version auto-update configuration (GitHub Releases API)
+        buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
+        buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
+        buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+    }
+
+    signingConfigs {
+        create("release") {
+            val storePath = System.getenv("RELEASE_STORE_FILE")
+                ?: localProps.getProperty("RELEASE_STORE_FILE", "mushroom-release.jks")
+            storeFile     = file(storePath)
+            storePassword = prop("RELEASE_STORE_PASSWORD")
+            keyAlias      = prop("RELEASE_KEY_ALIAS")
+            keyPassword   = prop("RELEASE_KEY_PASSWORD")
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
