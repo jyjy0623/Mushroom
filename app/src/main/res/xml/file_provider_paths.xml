@@ -2,4 +2,6 @@
 <paths>
     <!-- cache dir: used for backup JSON and diagnostics ZIP -->
     <cache-path name="cache" path="." />
+    <!-- public Downloads dir: fallback for apps (e.g. WeChat on HarmonyOS) that don't support content:// URIs -->
+    <external-path name="downloads" path="Download/" />
 </paths>

@@ -2,6 +2,7 @@ package com.mushroom.adventure.ui.settings
 
 import android.content.Context
 import android.content.Intent
+import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 private const val TAG = "SETTINGS"
@@ -59,18 +61,33 @@ class SettingsViewModel @Inject constructor(
     fun exportDiagnostics() {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                val file = logExporter.export()
+                val cacheFile = logExporter.export()
+
+                // 将 ZIP 复制到公共下载目录，解决鸿蒙/微信不支持 content:// URI 的问题
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS
+                )
+                downloadsDir.mkdirs()
+                val publicFile = File(downloadsDir, cacheFile.name)
+                cacheFile.copyTo(publicFile, overwrite = true)
+
+                // 优先用公共文件路径分享（微信/鸿蒙兼容）；同时保留 FileProvider URI 授权
                 val uri = FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.fileprovider",
-                    file
+                    cacheFile
                 )
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "*/*"
+                    type = "application/zip"
                     putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "文件已同步保存至：下载/${publicFile.name}")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                _viewEvent.emit(SettingsViewEvent.ShareFile(Intent.createChooser(intent, "分享诊断日志")))
+                _viewEvent.emit(
+                    SettingsViewEvent.ShareFile(
+                        Intent.createChooser(intent, "分享诊断日志")
+                    )
+                )
             }.onFailure {
                 MushroomLogger.e(TAG, "Export diagnostics failed", it)
                 _viewEvent.emit(SettingsViewEvent.ShowSnackbar("诊断日志导出失败：${it.message}"))
