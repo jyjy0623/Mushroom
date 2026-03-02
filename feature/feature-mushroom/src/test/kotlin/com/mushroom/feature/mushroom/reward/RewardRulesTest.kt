@@ -302,6 +302,31 @@ class RewardRulesTest {
             assertEquals(MushroomLevel.MEDIUM, rewards[0].level)
             assertEquals(1, rewards[0].amount)
         }
+
+        @Test
+        fun `custom base reward overrides default for normal task`() {
+            val custom = MushroomRewardConfig(MushroomLevel.GOLD, 2)
+            val event = buildTaskCompleted(templateType = null, isEarly = false, customRewardConfig = custom)
+            val rewards = chain.calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomLevel.GOLD, rewards[0].level)
+            assertEquals(2, rewards[0].amount)
+        }
+
+        @Test
+        fun `custom early reward overrides default tier calculation`() {
+            val customEarly = MushroomRewardConfig(MushroomLevel.LARGE, 3)
+            val event = buildTaskCompleted(
+                templateType = null, isEarly = true, earlyMinutes = 30,
+                customEarlyRewardConfig = customEarly
+            )
+            val rewards = chain.calculate(event)
+            // base（SMALL×1）+ early（LARGE×3，覆盖默认 SMALL×1）
+            assertEquals(2, rewards.size)
+            val earlyReward = rewards.first { it.sourceType == MushroomSource.EARLY_BONUS }
+            assertEquals(MushroomLevel.LARGE, earlyReward.level)
+            assertEquals(3, earlyReward.amount)
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -310,7 +335,9 @@ class RewardRulesTest {
     private fun buildTaskCompleted(
         templateType: TaskTemplateType? = null,
         isEarly: Boolean = false,
-        earlyMinutes: Int = 0
+        earlyMinutes: Int = 0,
+        customRewardConfig: com.mushroom.core.domain.entity.MushroomRewardConfig? = null,
+        customEarlyRewardConfig: com.mushroom.core.domain.entity.MushroomRewardConfig? = null
     ): RewardEvent.TaskCompleted {
         val task = Task(
             id = 1L,
@@ -321,7 +348,9 @@ class RewardRulesTest {
             date = LocalDate.of(2026, 3, 1),
             deadline = if (isEarly) LocalDateTime.now().plusMinutes(earlyMinutes.toLong()) else null,
             templateType = templateType,
-            status = TaskStatus.EARLY_DONE
+            status = TaskStatus.EARLY_DONE,
+            customRewardConfig = customRewardConfig,
+            customEarlyRewardConfig = customEarlyRewardConfig
         )
         val checkIn = CheckIn(
             id = 10L,

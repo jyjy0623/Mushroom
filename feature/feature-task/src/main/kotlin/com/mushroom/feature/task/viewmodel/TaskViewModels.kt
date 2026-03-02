@@ -9,8 +9,9 @@ import com.mushroom.core.domain.entity.Task
 import com.mushroom.core.domain.entity.TaskStatus
 import com.mushroom.core.domain.entity.TaskTemplate
 import com.mushroom.core.domain.entity.TaskTemplateType
-import com.mushroom.core.domain.entity.TemplateRewardConfig
+import com.mushroom.core.domain.entity.BonusCondition
 import com.mushroom.core.domain.entity.MushroomRewardConfig
+import com.mushroom.core.domain.entity.TemplateRewardConfig
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.feature.task.model.TaskUiModel
 import com.mushroom.feature.task.model.toUiModel
@@ -157,11 +158,20 @@ data class TaskEditUiState(
     val description: String = "",
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
-    val validationErrors: Map<String, String> = emptyMap()
+    val validationErrors: Map<String, String> = emptyMap(),
+    // 完成奖励（null = 使用规则引擎默认）
+    val baseRewardLevel: MushroomLevel = MushroomLevel.SMALL,
+    val baseRewardAmount: Int = 1,
+    // 提前完成奖励（null = 使用规则引擎分级默认）
+    val earlyRewardLevel: MushroomLevel = MushroomLevel.SMALL,
+    val earlyRewardAmount: Int = 1,
+    val useCustomReward: Boolean = false,
+    val useCustomEarlyReward: Boolean = false
 )
 
 sealed class TaskEditViewEvent {
     object SaveSuccess : TaskEditViewEvent()
+    object SaveAsTemplateSuccess : TaskEditViewEvent()
     data class ShowError(val message: String) : TaskEditViewEvent()
 }
 
@@ -170,6 +180,7 @@ class TaskEditViewModel @Inject constructor(
     private val createTaskUseCase: CreateTaskUseCase,
     private val updateTaskUseCase: UpdateTaskUseCase,
     private val getTaskByIdUseCase: GetTaskByIdUseCase,
+    private val saveCustomTemplateUseCase: SaveCustomTemplateUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -195,6 +206,12 @@ class TaskEditViewModel @Inject constructor(
     fun updateDeadline(deadline: LocalDateTime?) { _uiState.value = _uiState.value.copy(deadline = deadline) }
     fun updateRepeatRule(rule: RepeatRule) { _uiState.value = _uiState.value.copy(repeatRule = rule) }
     fun updateDescription(desc: String) { _uiState.value = _uiState.value.copy(description = desc) }
+    fun toggleCustomReward(enabled: Boolean) { _uiState.value = _uiState.value.copy(useCustomReward = enabled) }
+    fun toggleCustomEarlyReward(enabled: Boolean) { _uiState.value = _uiState.value.copy(useCustomEarlyReward = enabled) }
+    fun updateBaseRewardLevel(level: MushroomLevel) { _uiState.value = _uiState.value.copy(baseRewardLevel = level) }
+    fun updateBaseRewardAmount(amount: Int) { _uiState.value = _uiState.value.copy(baseRewardAmount = amount.coerceAtLeast(1)) }
+    fun updateEarlyRewardLevel(level: MushroomLevel) { _uiState.value = _uiState.value.copy(earlyRewardLevel = level) }
+    fun updateEarlyRewardAmount(amount: Int) { _uiState.value = _uiState.value.copy(earlyRewardAmount = amount.coerceAtLeast(1)) }
 
     fun loadTask(task: Task) {
         _uiState.value = TaskEditUiState(
@@ -203,7 +220,13 @@ class TaskEditViewModel @Inject constructor(
             subject = task.subject,
             estimatedMinutes = task.estimatedMinutes,
             deadline = task.deadline,
-            repeatRule = task.repeatRule
+            repeatRule = task.repeatRule,
+            useCustomReward = task.customRewardConfig != null,
+            baseRewardLevel = task.customRewardConfig?.level ?: MushroomLevel.SMALL,
+            baseRewardAmount = task.customRewardConfig?.amount ?: 1,
+            useCustomEarlyReward = task.customEarlyRewardConfig != null,
+            earlyRewardLevel = task.customEarlyRewardConfig?.level ?: MushroomLevel.SMALL,
+            earlyRewardAmount = task.customEarlyRewardConfig?.amount ?: 1
         )
     }
 
@@ -225,7 +248,11 @@ class TaskEditViewModel @Inject constructor(
                 date = date,
                 deadline = state.deadline,
                 templateType = null,
-                status = TaskStatus.PENDING
+                status = TaskStatus.PENDING,
+                customRewardConfig = if (state.useCustomReward)
+                    MushroomRewardConfig(state.baseRewardLevel, state.baseRewardAmount) else null,
+                customEarlyRewardConfig = if (state.useCustomEarlyReward && state.deadline != null)
+                    MushroomRewardConfig(state.earlyRewardLevel, state.earlyRewardAmount) else null
             )
             val result = if (state.taskId == null) createTaskUseCase(task)
                          else updateTaskUseCase(task)
@@ -237,6 +264,39 @@ class TaskEditViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isSaving = false)
                 _viewEvent.emit(TaskEditViewEvent.ShowError("保存失败，请重试"))
             }
+        }
+    }
+
+    fun saveAsTemplate() {
+        val state = _uiState.value
+        val errors = validate(state)
+        if (errors.isNotEmpty()) {
+            _uiState.value = state.copy(validationErrors = errors)
+            return
+        }
+        viewModelScope.launch {
+            val deadlineOffset = state.deadline?.let {
+                it.hour * 60 + it.minute
+            }
+            val template = TaskTemplate(
+                id = 0,
+                name = state.title.trim(),
+                type = TaskTemplateType.CUSTOM,
+                subject = state.subject,
+                estimatedMinutes = state.estimatedMinutes,
+                description = "",
+                defaultDeadlineOffset = deadlineOffset,
+                rewardConfig = TemplateRewardConfig(
+                    baseReward = MushroomRewardConfig(state.baseRewardLevel, state.baseRewardAmount),
+                    bonusReward = if (state.deadline != null)
+                        MushroomRewardConfig(state.earlyRewardLevel, state.earlyRewardAmount) else null,
+                    bonusCondition = null
+                ),
+                isBuiltIn = false
+            )
+            saveCustomTemplateUseCase(template)
+                .onSuccess { _viewEvent.emit(TaskEditViewEvent.SaveAsTemplateSuccess) }
+                .onFailure { _viewEvent.emit(TaskEditViewEvent.ShowError("保存模板失败")) }
         }
     }
 

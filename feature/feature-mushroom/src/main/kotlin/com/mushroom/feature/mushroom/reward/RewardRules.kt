@@ -32,10 +32,11 @@ class DailyTaskCompleteRule : RewardRule {
 
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
+        val config = e.task.customRewardConfig
         return listOf(
             MushroomReward(
-                level = MushroomLevel.SMALL,
-                amount = 1,
+                level = config?.level ?: MushroomLevel.SMALL,
+                amount = config?.amount ?: 1,
                 reason = "完成任务「${e.task.title}」",
                 sourceType = MushroomSource.TASK
             )
@@ -54,7 +55,10 @@ class EarlyCompletionRule : RewardRule {
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
         val earlyMin = e.checkIn.earlyMinutes
-        val (level, amount) = when {
+        val customConfig = e.task.customEarlyRewardConfig
+        val (level, amount) = if (customConfig != null) {
+            customConfig.level to customConfig.amount
+        } else when {
             earlyMin > 180 -> MushroomLevel.MEDIUM to 1
             earlyMin >= 60 -> MushroomLevel.SMALL to 2
             else           -> MushroomLevel.SMALL to 1
@@ -81,10 +85,11 @@ class MorningReadingRule : RewardRule {
 
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
+        val config = e.task.customRewardConfig
         return listOf(
             MushroomReward(
-                level = MushroomLevel.SMALL,
-                amount = 1,
+                level = config?.level ?: MushroomLevel.SMALL,
+                amount = config?.amount ?: 1,
                 reason = "完成晨读任务「${e.task.title}」",
                 sourceType = MushroomSource.TEMPLATE_BONUS
             )
@@ -103,10 +108,11 @@ class HomeworkMemoRule : RewardRule {
 
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
+        val config = e.task.customRewardConfig
         return listOf(
             MushroomReward(
-                level = MushroomLevel.SMALL,
-                amount = 1,
+                level = config?.level ?: MushroomLevel.SMALL,
+                amount = config?.amount ?: 1,
                 reason = "完成备忘录任务「${e.task.title}」",
                 sourceType = MushroomSource.TEMPLATE_BONUS
             )
@@ -125,10 +131,11 @@ class HomeworkAtSchoolRule : RewardRule {
 
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
+        val config = e.task.customRewardConfig
         return listOf(
             MushroomReward(
-                level = MushroomLevel.MEDIUM,
-                amount = 1,
+                level = config?.level ?: MushroomLevel.MEDIUM,
+                amount = config?.amount ?: 1,
                 reason = "在校完成作业「${e.task.title}」",
                 sourceType = MushroomSource.TEMPLATE_BONUS
             )

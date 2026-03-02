@@ -23,7 +23,7 @@ import com.mushroom.core.data.db.entity.*
         ScoringRuleEntity::class,
         KeyDateEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -56,6 +56,18 @@ abstract class MushroomDatabase : RoomDatabase() {
                     )
                     AND is_built_in = 1
                 """.trimIndent())
+            }
+        }
+
+        /**
+         * v2 → v3：tasks 表新增自定义奖励字段，默认 NULL（沿用规则引擎计算）。
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tasks ADD COLUMN custom_reward_level TEXT")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN custom_reward_amount INTEGER")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN custom_early_reward_level TEXT")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN custom_early_reward_amount INTEGER")
             }
         }
     }

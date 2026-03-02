@@ -13,7 +13,11 @@ data class Task(
     val date: LocalDate,
     val deadline: LocalDateTime?,
     val templateType: TaskTemplateType?,
-    val status: TaskStatus
+    val status: TaskStatus,
+    /** 用户自定义完成奖励，null 表示使用规则引擎默认值 */
+    val customRewardConfig: MushroomRewardConfig? = null,
+    /** 用户自定义提前完成奖励，null 表示使用规则引擎默认值 */
+    val customEarlyRewardConfig: MushroomRewardConfig? = null
 )
 
 enum class TaskStatus { PENDING, EARLY_DONE, ON_TIME_DONE, SKIPPED }

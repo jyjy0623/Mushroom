@@ -223,16 +223,23 @@ class CheckInTaskUseCase @Inject constructor(
         earlyMinutes: Int
     ): String {
         val rewards = mutableListOf<String>()
-        // 基础或模板奖励（与 RewardRules.kt 保持一致）
-        when (task.templateType) {
-            TaskTemplateType.MORNING_READING    -> rewards += "小蘑菇×1"
-            TaskTemplateType.HOMEWORK_AT_SCHOOL -> rewards += "中蘑菇×1"
-            TaskTemplateType.HOMEWORK_MEMO      -> rewards += "小蘑菇×1"
-            else                                -> rewards += "小蘑菇×1"
+        // 完成奖励：优先使用自定义配置，否则按规则默认值
+        val baseConfig = task.customRewardConfig
+        val baseLabel = if (baseConfig != null) {
+            "${baseConfig.level.displayName}×${baseConfig.amount}"
+        } else when (task.templateType) {
+            TaskTemplateType.MORNING_READING    -> "小蘑菇×1"
+            TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"
+            TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"
+            else                                -> "小蘑菇×1"
         }
-        // 提前完成额外奖励（与 EarlyCompletionRule 保持一致）
+        rewards += baseLabel
+        // 提前完成奖励：优先使用自定义配置，否则按规则分级
         if (isEarly) {
-            val bonus = when {
+            val earlyConfig = task.customEarlyRewardConfig
+            val bonus = if (earlyConfig != null) {
+                "${earlyConfig.level.displayName}×${earlyConfig.amount}"
+            } else when {
                 earlyMinutes > 180 -> "中蘑菇×1"
                 earlyMinutes >= 60 -> "小蘑菇×2"
                 else               -> "小蘑菇×1"

@@ -22,7 +22,7 @@ object DatabaseModule {
             MushroomDatabase::class.java,
             "mushroom_adventure.db"
         )
-            .addMigrations(MushroomDatabase.MIGRATION_1_2)
+            .addMigrations(MushroomDatabase.MIGRATION_1_2, MushroomDatabase.MIGRATION_2_3)
             .build()
 
     @Provides fun provideTaskDao(db: MushroomDatabase) = db.taskDao()

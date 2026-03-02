@@ -20,7 +20,13 @@ object TaskMapper {
         date = LocalDate.parse(e.date),
         deadline = e.deadlineAt?.let { LocalDateTime.parse(it) },
         templateType = e.templateType?.let { TaskTemplateType.valueOf(it) },
-        status = TaskStatus.valueOf(e.status)
+        status = TaskStatus.valueOf(e.status),
+        customRewardConfig = if (e.customRewardLevel != null && e.customRewardAmount != null)
+            MushroomRewardConfig(MushroomLevel.valueOf(e.customRewardLevel), e.customRewardAmount)
+        else null,
+        customEarlyRewardConfig = if (e.customEarlyRewardLevel != null && e.customEarlyRewardAmount != null)
+            MushroomRewardConfig(MushroomLevel.valueOf(e.customEarlyRewardLevel), e.customEarlyRewardAmount)
+        else null
     )
 
     fun toDb(d: Task): TaskEntity {
@@ -35,7 +41,11 @@ object TaskMapper {
             date = d.date.toString(),
             deadlineAt = d.deadline?.toString(),
             templateType = d.templateType?.name,
-            status = d.status.name
+            status = d.status.name,
+            customRewardLevel = d.customRewardConfig?.level?.name,
+            customRewardAmount = d.customRewardConfig?.amount,
+            customEarlyRewardLevel = d.customEarlyRewardConfig?.level?.name,
+            customEarlyRewardAmount = d.customEarlyRewardConfig?.amount
         )
     }
 

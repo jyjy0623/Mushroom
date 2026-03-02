@@ -37,13 +37,20 @@ fun Task.toUiModel(): TaskUiModel = TaskUiModel(
 
 /** 根据规则预估奖励文字（不写入DB，仅展示用，与 RewardRules.kt 保持一致） */
 private fun computeRewardPreview(task: Task): String {
-    val base = when (task.templateType) {
-        TaskTemplateType.MORNING_READING    -> "小蘑菇×1"   // MorningReadingRule
-        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"   // HomeworkAtSchoolRule
-        TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"   // HomeworkMemoRule
-        TaskTemplateType.CUSTOM, null       -> "小蘑菇×1"   // DailyTaskCompleteRule
+    val baseConfig = task.customRewardConfig
+    val base = if (baseConfig != null) {
+        "${baseConfig.level.displayName}×${baseConfig.amount}"
+    } else when (task.templateType) {
+        TaskTemplateType.MORNING_READING    -> "小蘑菇×1"
+        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"
+        TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"
+        TaskTemplateType.CUSTOM, null       -> "小蘑菇×1"
     }
-    val earlyHint = if (task.deadline != null) " + 截止前完成可得提前奖励" else ""
+    val earlyHint = if (task.deadline != null) {
+        val earlyConfig = task.customEarlyRewardConfig
+        if (earlyConfig != null) " + 截止前完成可得 ${earlyConfig.level.displayName}×${earlyConfig.amount}"
+        else " + 截止前完成可得提前奖励"
+    } else ""
     return "🍄 $base$earlyHint"
 }
 
