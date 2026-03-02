@@ -7,6 +7,7 @@ import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.event.MushroomReward
 import com.mushroom.core.domain.event.RewardEvent
 import com.mushroom.core.domain.repository.CheckInRepository
+import com.mushroom.core.domain.repository.MilestoneRepository
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.TaskRepository
 import com.mushroom.core.domain.service.RewardRuleEngine
@@ -27,6 +28,7 @@ class MushroomRewardEngine @Inject constructor(
     private val eventBus: AppEventBus,
     private val taskRepo: TaskRepository,
     private val checkInRepo: CheckInRepository,
+    private val milestoneRepo: MilestoneRepository,
     private val mushroomRepo: MushroomRepository,
     private val ruleEngine: RewardRuleEngine
 ) {
@@ -36,7 +38,8 @@ class MushroomRewardEngine @Inject constructor(
         scope.launch {
             eventBus.events.collect { event ->
                 when (event) {
-                    is AppEvent.TaskCheckedIn -> handleTaskCheckedIn(event)
+                    is AppEvent.TaskCheckedIn  -> handleTaskCheckedIn(event)
+                    is AppEvent.MilestoneScored -> handleMilestoneScored(event)
                     else -> Unit
                 }
             }
@@ -60,6 +63,15 @@ class MushroomRewardEngine @Inject constructor(
         dispatchRewards(rewards)
 
         MushroomLogger.i(TAG, "Dispatched ${rewards.size} rewards for task ${event.taskId}")
+    }
+
+    private suspend fun handleMilestoneScored(event: AppEvent.MilestoneScored) {
+        val milestone = milestoneRepo.getAllMilestones().first()
+            .firstOrNull { it.id == event.milestoneId } ?: return
+        val rewardEvent = RewardEvent.MilestoneAchieved(milestone)
+        val rewards = ruleEngine.calculate(rewardEvent)
+        dispatchRewards(rewards)
+        MushroomLogger.i(TAG, "Dispatched ${rewards.size} rewards for milestone ${event.milestoneId} score=${event.score}")
     }
 
     private suspend fun dispatchRewards(rewards: List<MushroomReward>) {
