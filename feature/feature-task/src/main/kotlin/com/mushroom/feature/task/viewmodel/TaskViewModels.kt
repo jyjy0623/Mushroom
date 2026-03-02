@@ -1,5 +1,6 @@
 package com.mushroom.feature.task.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mushroom.core.domain.entity.RepeatRule
@@ -19,6 +20,7 @@ import com.mushroom.feature.task.usecase.CreateTaskUseCase
 import com.mushroom.feature.task.usecase.DeleteMode
 import com.mushroom.feature.task.usecase.DeleteTaskUseCase
 import com.mushroom.feature.task.usecase.GetDailyTasksUseCase
+import com.mushroom.feature.task.usecase.GetTaskByIdUseCase
 import com.mushroom.feature.task.usecase.GetTaskTemplatesUseCase
 import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
@@ -143,11 +145,23 @@ sealed class TaskEditViewEvent {
 @HiltViewModel
 class TaskEditViewModel @Inject constructor(
     private val createTaskUseCase: CreateTaskUseCase,
-    private val updateTaskUseCase: UpdateTaskUseCase
+    private val updateTaskUseCase: UpdateTaskUseCase,
+    private val getTaskByIdUseCase: GetTaskByIdUseCase,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TaskEditUiState())
     val uiState: StateFlow<TaskEditUiState> = _uiState
+
+    init {
+        val taskId = savedStateHandle.get<Long>("taskId") ?: -1L
+        if (taskId > 0L) {
+            viewModelScope.launch {
+                val task = getTaskByIdUseCase(taskId)
+                if (task != null) loadTask(task)
+            }
+        }
+    }
 
     private val _viewEvent = MutableSharedFlow<TaskEditViewEvent>()
     val viewEvent: SharedFlow<TaskEditViewEvent> = _viewEvent.asSharedFlow()

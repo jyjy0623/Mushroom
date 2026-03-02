@@ -165,7 +165,16 @@ class ApplyTaskTemplateUseCase @Inject constructor(
 }
 
 // ---------------------------------------------------------------------------
-// 8. 保存自定义模板
+// 8. 通过 ID 获取单个任务
+// ---------------------------------------------------------------------------
+class GetTaskByIdUseCase @Inject constructor(
+    private val repo: TaskRepository
+) {
+    suspend operator fun invoke(id: Long): Task? = repo.getTaskById(id)
+}
+
+// ---------------------------------------------------------------------------
+// 9. 保存自定义模板
 // ---------------------------------------------------------------------------
 class SaveCustomTemplateUseCase @Inject constructor(
     private val repo: TaskTemplateRepository
