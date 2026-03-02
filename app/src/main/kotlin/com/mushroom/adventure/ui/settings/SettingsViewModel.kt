@@ -44,7 +44,7 @@ class SettingsViewModel @Inject constructor(
                     file
                 )
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/json"
+                    type = "*/*"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
@@ -66,7 +66,7 @@ class SettingsViewModel @Inject constructor(
                     file
                 )
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/zip"
+                    type = "*/*"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
