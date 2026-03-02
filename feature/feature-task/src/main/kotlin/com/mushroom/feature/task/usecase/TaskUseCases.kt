@@ -1,5 +1,6 @@
 package com.mushroom.feature.task.usecase
 
+import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Task
 import com.mushroom.core.domain.entity.TaskStatus
 import com.mushroom.core.domain.entity.TaskTemplate
@@ -45,6 +46,10 @@ class UpdateTaskUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(task: Task): Result<Unit> = runCatching {
         repo.updateTask(task)
+        // 若设置了重复规则，展开未来 30 天的任务实例
+        if (task.repeatRule !is RepeatRule.None) {
+            repo.generateRepeatTasks(task.id, task.date.plusDays(30))
+        }
     }.onFailure { e ->
         MushroomLogger.e(TAG, "更新任务失败 id=${task.id}", e)
     }
