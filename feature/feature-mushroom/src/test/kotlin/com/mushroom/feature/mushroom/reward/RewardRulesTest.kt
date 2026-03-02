@@ -39,6 +39,19 @@ class RewardRulesTest {
             assertEquals(1, rewards[0].amount)
             assertEquals(MushroomSource.TASK, rewards[0].sourceType)
         }
+
+        @Test
+        fun `should NOT apply to template tasks`() {
+            listOf(
+                TaskTemplateType.MORNING_READING,
+                TaskTemplateType.HOMEWORK_MEMO,
+                TaskTemplateType.HOMEWORK_AT_SCHOOL,
+                TaskTemplateType.CUSTOM
+            ).forEach { type ->
+                val event = buildTaskCompleted(templateType = type, isEarly = false)
+                assertFalse(DailyTaskCompleteRule().applies(event))
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -96,6 +109,50 @@ class RewardRulesTest {
         fun `should NOT apply to non-morning-reading task`() {
             val event = buildTaskCompleted(templateType = null)
             assertFalse(MorningReadingRule().applies(event))
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // HomeworkMemoRule
+    // -----------------------------------------------------------------------
+    @Nested
+    inner class HomeworkMemoRuleTest {
+        @Test
+        fun `should give SMALL x1 for homework memo template`() {
+            val event = buildTaskCompleted(templateType = TaskTemplateType.HOMEWORK_MEMO)
+            val rewards = HomeworkMemoRule().calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomLevel.SMALL, rewards[0].level)
+            assertEquals(1, rewards[0].amount)
+            assertEquals(MushroomSource.TEMPLATE_BONUS, rewards[0].sourceType)
+        }
+
+        @Test
+        fun `should NOT apply to non-homework-memo task`() {
+            val event = buildTaskCompleted(templateType = null)
+            assertFalse(HomeworkMemoRule().applies(event))
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // HomeworkAtSchoolRule
+    // -----------------------------------------------------------------------
+    @Nested
+    inner class HomeworkAtSchoolRuleTest {
+        @Test
+        fun `should give SMALL x2 for homework at school template`() {
+            val event = buildTaskCompleted(templateType = TaskTemplateType.HOMEWORK_AT_SCHOOL)
+            val rewards = HomeworkAtSchoolRule().calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomLevel.SMALL, rewards[0].level)
+            assertEquals(2, rewards[0].amount)
+            assertEquals(MushroomSource.TEMPLATE_BONUS, rewards[0].sourceType)
+        }
+
+        @Test
+        fun `should NOT apply to non-homework-at-school task`() {
+            val event = buildTaskCompleted(templateType = null)
+            assertFalse(HomeworkAtSchoolRule().applies(event))
         }
     }
 
@@ -176,17 +233,6 @@ class RewardRulesTest {
     // -----------------------------------------------------------------------
     @Nested
     inner class RewardRuleChainTest {
-        @Test
-        fun `early morning reading should trigger both template and early bonus`() {
-            val event = buildTaskCompleted(
-                templateType = TaskTemplateType.MORNING_READING,
-                isEarly = true,
-                earlyMinutes = 30
-            )
-            val rewards = chain.calculate(event)
-            // DailyTaskCompleteRule + EarlyCompletionRule + MorningReadingRule = 3
-            assertEquals(3, rewards.size)
-        }
 
         @Test
         fun `non-template non-early task should give only base reward`() {
@@ -194,6 +240,66 @@ class RewardRulesTest {
             val rewards = chain.calculate(event)
             assertEquals(1, rewards.size)
             assertEquals(MushroomSource.TASK, rewards[0].sourceType)
+        }
+
+        @Test
+        fun `non-template early task should give base + early bonus`() {
+            val event = buildTaskCompleted(templateType = null, isEarly = true, earlyMinutes = 30)
+            val rewards = chain.calculate(event)
+            assertEquals(2, rewards.size)
+            assertTrue(rewards.any { it.sourceType == MushroomSource.TASK })
+            assertTrue(rewards.any { it.sourceType == MushroomSource.EARLY_BONUS })
+        }
+
+        @Test
+        fun `morning reading non-early should give SMALL x2 only — no base reward`() {
+            val event = buildTaskCompleted(
+                templateType = TaskTemplateType.MORNING_READING,
+                isEarly = false
+            )
+            val rewards = chain.calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomSource.TEMPLATE_BONUS, rewards[0].sourceType)
+            assertEquals(MushroomLevel.SMALL, rewards[0].level)
+            assertEquals(2, rewards[0].amount)
+        }
+
+        @Test
+        fun `morning reading early should give template bonus + early bonus only`() {
+            val event = buildTaskCompleted(
+                templateType = TaskTemplateType.MORNING_READING,
+                isEarly = true,
+                earlyMinutes = 30
+            )
+            val rewards = chain.calculate(event)
+            // MorningReadingRule + EarlyCompletionRule，不含 DailyTaskCompleteRule
+            assertEquals(2, rewards.size)
+            assertTrue(rewards.any { it.sourceType == MushroomSource.TEMPLATE_BONUS })
+            assertTrue(rewards.any { it.sourceType == MushroomSource.EARLY_BONUS })
+        }
+
+        @Test
+        fun `homework memo non-early should give SMALL x1 template bonus only`() {
+            val event = buildTaskCompleted(
+                templateType = TaskTemplateType.HOMEWORK_MEMO,
+                isEarly = false
+            )
+            val rewards = chain.calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomSource.TEMPLATE_BONUS, rewards[0].sourceType)
+            assertEquals(1, rewards[0].amount)
+        }
+
+        @Test
+        fun `homework at school non-early should give SMALL x2 template bonus only`() {
+            val event = buildTaskCompleted(
+                templateType = TaskTemplateType.HOMEWORK_AT_SCHOOL,
+                isEarly = false
+            )
+            val rewards = chain.calculate(event)
+            assertEquals(1, rewards.size)
+            assertEquals(MushroomSource.TEMPLATE_BONUS, rewards[0].sourceType)
+            assertEquals(2, rewards[0].amount)
         }
     }
 

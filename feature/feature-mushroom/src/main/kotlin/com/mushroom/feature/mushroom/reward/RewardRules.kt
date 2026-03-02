@@ -26,13 +26,12 @@ interface RewardRule {
 // ---------------------------------------------------------------------------
 
 class DailyTaskCompleteRule : RewardRule {
-    override fun applies(event: RewardEvent) = event is RewardEvent.TaskCompleted
+    // 模板任务由专属规则处理，不触发基础奖励
+    override fun applies(event: RewardEvent) =
+        event is RewardEvent.TaskCompleted && event.task.templateType == null
 
     override fun calculate(event: RewardEvent): List<MushroomReward> {
         val e = event as RewardEvent.TaskCompleted
-        val baseConfig = e.task.templateType
-            ?.let { null }  // template tasks handled by dedicated rules
-            ?: MushroomRewardConfig(MushroomLevel.SMALL, 1)
         return listOf(
             MushroomReward(
                 level = MushroomLevel.SMALL,
