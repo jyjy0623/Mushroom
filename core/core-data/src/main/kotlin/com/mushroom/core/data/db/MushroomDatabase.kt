@@ -1,6 +1,8 @@
 package com.mushroom.core.data.db
 
 import androidx.room.Database
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.RoomDatabase
 import com.mushroom.core.data.db.dao.*
 import com.mushroom.core.data.db.entity.*
@@ -21,7 +23,7 @@ import com.mushroom.core.data.db.entity.*
         ScoringRuleEntity::class,
         KeyDateEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -39,4 +41,22 @@ abstract class MushroomDatabase : RoomDatabase() {
     abstract fun scoringRuleDao(): ScoringRuleDao
     abstract fun keyDateDao(): KeyDateDao
     abstract fun backupDao(): BackupDao
+
+    companion object {
+        /**
+         * v1 → v2：清理 task_templates 中因 Seed 重复插入产生的重复内置模板。
+         * 每种 type 只保留 id 最小的那条（最早插入的），删除其余重复项。
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    DELETE FROM task_templates
+                    WHERE id NOT IN (
+                        SELECT MIN(id) FROM task_templates GROUP BY type
+                    )
+                    AND is_built_in = 1
+                """.trimIndent())
+            }
+        }
+    }
 }

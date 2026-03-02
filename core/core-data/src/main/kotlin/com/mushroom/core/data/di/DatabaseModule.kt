@@ -21,7 +21,9 @@ object DatabaseModule {
             context,
             MushroomDatabase::class.java,
             "mushroom_adventure.db"
-        ).build()
+        )
+            .addMigrations(MushroomDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides fun provideTaskDao(db: MushroomDatabase) = db.taskDao()
     @Provides fun provideTaskTemplateDao(db: MushroomDatabase) = db.taskTemplateDao()

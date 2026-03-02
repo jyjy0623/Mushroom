@@ -36,7 +36,7 @@ interface TaskTemplateDao {
     @Query("SELECT * FROM task_templates WHERE type = :type LIMIT 1")
     suspend fun getTemplateByType(type: String): TaskTemplateEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(template: TaskTemplateEntity): Long
 
     @Update
