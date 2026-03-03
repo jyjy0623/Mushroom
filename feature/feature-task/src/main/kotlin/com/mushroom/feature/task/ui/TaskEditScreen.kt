@@ -445,13 +445,17 @@ private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Un
         }
         if (isCustom) {
             Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 dayLabels.forEach { (day, label) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(label, style = MaterialTheme.typography.labelSmall)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1
+                        )
                         Checkbox(
                             checked = day in selectedDays,
                             onCheckedChange = { checked ->

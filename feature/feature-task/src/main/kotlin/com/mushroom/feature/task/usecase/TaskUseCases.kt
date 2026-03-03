@@ -36,7 +36,12 @@ class CreateTaskUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(task: Task): Result<Long> = runCatching {
         MushroomLogger.i(TAG, "[TASK] 创建 title=${task.title} date=${task.date}")
-        repo.insertTask(task)
+        val id = repo.insertTask(task)
+        // 若设置了重复规则，展开未来 30 天的任务实例
+        if (task.repeatRule !is RepeatRule.None) {
+            repo.generateRepeatTasks(id, task.date.plusDays(30))
+        }
+        id
     }.onFailure { e ->
         MushroomLogger.e(TAG, "创建任务失败 title=${task.title}", e)
     }

@@ -292,7 +292,11 @@ fun DailyTaskListScreen(
 
     // 复制任务日期选择器
     if (showCopyDatePicker) {
-        val datePickerState = rememberDatePickerState()
+        val tomorrowMillis = remember {
+            Instant.now().atZone(ZoneId.systemDefault()).toLocalDate()
+                .plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = tomorrowMillis)
         DatePickerDialog(
             onDismissRequest = { showCopyDatePicker = false },
             confirmButton = {
