@@ -1,187 +1,161 @@
 # 蘑菇大冒险 — Issue 处理工作流
 
-**文档版本**：v1.0
+**文档版本**：v2.0
 **日期**：2026-03-03
 
 ---
 
-## 概览
+## 完整闭环流程
 
 ```
-发现 Bug
-   │
-   ▼
-创建 GitHub Issue（使用 bug_report 模板）
-   │
-   ▼
-分类 & 排期（打 Label，关联 Milestone）
-   │
-   ▼
-修复（创建 fix/ 分支，commit 关联 Issue）
-   │
-   ▼
-PR 审查 & 合并
-   │
-   ▼
-验收（BugIssueTestCase.md 打勾）
-   │
-   ▼
-Issue 关闭 + 发版 tag
+测试人员填写 tc-*.md
+  通过   → [x] 通过
+  不通过 → 保留 [ ]，填写实际结果 / 设备 / 版本
+        │
+        ▼
+告诉 Claude Code："扫描测试结果，提 Issue"
+        │
+        ▼
+Claude Code 自动扫描 tc-*.md
+  识别：「- [ ] 通过」且「实际结果：」有内容
+  → gh issue create（从用例提取所有字段）
+  → Issue 编号回填到用例的「Issue：#」处
+        │
+        ▼
+逐个启动修复（用户确认顺序）
+  fix/issue-{N}-{描述} 分支
+  修复完成 → gh issue comment 记录根因和方案
+  commit 包含 closes #N
+        │
+        ▼
+更新 BugIssueTestCase.md
+  追加验收 TC 块，测试人员在真机上确认后打勾
+        │
+        ▼
+合并 → Issue 自动关闭 → 发版 tag
 ```
 
 ---
 
-## 第一步：发现 & 创建 Issue
+## 第一步：测试人员填写 tc-*.md
 
-**触发条件**：测试发现 bug、用户反馈、自测中发现的问题
+测试执行后，在对应用例的 `- [ ] 通过` 处：
 
-**操作**：
-1. 在 GitHub → Issues → New Issue 选择「Bug 报告」模板
-2. 填写以下必填项：
-   - **标题**：`[BUG] 简短描述问题`（如 `[BUG] 统计页点击后 App 崩溃`）
-   - **复现步骤**：能稳定复现的最短操作序列
-   - **关联 TC 编号**：从 `docs/tc-*.md` 中找到对应用例编号填入
-   - **环境信息**：设备、Android 版本、App 版本
-3. 提交 Issue，记录 Issue 编号（如 `#42`）
+**通过**：
+```markdown
+- [x] 通过
+```
+
+**不通过**：保留 `[ ]`，填写下方记录区：
+```markdown
+- [ ] 通过
+> 不通过时记录：
+> - 实际结果：（填写实际发生了什么）
+> - 设备 / Android 版本 / App 版本：（如 Pixel 7 / Android 14 / v1.4.0）
+> - 截图或日志：（可选，粘贴关键 logcat 或描述截图）
+> - Issue：#（留空，由 Claude Code 自动回填）
+```
 
 ---
 
-## 第二步：分类 & 排期
+## 第二步：扫描测试结果，自动提 Issue
 
-**打 Label**：
+测试完成后，告诉 Claude Code：**「扫描测试结果，提 Issue」**
 
-| Label | 含义 |
-|-------|------|
-| `bug` | 功能异常（自动应用） |
-| `crash` | App 崩溃类问题，优先处理 |
-| `ui` | 纯视觉/布局问题 |
-| `regression` | 之前修好、又重新出现的 bug |
-| `pending-repro` | 无法稳定复现，待进一步确认 |
+Claude Code 将自动：
 
-**关联 Milestone**（= 计划在哪个版本修复）：
+1. 扫描所有 `docs/tc-*.md`
+2. 识别失败用例：`- [ ] 通过`（未勾选）且 `实际结果：` 字段有内容
+3. 从用例块中提取所有字段，调用 `gh issue create`
+4. 将 Issue 编号回填到对应用例的 `Issue：#` 处并提交 commit
 
-| Milestone | 含义 |
-|-----------|------|
-| `v1.4.1` | 下个 patch 版本，紧急修复 |
-| `v1.5.0` | 下个 minor 版本，计划修复 |
-| `backlog` | 暂不排期 |
+Issue 标题格式：`[BUG] {TC编号} {用例名称}`
 
 ---
 
 ## 第三步：修复
 
 **分支命名**：
-
 ```
 fix/issue-{编号}-{简短描述}
 
-示例：
-fix/issue-42-statistics-crash
-fix/issue-38-pin-dialog-focus
+示例：fix/issue-42-statistics-crash
 ```
 
-**Commit 关联 Issue**（合并时自动关闭 Issue）：
-
+**Commit 格式**（合并时自动关闭 Issue）：
 ```
 fix: 修复统计页 combine 溢出导致崩溃 closes #42
 
-根因：Subject.values() 超过 Kotlin combine 参数上限（5个）
-方案：拆分为分批 combine，最终 zip 合并结果
+根因：...
+方案：...
 ```
 
-> 使用 `closes #42` / `fixes #42` / `resolves #42` 任意一种，合并到 main 时 Issue 自动关闭。
-
----
-
-## 第四步：PR & 合并
-
-**PR 检查清单**（在 PR 描述中复制使用）：
-
-```markdown
-## 修复内容
-- 根因：...
-- 方案：...
-
-## 关联
-- closes #42
-- 关联 TC：TC-2.8.1-01
-
-## 验收检查
-- [ ] 在真机/模拟器上验证复现步骤不再触发 bug
-- [ ] 关联 TC 用例通过
-- [ ] 未引入新的崩溃或 UI 异常
-- [ ] BugIssueTestCase.md 已更新（添加对应 TC 块并打勾）
+**修复完成后更新 Issue**：
+```bash
+gh issue comment 42 --body "已修复，根因：... 方案：... 关联提交：{hash}"
 ```
 
 ---
 
-## 第五步：验收 & 关闭
+## 第四步：更新 BugIssueTestCase.md
 
-**更新 BugIssueTestCase.md**：
-
-在文件中按版本号新增一节，格式如下：
+修复完成后，在 `docs/BugIssueTestCase.md` 末尾追加验收 TC 块：
 
 ```markdown
-## v1.4.1 — 统计页崩溃修复
+## v{版本号} — {修复描述}
 
-**发布日期**：2026-03-10
-**关联 Issue**：#42
-**关联提交**：`abc1234`
-**修复范围**：统计页 combine 溢出
+**发布日期**：{日期}
+**关联 Issue**：#{编号}
+**关联提交**：`{commit hash}`
+**修复范围**：{一句话说明}
 
 ---
 
-#### TC-B42 统计页点击底部导航不崩溃
+#### TC-B{编号} {用例名称}
 
-**前置条件**：App 已启动，存在历史打卡数据
+**前置条件**：...
 
 **操作步骤**：
-1. 点击底部导航「统计」图标
+1. ...
 
 **预期结果**：
-1. 进入统计页，显示三个 Tab
-2. App 不崩溃，无 ANR
+1. ...
 
-- [x] 通过 — 2026-03-10，Pixel 7，Android 14
+- [ ] 通过
+> 不通过时记录：
+> - 实际结果：
+> - 设备 / Android 版本 / App 版本：
+> - 截图或日志：（可选）
+> - Issue：#（创建后填入）
 ```
 
-**发版**：
+测试人员在真机验收后，将 `- [ ] 通过` 改为 `- [x] 通过` 并注明日期和设备。
+
+---
+
+## 第五步：发版
 
 ```bash
 git tag v1.4.1
 git push origin v1.4.1
 ```
 
-在 GitHub 创建 Release，Milestone `v1.4.1` 中已关闭的 Issue 自动列入。
-
----
-
-## 现有 Pending Bug 示例
-
-### Issue #1（待创建）：统计页崩溃
-
-**建议标题**：`[BUG] 点击底部导航「统计」App 直接退出`
-
-**已知信息**：
-- 已尝试：将 `combine(Subject.values().map {...})` 拆分为按5个分批合并，仍复现
-- 真实原因未确定，需 `adb logcat | grep -E "FATAL|AndroidRuntime"` 抓栈
-- 建议 Label：`bug` + `crash`
-- 建议 Milestone：`v1.4.1`
+在 GitHub 创建 Release，已关闭的 Issue 自动列入 Release Notes。
 
 ---
 
 ## 文档联动关系
 
 ```
-GitHub Issue（发现 & 追踪）
+tc-*.md（测试人员填写）
       │
-      │ closes #N（commit/PR）
+      │ Claude Code 扫描，gh issue create
+      ▼
+GitHub Issue（追踪 & 修复过程记录）
+      │
+      │ closes #N（commit 合并时自动关闭）
       ▼
 BugIssueTestCase.md（验收记录，TC 打勾）
-      │
-      │ 通用功能回归参考
-      ▼
-docs/tc-2.x-*.md（章节测试用例）
       │
       │ 发版
       ▼
