@@ -18,6 +18,7 @@ data class TaskEntity(
     @ColumnInfo(name = "deadline_at") val deadlineAt: String?,
     @ColumnInfo(name = "template_type") val templateType: String?,
     val status: String = "PENDING",
+    val description: String = "",
     @ColumnInfo(name = "custom_reward_level") val customRewardLevel: String? = null,
     @ColumnInfo(name = "custom_reward_amount") val customRewardAmount: Int? = null,
     @ColumnInfo(name = "custom_early_reward_level") val customEarlyRewardLevel: String? = null,

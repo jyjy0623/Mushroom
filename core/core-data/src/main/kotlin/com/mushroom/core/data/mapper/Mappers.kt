@@ -21,6 +21,7 @@ object TaskMapper {
         deadline = e.deadlineAt?.let { LocalDateTime.parse(it) },
         templateType = e.templateType?.let { TaskTemplateType.valueOf(it) },
         status = TaskStatus.valueOf(e.status),
+        description = e.description,
         customRewardConfig = if (e.customRewardLevel != null && e.customRewardAmount != null)
             MushroomRewardConfig(MushroomLevel.valueOf(e.customRewardLevel), e.customRewardAmount)
         else null,
@@ -42,6 +43,7 @@ object TaskMapper {
             deadlineAt = d.deadline?.toString(),
             templateType = d.templateType?.name,
             status = d.status.name,
+            description = d.description,
             customRewardLevel = d.customRewardConfig?.level?.name,
             customRewardAmount = d.customRewardConfig?.amount,
             customEarlyRewardLevel = d.customEarlyRewardConfig?.level?.name,

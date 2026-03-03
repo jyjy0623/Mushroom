@@ -91,7 +91,7 @@ class BackupService @Inject constructor(
     // -------------------------------------------------------------------------
 
     private fun TaskEntity.toBackup() = TaskBackup(id, title, subject, estimatedMinutes,
-        repeatRuleType, repeatRuleDays, date, deadlineAt, templateType, status)
+        repeatRuleType, repeatRuleDays, date, deadlineAt, templateType, status, description)
 
     private fun CheckInEntity.toBackup() = CheckInBackup(id, taskId, date, checkedAt,
         isEarly, earlyMinutes, note, imageUris)
@@ -125,7 +125,7 @@ class BackupService @Inject constructor(
     // -------------------------------------------------------------------------
 
     private fun TaskBackup.toEntity() = TaskEntity(id, title, subject, estimatedMinutes,
-        repeatRuleType, repeatRuleDays, date, deadlineAt, templateType, status)
+        repeatRuleType, repeatRuleDays, date, deadlineAt, templateType, status, description)
 
     private fun CheckInBackup.toEntity() = CheckInEntity(id, taskId, date, checkedAt,
         isEarly, earlyMinutes, note, imageUris)

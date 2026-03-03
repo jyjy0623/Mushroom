@@ -49,6 +49,7 @@ import javax.inject.Inject
 data class DailyTaskUiState(
     val date: LocalDate = LocalDate.now(),
     val tasks: List<TaskUiModel> = emptyList(),
+    val domainTasks: List<Task> = emptyList(),
     val completedCount: Int = 0,
     val totalCount: Int = 0,
     val isLoading: Boolean = false,
@@ -82,6 +83,7 @@ class DailyTaskViewModel @Inject constructor(
             DailyTaskUiState(
                 date = date,
                 tasks = uiModels,
+                domainTasks = tasks,
                 completedCount = uiModels.count { it.isDone },
                 totalCount = uiModels.size,
                 celebrationShown = celebrationShownDates.contains(date)
@@ -125,9 +127,14 @@ class DailyTaskViewModel @Inject constructor(
 
     fun copyTasksToDate(targetDate: LocalDate) {
         viewModelScope.launch {
-            val tasks = uiState.value.tasks
-            // 通过原始 Task 列表复制，从 UiState 中取 ID 逐个复制
-            _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已复制 ${tasks.size} 项到 $targetDate"))
+            val tasks = uiState.value.domainTasks
+            copyTasksUseCase(tasks, targetDate)
+                .onSuccess { count ->
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已复制 $count 项任务到 $targetDate"))
+                }
+                .onFailure {
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("复制失败，请重试"))
+                }
         }
     }
 
@@ -221,6 +228,7 @@ class TaskEditViewModel @Inject constructor(
             estimatedMinutes = task.estimatedMinutes,
             deadline = task.deadline,
             repeatRule = task.repeatRule,
+            description = task.description,
             useCustomReward = task.customRewardConfig != null,
             baseRewardLevel = task.customRewardConfig?.level ?: MushroomLevel.SMALL,
             baseRewardAmount = task.customRewardConfig?.amount ?: 1,
@@ -249,6 +257,7 @@ class TaskEditViewModel @Inject constructor(
                 deadline = state.deadline,
                 templateType = null,
                 status = TaskStatus.PENDING,
+                description = state.description,
                 customRewardConfig = if (state.useCustomReward)
                     MushroomRewardConfig(state.baseRewardLevel, state.baseRewardAmount) else null,
                 customEarlyRewardConfig = if (state.useCustomEarlyReward && state.deadline != null)

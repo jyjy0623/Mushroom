@@ -37,7 +37,8 @@ data class TaskBackup(
     val date: String,
     val deadlineAt: String?,
     val templateType: String?,
-    val status: String
+    val status: String,
+    val description: String = ""
 )
 
 @Serializable

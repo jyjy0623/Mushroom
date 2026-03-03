@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,6 +68,8 @@ import com.mushroom.feature.task.viewmodel.DailyTaskViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
 
@@ -82,6 +87,9 @@ fun DailyTaskListScreen(
 
     // 待确认删除的任务
     var pendingDelete by remember { mutableStateOf<TaskUiModel?>(null) }
+
+    // 复制任务日期选择器
+    var showCopyDatePicker by remember { mutableStateOf(false) }
 
     // FAB 展开状态
     var fabExpanded by remember { mutableStateOf(false) }
@@ -161,6 +169,16 @@ fun DailyTaskListScreen(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     ) {
                         Text("模板", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    SmallFloatingActionButton(
+                        onClick = {
+                            fabExpanded = false
+                            showCopyDatePicker = true
+                        },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text("复制", style = MaterialTheme.typography.labelSmall)
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -270,6 +288,29 @@ fun DailyTaskListScreen(
                 TextButton(onClick = { rewardDialogText = null }) { Text("太棒了！") }
             }
         )
+    }
+
+    // 复制任务日期选择器
+    if (showCopyDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showCopyDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {
+                        val targetDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        viewModel.copyTasksToDate(targetDate)
+                    }
+                    showCopyDatePicker = false
+                }) { Text("复制") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCopyDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 

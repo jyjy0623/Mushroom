@@ -14,6 +14,7 @@ data class Task(
     val deadline: LocalDateTime?,
     val templateType: TaskTemplateType?,
     val status: TaskStatus,
+    val description: String = "",
     /** 用户自定义完成奖励，null 表示使用规则引擎默认值 */
     val customRewardConfig: MushroomRewardConfig? = null,
     /** 用户自定义提前完成奖励，null 表示使用规则引擎默认值 */

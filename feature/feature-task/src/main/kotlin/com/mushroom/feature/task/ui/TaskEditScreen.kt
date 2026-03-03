@@ -27,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -51,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
+import java.time.DayOfWeek
 import com.mushroom.feature.task.viewmodel.TaskEditViewEvent
 import com.mushroom.feature.task.viewmodel.TaskEditViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -87,6 +89,7 @@ fun TaskEditScreen(
     val estimatedMinutes = uiState.estimatedMinutes
     val deadline = uiState.deadline
     val repeatRule = uiState.repeatRule
+    val description = uiState.description
 
     Scaffold(
         topBar = {
@@ -128,6 +131,15 @@ fun TaskEditScreen(
                 isError = titleError != null,
                 supportingText = if (titleError != null) ({ Text(titleError) }) else null,
                 singleLine = true
+            )
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = viewModel::updateDescription,
+                label = { Text("任务说明（选填）") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 4
             )
 
             SubjectDropdown(selected = subject, onSelect = viewModel::updateSubject)
@@ -394,20 +406,61 @@ private fun DeadlineSection(
 
 @Composable
 private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Unit) {
+    val dayLabels = mapOf(
+        DayOfWeek.MONDAY to "周一",
+        DayOfWeek.TUESDAY to "周二",
+        DayOfWeek.WEDNESDAY to "周三",
+        DayOfWeek.THURSDAY to "周四",
+        DayOfWeek.FRIDAY to "周五",
+        DayOfWeek.SATURDAY to "周六",
+        DayOfWeek.SUNDAY to "周日"
+    )
+    val isCustom = selected is RepeatRule.Custom
+    val selectedDays = (selected as? RepeatRule.Custom)?.daysOfWeek ?: emptySet()
+
     Column {
         Text("重复规则", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(8.dp))
         listOf(
             RepeatRule.None to "不重复",
             RepeatRule.Daily to "每天",
-            RepeatRule.Weekdays to "周一至周五"
+            RepeatRule.Weekdays to "周一至周五",
+            RepeatRule.Custom(emptySet()) to "自定义"
         ).forEach { (rule, label) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
-                    selected = selected::class == rule::class,
-                    onClick = { onSelect(rule) }
+                    selected = when {
+                        rule is RepeatRule.Custom -> isCustom
+                        else -> selected::class == rule::class
+                    },
+                    onClick = {
+                        when (rule) {
+                            is RepeatRule.Custom -> onSelect(RepeatRule.Custom(selectedDays))
+                            else -> onSelect(rule)
+                        }
+                    }
                 )
                 Text(label, modifier = Modifier.padding(start = 4.dp))
+            }
+        }
+        if (isCustom) {
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                dayLabels.forEach { (day, label) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(label, style = MaterialTheme.typography.labelSmall)
+                        Checkbox(
+                            checked = day in selectedDays,
+                            onCheckedChange = { checked ->
+                                val newDays = if (checked) selectedDays + day else selectedDays - day
+                                onSelect(RepeatRule.Custom(newDays))
+                            }
+                        )
+                    }
+                }
             }
         }
     }
