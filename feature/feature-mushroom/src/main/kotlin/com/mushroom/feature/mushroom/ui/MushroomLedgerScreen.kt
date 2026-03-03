@@ -1,8 +1,7 @@
 package com.mushroom.feature.mushroom.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,15 +10,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -28,7 +28,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,9 +45,11 @@ import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.feature.mushroom.viewmodel.MushroomLedgerViewEvent
 import com.mushroom.feature.mushroom.viewmodel.MushroomLedgerViewModel
 import kotlinx.coroutines.flow.collectLatest
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-private val DATE_FMT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
+private val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
+private val DATE_LABEL_FMT = DateTimeFormatter.ofPattern("MM月dd日")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +67,22 @@ fun MushroomLedgerScreen(
             }
         }
     }
+
+    val today = LocalDate.now()
+    val currentYear = today.year
+
+    // Group by date descending, then by year descending
+    val groupedByDate = ledger
+        .groupBy { it.createdAt.toLocalDate() }
+        .toSortedMap(compareByDescending { it })
+    val yearToDateList: Map<Int, List<LocalDate>> = groupedByDate.keys
+        .groupBy { it.year }
+        .toSortedMap(compareByDescending { it })
+
+    // Expansion state: current year expanded by default, others collapsed
+    val expandedYears = rememberSaveable { mutableStateOf(setOf(currentYear)) }
+    // Today expanded by default
+    val expandedDates = rememberSaveable { mutableStateOf(setOf(today.toString())) }
 
     Scaffold(
         topBar = {
@@ -99,11 +119,134 @@ fun MushroomLedgerScreen(
                     )
                 }
             } else {
-                items(ledger, key = { it.id }) { tx ->
-                    TransactionCard(tx = tx)
+                yearToDateList.forEach { (year, dates) ->
+                    val isYearExpanded = year in expandedYears.value
+                    val totalForYear = dates.sumOf { groupedByDate[it]?.size ?: 0 }
+
+                    item(key = "year_$year") {
+                        YearHeader(
+                            year = year,
+                            totalCount = totalForYear,
+                            isExpanded = isYearExpanded,
+                            onToggle = {
+                                expandedYears.value = if (isYearExpanded)
+                                    expandedYears.value - year
+                                else
+                                    expandedYears.value + year
+                            }
+                        )
+                    }
+
+                    if (isYearExpanded) {
+                        dates.forEach { date ->
+                            val txList = groupedByDate[date] ?: emptyList()
+                            val dateKey = date.toString()
+                            val isDateExpanded = dateKey in expandedDates.value
+
+                            item(key = "date_$dateKey") {
+                                DateHeader(
+                                    date = date,
+                                    today = today,
+                                    count = txList.size,
+                                    isExpanded = isDateExpanded,
+                                    onToggle = {
+                                        expandedDates.value = if (isDateExpanded)
+                                            expandedDates.value - dateKey
+                                        else
+                                            expandedDates.value + dateKey
+                                    }
+                                )
+                            }
+
+                            if (isDateExpanded) {
+                                txList.forEach { tx ->
+                                    item(key = "tx_${tx.id}") {
+                                        TransactionCard(tx = tx)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun YearHeader(
+    year: Int,
+    totalCount: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = if (isExpanded) "收起" else "展开",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "${year}年",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f).padding(start = 4.dp)
+        )
+        Text(
+            text = "$totalCount 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    HorizontalDivider()
+}
+
+@Composable
+private fun DateHeader(
+    date: LocalDate,
+    today: LocalDate,
+    count: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val label = when (date) {
+        today -> "今天  ${date.format(DATE_LABEL_FMT)}"
+        today.minusDays(1) -> "昨天  ${date.format(DATE_LABEL_FMT)}"
+        else -> date.format(DATE_LABEL_FMT)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 0.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = if (isExpanded) "收起" else "展开",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f).padding(start = 4.dp)
+        )
+        Text(
+            text = "$count 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp)
+        )
     }
 }
 
@@ -162,7 +305,9 @@ private fun TransactionCard(tx: MushroomTransaction) {
     val sign = if (isEarn) "+" else "-"
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -173,7 +318,7 @@ private fun TransactionCard(tx: MushroomTransaction) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(tx.note ?: tx.sourceType.name, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    tx.createdAt.format(DATE_FMT),
+                    tx.createdAt.format(TIME_FMT),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
