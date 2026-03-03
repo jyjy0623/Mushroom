@@ -15,6 +15,7 @@ import com.mushroom.core.logging.MushroomLogger
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.DayOfWeek
 import javax.inject.Inject
 
 private const val TAG = "feature-task"
@@ -37,9 +38,15 @@ class CreateTaskUseCase @Inject constructor(
     suspend operator fun invoke(task: Task): Result<Long> = runCatching {
         MushroomLogger.i(TAG, "[TASK] 创建 title=${task.title} date=${task.date}")
         val id = repo.insertTask(task)
-        // 若设置了重复规则，展开未来 30 天的任务实例
         if (task.repeatRule !is RepeatRule.None) {
+            // 展开未来 30 天的任务实例
             repo.generateRepeatTasks(id, task.date.plusDays(30))
+            // 若创建日期本身不满足重复规则，删除当天刚插入的实例
+            // （generateRepeatTasks 从 date+1 开始展开，不影响后续日期）
+            if (!matchesRepeatRule(task.repeatRule, task.date)) {
+                repo.deleteTask(id)
+                MushroomLogger.i(TAG, "[TASK] 创建日期不符合重复规则，删除当天实例 date=${task.date}")
+            }
         }
         id
     }.onFailure { e ->
@@ -269,4 +276,14 @@ class SaveCustomTemplateUseCase @Inject constructor(
     }.onFailure { e ->
         MushroomLogger.e(TAG, "保存自定义模板失败 name=${template.name}", e)
     }
+}
+
+// ---------------------------------------------------------------------------
+// 工具函数：判断指定日期是否满足重复规则
+// ---------------------------------------------------------------------------
+private fun matchesRepeatRule(rule: RepeatRule, date: LocalDate): Boolean = when (rule) {
+    is RepeatRule.None -> true
+    is RepeatRule.Daily -> true
+    is RepeatRule.Weekdays -> date.dayOfWeek !in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+    is RepeatRule.Custom -> date.dayOfWeek in rule.daysOfWeek
 }
