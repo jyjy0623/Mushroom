@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 查看已有 Bug 列表
+    url: https://github.com/OWNER/REPO/issues?q=is%3Aissue+label%3Abug
+    about: 提交前请先搜索是否已有相同问题
