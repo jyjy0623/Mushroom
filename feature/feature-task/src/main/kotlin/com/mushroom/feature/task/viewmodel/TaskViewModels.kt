@@ -243,6 +243,9 @@ class TaskEditViewModel @Inject constructor(
         val errors = validate(state)
         if (errors.isNotEmpty()) {
             _uiState.value = state.copy(validationErrors = errors)
+            viewModelScope.launch {
+                _viewEvent.emit(TaskEditViewEvent.ShowError("请检查标红的必填项"))
+            }
             return
         }
         _uiState.value = state.copy(isSaving = true, validationErrors = emptyMap())
@@ -281,6 +284,9 @@ class TaskEditViewModel @Inject constructor(
         val errors = validate(state)
         if (errors.isNotEmpty()) {
             _uiState.value = state.copy(validationErrors = errors)
+            viewModelScope.launch {
+                _viewEvent.emit(TaskEditViewEvent.ShowError("请检查标红的必填项"))
+            }
             return
         }
         viewModelScope.launch {
