@@ -440,15 +440,13 @@ private fun TaskCard(
                         tint = MaterialTheme.colorScheme.error)
                 }
             }
-            // 奖励预览（仅未完成时显示）
-            if (!task.isDone) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = task.rewardPreview,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
+            // 奖励预览（始终显示；未完成时为预估，完成后为实际获得）
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = task.rewardPreview,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }
