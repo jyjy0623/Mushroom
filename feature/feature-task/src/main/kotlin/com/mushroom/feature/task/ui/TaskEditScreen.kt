@@ -304,7 +304,7 @@ private fun RewardSection(
                     }
                 } else {
                     Text(
-                        "默认：按提前分钟数自动计算",
+                        "默认：截止前完成得小蘑菇×1",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

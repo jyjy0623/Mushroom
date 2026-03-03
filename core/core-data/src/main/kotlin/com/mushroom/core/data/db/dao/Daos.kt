@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    @Query("SELECT * FROM tasks WHERE date = :date ORDER BY status, subject")
+    @Query("SELECT * FROM tasks WHERE date = :date ORDER BY id")
     fun getTasksByDate(date: String): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE date >= :from AND date <= :to ORDER BY date, status")
