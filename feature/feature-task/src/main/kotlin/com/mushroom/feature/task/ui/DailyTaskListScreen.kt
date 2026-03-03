@@ -100,10 +100,13 @@ fun DailyTaskListScreen(
 
     // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
+    // 本地标记：当前日期是否已触发过横幅（立即置位，防止 uiState 异步更新前重复触发）
+    var celebrationFiredDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
 
     LaunchedEffect(isAllDone, uiState.date) {
-        if (isAllDone && !uiState.celebrationShown) {
+        if (isAllDone && celebrationFiredDate != uiState.date && !uiState.celebrationShown) {
+            celebrationFiredDate = uiState.date
             viewModel.markCelebrationShown()
             showCelebration = true
             delay(3_000)
