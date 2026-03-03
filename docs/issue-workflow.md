@@ -1,6 +1,6 @@
 # 蘑菇大冒险 — Issue 处理工作流
 
-**文档版本**：v2.0
+**文档版本**：v2.1
 **日期**：2026-03-03
 
 ---
@@ -33,6 +33,14 @@ Claude Code 自动扫描 tc-*.md
         │
         ▼
 合并 → Issue 自动关闭 → 发版 tag
+        │
+        ▼
+回归验收确认
+  测试人员在真机上安装 release 版本
+  在 BugIssueTestCase.md 对应 TC 打勾并注明版本号
+  告诉 Claude Code："#N 回归通过"
+  → Claude Code 在 GitHub Issue 留言确认回归通过并关闭
+  → 更新 tc-*.md 原始用例为 [x] 通过
 ```
 
 ---
@@ -144,6 +152,33 @@ git push origin v1.4.1
 
 ---
 
+## 第六步：回归验收确认
+
+发版后，测试人员需在真机安装 release APK，对本次修复的 Issue 做回归验收。
+
+**测试人员操作**：
+
+1. 安装 GitHub Release 页面发布的 APK
+2. 执行 `BugIssueTestCase.md` 中对应的 TC 用例
+3. 通过后，将 `- [ ] 通过` 改为 `- [x] 通过`，并在旁边注明设备和版本：
+
+```markdown
+- [x] 通过（Pixel 7 / Android 14 / v1.4.1，2026-03-03）
+```
+
+**告知 Claude Code 回归结果**：
+
+- 通过：**「#N 回归通过」**
+- 不通过：**「#N 回归不通过，实际结果：...」**（重新进入第三步修复）
+
+**Claude Code 收到"回归通过"后自动执行**：
+
+1. 在 GitHub Issue 追加评论：`✅ v{版本号} 回归验收通过，关闭 Issue`
+2. 将原始 `tc-*.md` 中对应用例的 `- [ ] 通过` 更新为 `- [x] 通过`
+3. 提交 commit：`docs: #N 回归验收通过，更新 tc-*.md`
+
+---
+
 ## 文档联动关系
 
 ```
@@ -160,4 +195,8 @@ BugIssueTestCase.md（验收记录，TC 打勾）
       │ 发版
       ▼
 git tag vX.Y.Z + GitHub Release
+      │
+      │ 真机安装 release APK，回归验收
+      ▼
+回归通过确认（Issue 评论 + tc-*.md 更新）
 ```
