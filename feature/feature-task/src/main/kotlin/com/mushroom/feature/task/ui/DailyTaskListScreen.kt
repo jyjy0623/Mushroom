@@ -69,6 +69,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.time.format.DateTimeFormatter
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
@@ -293,8 +294,8 @@ fun DailyTaskListScreen(
     // 复制任务日期选择器
     if (showCopyDatePicker) {
         val tomorrowMillis = remember {
-            Instant.now().atZone(ZoneId.systemDefault()).toLocalDate()
-                .plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            LocalDate.now().plusDays(1)
+                .atTime(12, 0).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
         }
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = tomorrowMillis)
         DatePickerDialog(
