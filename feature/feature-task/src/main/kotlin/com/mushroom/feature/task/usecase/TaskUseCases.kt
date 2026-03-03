@@ -248,17 +248,15 @@ class CheckInTaskUseCase @Inject constructor(
             else                                -> "小蘑菇×1"
         }
         rewards += baseLabel
-        // 提前完成奖励：优先使用自定义配置，否则按规则分级
+        // 提前完成奖励：使用自定义配置，未配置时默认小蘑菇×1
         if (isEarly) {
             val earlyConfig = task.customEarlyRewardConfig
             val bonus = if (earlyConfig != null) {
                 "${earlyConfig.level.displayName}×${earlyConfig.amount}"
-            } else when {
-                earlyMinutes > 180 -> "中蘑菇×1"
-                earlyMinutes >= 60 -> "小蘑菇×2"
-                else               -> "小蘑菇×1"
+            } else {
+                "小蘑菇×1"
             }
-            rewards += "提前${earlyMinutes}分钟 $bonus"
+            rewards += "提前完成 $bonus"
         }
         return rewards.joinToString(" + ")
     }
