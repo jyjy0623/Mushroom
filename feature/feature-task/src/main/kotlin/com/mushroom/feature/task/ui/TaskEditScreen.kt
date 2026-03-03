@@ -14,6 +14,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -370,13 +375,16 @@ private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeadlineSection(
     deadline: LocalDateTime?,
     date: LocalDate,
     onDeadlineChange: (LocalDateTime?) -> Unit
 ) {
-    var enabled by remember { mutableStateOf(deadline != null) }
+    val enabled = deadline != null
+    var showTimePicker by remember { mutableStateOf(false) }
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -387,19 +395,53 @@ private fun DeadlineSection(
             Switch(
                 checked = enabled,
                 onCheckedChange = { checked ->
-                    enabled = checked
                     if (!checked) onDeadlineChange(null)
                     else onDeadlineChange(date.atTime(20, 0))
                 }
             )
         }
-        if (enabled) {
-            val timeText = deadline?.let { "${it.hour}:${it.minute.toString().padStart(2, '0')}" } ?: ""
-            Text("截止：$timeText", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary)
+        if (enabled && deadline != null) {
+            val timeText = "${deadline.hour}:${deadline.minute.toString().padStart(2, '0')}"
+            Text(
+                "截止：$timeText",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { showTimePicker = true }
+            )
             Text("设置截止时间后，提前完成可获得额外蘑菇奖励 ⚡",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+
+    if (showTimePicker && deadline != null) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = deadline.hour,
+            initialMinute = deadline.minute,
+            is24Hour = true
+        )
+        BasicAlertDialog(onDismissRequest = { showTimePicker = false }) {
+            Card {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("选择截止时间", style = MaterialTheme.typography.titleMedium)
+                    TimePicker(state = timePickerState)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showTimePicker = false }) { Text("取消") }
+                        Button(onClick = {
+                            onDeadlineChange(date.atTime(timePickerState.hour, timePickerState.minute))
+                            showTimePicker = false
+                        }) { Text("确定") }
+                    }
+                }
+            }
         }
     }
 }
