@@ -123,7 +123,7 @@ fun DailyTaskListScreen(
             when (event) {
                 is DailyTaskViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
                 is DailyTaskViewEvent.ShowRewardDialog -> rewardDialogText = event.rewardSummary
-                is DailyTaskViewEvent.NavigateToAddTask -> onNavigateToAddTask()
+                is DailyTaskViewEvent.NavigateToAddTask -> onNavigateToAddTask(uiState.date.toString())
             }
         }
     }
@@ -226,7 +226,7 @@ fun DailyTaskListScreen(
             ) {
                 item {
                     if (state.totalCount > 0) {
-                        TaskProgressCard(state.completedCount, state.totalCount, state.currentStreak)
+                        TaskProgressCard(state.completedCount, state.totalCount, state.currentStreak, state.memoStreak)
                     }
                 }
                 if (state.tasks.isEmpty()) {
@@ -362,7 +362,7 @@ private fun CelebrationBanner() {
 }
 
 @Composable
-private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int) {
+private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int, memoStreak: Int) {
     val progress = if (total > 0) completed.toFloat() / total else 0f
     val allDone = total > 0 && completed == total
     // 下一个里程碑天数
@@ -409,6 +409,20 @@ private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int) {
                 }
                 Text(
                     text = streakText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // 备忘录连续天数提示
+            if (memoStreak > 0) {
+                Spacer(Modifier.height(2.dp))
+                val memoText = if (memoStreak >= 5) {
+                    "📖 已连续完成备忘录任务 ${memoStreak} 天 · 已达成里程碑！"
+                } else {
+                    "📖 已连续完成备忘录任务 ${memoStreak} 天 · 距 5 天里程碑还差 ${5 - memoStreak} 天"
+                }
+                Text(
+                    text = memoText,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -527,13 +541,13 @@ private fun SubjectChip(label: String) {
 }
 
 @Composable
-private fun EmptyTasksPlaceholder(onAdd: () -> Unit) {
+private fun EmptyTasksPlaceholder(onAdd: (String) -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("今天还没有任务 🍄", style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(16.dp))
-        FilledTonalButton(onClick = onAdd) { Text("添加任务") }
+        FilledTonalButton(onClick = { onAdd(java.time.LocalDate.now().toString()) }) { Text("添加任务") }
     }
 }
