@@ -54,6 +54,9 @@ fun AppNavGraph(
                 },
                 onNavigateToAddMilestone = {
                     navController.navigate(AppDestination.MilestoneEdit.route())
+                },
+                onNavigateToCheckInHistory = {
+                    navController.navigate(AppDestination.CheckInHistory.route)
                 }
             )
         }
@@ -124,7 +127,9 @@ fun AppNavGraph(
 
         // ---- 打卡历史 ----
         composable(AppDestination.CheckInHistory.route) {
-            CheckInCalendarScreen()
+            CheckInCalendarScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         // ---- 里程碑 ----
