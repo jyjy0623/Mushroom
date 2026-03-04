@@ -222,7 +222,7 @@ fun DailyTaskListScreen(
             ) {
                 item {
                     if (state.totalCount > 0) {
-                        TaskProgressCard(state.completedCount, state.totalCount)
+                        TaskProgressCard(state.completedCount, state.totalCount, state.currentStreak)
                     }
                 }
                 if (state.tasks.isEmpty()) {
@@ -358,8 +358,11 @@ private fun CelebrationBanner() {
 }
 
 @Composable
-private fun TaskProgressCard(completed: Int, total: Int) {
+private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int) {
     val progress = if (total > 0) completed.toFloat() / total else 0f
+    val allDone = total > 0 && completed == total
+    // 下一个里程碑天数
+    val nextMilestone = listOf(7, 30, 100).firstOrNull { it > currentStreak }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -377,6 +380,35 @@ private fun TaskProgressCard(completed: Int, total: Int) {
                 color = if (progress >= 1f) MaterialTheme.colorScheme.tertiary
                         else MaterialTheme.colorScheme.primary
             )
+            Spacer(Modifier.height(6.dp))
+            // 全勤奖提示
+            if (allDone) {
+                Text(
+                    text = "🎉 已获得全勤奖 🍄‍🟫 中蘑菇×1",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            } else if (total > 0) {
+                Text(
+                    text = "完成全部任务可额外获得 🍄‍🟫 中蘑菇×1",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // 连续打卡里程碑提示
+            if (currentStreak > 0) {
+                Spacer(Modifier.height(2.dp))
+                val streakText = if (nextMilestone != null) {
+                    "🔥 连续打卡 ${currentStreak} 天 · 距 ${nextMilestone} 天里程碑还差 ${nextMilestone - currentStreak} 天"
+                } else {
+                    "🔥 连续打卡 ${currentStreak} 天 · 已达成全部里程碑！"
+                }
+                Text(
+                    text = streakText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

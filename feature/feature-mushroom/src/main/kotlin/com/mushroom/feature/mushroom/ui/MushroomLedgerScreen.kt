@@ -268,10 +268,7 @@ private fun BalanceCard(balance: MushroomBalance) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 MushroomLevel.values().forEach { level ->
-                    val count = balance.get(level)
-                    if (count > 0 || level == MushroomLevel.SMALL) {
-                        BalanceItem(level = level, count = count)
-                    }
+                    BalanceItem(level = level, count = balance.get(level))
                 }
             }
             Spacer(Modifier.height(8.dp))

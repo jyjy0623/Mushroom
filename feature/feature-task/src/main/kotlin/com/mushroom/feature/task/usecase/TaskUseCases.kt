@@ -13,6 +13,7 @@ import com.mushroom.core.domain.repository.TaskRepository
 import com.mushroom.core.domain.repository.TaskTemplateRepository
 import com.mushroom.core.logging.MushroomLogger
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.DayOfWeek
@@ -224,6 +225,20 @@ class CheckInTaskUseCase @Inject constructor(
             isEarly = isEarly,
             earlyMinutes = earlyMinutes
         ))
+        // 检查今日是否全部完成，是则额外触发全勤奖事件（taskId=-1L 为全勤奖信号）
+        val todayTasks = taskRepo.getTasksByDate(now.toLocalDate()).first()
+        val allDone = todayTasks.isNotEmpty() && todayTasks.all {
+            it.status == TaskStatus.ON_TIME_DONE || it.status == TaskStatus.EARLY_DONE
+        }
+        if (allDone) {
+            eventBus.emit(AppEvent.TaskCheckedIn(
+                taskId = -1L,
+                checkInTime = now,
+                isEarly = false,
+                earlyMinutes = 0
+            ))
+            MushroomLogger.i(TAG, "[TASK] 全部任务完成，触发全勤奖 date=${now.toLocalDate()}")
+        }
         MushroomLogger.i(TAG, "[TASK] 打卡 id=$taskId isEarly=$isEarly earlyMinutes=$earlyMinutes")
         buildRewardSummary(task, isEarly, earlyMinutes)
     }.onFailure { e ->

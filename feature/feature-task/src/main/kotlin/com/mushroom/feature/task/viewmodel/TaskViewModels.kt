@@ -26,6 +26,7 @@ import com.mushroom.feature.task.usecase.GetTaskByIdUseCase
 import com.mushroom.feature.task.usecase.GetTaskTemplatesUseCase
 import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
+import com.mushroom.core.domain.repository.CheckInRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,7 +56,9 @@ data class DailyTaskUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     // true 表示今天已展示过"全部完成"横幅，UI 不再重复展示
-    val celebrationShown: Boolean = false
+    val celebrationShown: Boolean = false,
+    // 连续打卡天数（用于今日进度卡展示里程碑提示）
+    val currentStreak: Int = 0
 )
 
 sealed class DailyTaskViewEvent {
@@ -70,25 +73,41 @@ class DailyTaskViewModel @Inject constructor(
     private val deleteTaskUseCase: DeleteTaskUseCase,
     private val copyTasksUseCase: CopyTasksUseCase,
     private val applyTemplateUseCase: ApplyTaskTemplateUseCase,
-    private val checkInTaskUseCase: CheckInTaskUseCase
+    private val checkInTaskUseCase: CheckInTaskUseCase,
+    private val checkInRepo: CheckInRepository
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
     // 记录已展示过"全部完成"横幅的日期，避免重入页面重复显示
     private val celebrationShownDates = mutableSetOf<LocalDate>()
+    // 连续打卡天数，初始0，每次打卡后刷新
+    private val _currentStreak = MutableStateFlow(0)
 
-    val uiState: StateFlow<DailyTaskUiState> = _date.flatMapLatest { date ->
-        getDailyTasksUseCase(date).map { tasks ->
-            val uiModels = tasks.map { it.toUiModel() }
-            DailyTaskUiState(
-                date = date,
-                tasks = uiModels,
-                domainTasks = tasks,
-                completedCount = uiModels.count { it.isDone },
-                totalCount = uiModels.size,
-                celebrationShown = celebrationShownDates.contains(date)
-            )
+    init {
+        // 初始化时加载连续打卡天数
+        viewModelScope.launch {
+            _currentStreak.value = checkInRepo.getStreakCount(LocalDate.now())
         }
+    }
+
+    val uiState: StateFlow<DailyTaskUiState> = combine(
+        _date.flatMapLatest { date ->
+            getDailyTasksUseCase(date).map { tasks ->
+                val uiModels = tasks.map { it.toUiModel() }
+                Triple(date, tasks, uiModels)
+            }
+        },
+        _currentStreak
+    ) { (date, tasks, uiModels), streak ->
+        DailyTaskUiState(
+            date = date,
+            tasks = uiModels,
+            domainTasks = tasks,
+            completedCount = uiModels.count { it.isDone },
+            totalCount = uiModels.size,
+            celebrationShown = celebrationShownDates.contains(date),
+            currentStreak = streak
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -115,6 +134,8 @@ class DailyTaskViewModel @Inject constructor(
             checkInTaskUseCase(taskId)
                 .onSuccess { rewardSummary ->
                     _viewEvent.emit(DailyTaskViewEvent.ShowRewardDialog(rewardSummary))
+                    // 打卡后刷新连续天数
+                    _currentStreak.value = checkInRepo.getStreakCount(LocalDate.now())
                 }
                 .onFailure { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡失败，请重试")) }
         }
