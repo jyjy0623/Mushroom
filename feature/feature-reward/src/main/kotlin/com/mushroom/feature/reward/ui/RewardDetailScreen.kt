@@ -214,7 +214,11 @@ private fun PhysicalRewardContent(
                 // 拼图格子可视化
                 if (totalPieces > 0) {
                     Spacer(Modifier.height(12.dp))
-                    PuzzleGrid(totalPieces = totalPieces, animatedUnlocked = animatedUnlocked)
+                    PuzzleGrid(
+                        totalPieces = totalPieces,
+                        animatedUnlocked = animatedUnlocked,
+                        pieceEmojis = progress.pieceEmojis
+                    )
                 }
             }
         }
@@ -240,7 +244,11 @@ private fun PhysicalRewardContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PuzzleGrid(totalPieces: Int, animatedUnlocked: Int) {
+private fun PuzzleGrid(
+    totalPieces: Int,
+    animatedUnlocked: Int,
+    pieceEmojis: List<MushroomLevel>
+) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -261,7 +269,8 @@ private fun PuzzleGrid(totalPieces: Int, animatedUnlocked: Int) {
                 contentAlignment = Alignment.Center
             ) {
                 if (isUnlocked) {
-                    Text("🍄", fontSize = 14.sp)
+                    val level = pieceEmojis.getOrNull(i) ?: MushroomLevel.SMALL
+                    Text(mushroomEmoji(level), fontSize = 14.sp)
                 }
             }
         }

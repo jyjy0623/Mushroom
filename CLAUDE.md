@@ -71,6 +71,8 @@
    - **设备/版本**：测试人员填写的内容
    - **截图或日志**：测试人员填写的内容（若有）
 4. 为每个失败用例执行 `gh issue create`，Issue body 对应 `.github/ISSUE_TEMPLATE/bug_report.md` 字段
+   - **Issue 标题命名规范**：必须以用例编号开头，格式为 `[TC-X.X.X-XX] 简短描述`
+   - 示例：`[TC-2.5.2-01] 拼图格子未区分蘑菇等级`
 5. 将返回的 Issue 编号回填到对应用例的 `Issue：#` 处，commit 保存
 
 ### 2. 修复分支命名

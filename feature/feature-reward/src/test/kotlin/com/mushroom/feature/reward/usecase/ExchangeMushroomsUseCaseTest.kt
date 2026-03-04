@@ -1,5 +1,6 @@
 package com.mushroom.feature.reward.usecase
 
+import com.mushroom.core.domain.entity.MushroomBalance
 import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomSource
@@ -86,6 +87,9 @@ class ExchangeMushroomsUseCaseTest {
         ) andThen flowOf(
             PuzzleProgress(rewardId = 1L, totalPieces = 10, unlockedPieces = 6)
         )
+        every { mushroomRepo.getBalance() } returns flowOf(
+            MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+        )
         coEvery { rewardRepo.insertExchange(any()) } returns 1L
         coEvery { mushroomRepo.recordTransaction(any()) } just Runs
         coEvery { eventBus.emit(any()) } just Runs
@@ -105,6 +109,9 @@ class ExchangeMushroomsUseCaseTest {
             PuzzleProgress(rewardId = 1L, totalPieces = 10, unlockedPieces = 8)
         ) andThen flowOf(
             PuzzleProgress(rewardId = 1L, totalPieces = 10, unlockedPieces = 10)
+        )
+        every { mushroomRepo.getBalance() } returns flowOf(
+            MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
         )
         coEvery { rewardRepo.insertExchange(any()) } returns 1L
         coEvery { mushroomRepo.recordTransaction(any()) } just Runs
@@ -145,6 +152,9 @@ class ExchangeMushroomsUseCaseTest {
         ) andThen flowOf(
             PuzzleProgress(rewardId = 1L, totalPieces = 5, unlockedPieces = 5)
         )
+        every { mushroomRepo.getBalance() } returns flowOf(
+            MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+        )
         coEvery { rewardRepo.insertExchange(any()) } returns 1L
         coEvery { mushroomRepo.recordTransaction(any()) } just Runs
         coEvery { rewardRepo.updateReward(any()) } just Runs
@@ -163,6 +173,9 @@ class ExchangeMushroomsUseCaseTest {
             PuzzleProgress(rewardId = 1L, totalPieces = 10, unlockedPieces = 3)
         ) andThen flowOf(
             PuzzleProgress(rewardId = 1L, totalPieces = 10, unlockedPieces = 6)
+        )
+        every { mushroomRepo.getBalance() } returns flowOf(
+            MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
         )
         coEvery { rewardRepo.insertExchange(any()) } returns 1L
         coEvery { mushroomRepo.recordTransaction(any()) } just Runs
@@ -190,6 +203,9 @@ class ExchangeMushroomsUseCaseTest {
                 TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxMinutes = 120, usedMinutes = 60)
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
+            every { mushroomRepo.getBalance() } returns flowOf(
+                MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+            )
             coEvery { mushroomRepo.recordTransaction(any()) } just Runs
 
             val result = useCase(1L, MushroomLevel.SMALL, 1)
@@ -225,6 +241,9 @@ class ExchangeMushroomsUseCaseTest {
             coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns null  // first use
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
+            every { mushroomRepo.getBalance() } returns flowOf(
+                MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+            )
             coEvery { mushroomRepo.recordTransaction(any()) } just Runs
 
             val result = useCase(1L, MushroomLevel.SMALL, 1)
@@ -243,6 +262,9 @@ class ExchangeMushroomsUseCaseTest {
                 TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxMinutes = 120, usedMinutes = 60)
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
+            every { mushroomRepo.getBalance() } returns flowOf(
+                MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+            )
             coEvery { mushroomRepo.recordTransaction(any()) } just Runs
 
             useCase(1L, MushroomLevel.SMALL, 1)
@@ -260,6 +282,9 @@ class ExchangeMushroomsUseCaseTest {
             coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns null
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
+            every { mushroomRepo.getBalance() } returns flowOf(
+                MushroomBalance(mapOf(MushroomLevel.SMALL to 10))
+            )
             coEvery { mushroomRepo.recordTransaction(any()) } just Runs
 
             val result = useCase(1L, MushroomLevel.SMALL, 1)

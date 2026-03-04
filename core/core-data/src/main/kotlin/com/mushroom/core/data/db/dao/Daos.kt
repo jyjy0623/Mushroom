@@ -153,6 +153,9 @@ interface RewardExchangeDao {
 
     @Query("SELECT SUM(puzzle_pieces_unlocked) FROM reward_exchanges WHERE reward_id = :rewardId")
     fun getUnlockedPieces(rewardId: Long): Flow<Int?>
+
+    @Query("SELECT * FROM reward_exchanges WHERE reward_id = :rewardId AND puzzle_pieces_unlocked > 0 ORDER BY created_at ASC")
+    fun getPhysicalExchanges(rewardId: Long): Flow<List<RewardExchangeEntity>>
 }
 
 @Dao

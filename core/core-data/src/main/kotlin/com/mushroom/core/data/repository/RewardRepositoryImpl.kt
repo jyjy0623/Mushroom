@@ -6,6 +6,7 @@ import com.mushroom.core.data.db.dao.TimeRewardUsageDao
 import com.mushroom.core.data.db.entity.RewardExchangeEntity
 import com.mushroom.core.data.db.entity.TimeRewardUsageEntity
 import com.mushroom.core.data.mapper.RewardMapper
+import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.PuzzleProgress
 import com.mushroom.core.domain.entity.Reward
 import com.mushroom.core.domain.entity.RewardExchange
@@ -40,13 +41,20 @@ class RewardRepositoryImpl @Inject constructor(
     override fun getPuzzleProgress(rewardId: Long): Flow<PuzzleProgress> {
         val rewardFlow = rewardDao.getActiveRewards()
             .map { list -> list.firstOrNull { it.id == rewardId } }
-        val unlockedFlow = rewardExchangeDao.getUnlockedPieces(rewardId)
-        return combine(rewardFlow, unlockedFlow) { entity, unlocked ->
+        val exchangesFlow = rewardExchangeDao.getPhysicalExchanges(rewardId)
+        return combine(rewardFlow, exchangesFlow) { entity, exchanges ->
             val totalPieces = entity?.puzzlePieces ?: 1
+            // Build per-piece level list from exchange records in chronological order
+            val pieceEmojis = exchanges.flatMap { ex ->
+                val level = runCatching { MushroomLevel.valueOf(ex.mushroomLevel) }
+                    .getOrDefault(MushroomLevel.SMALL)
+                List(ex.puzzlePiecesUnlocked) { level }
+            }
             PuzzleProgress(
                 rewardId = rewardId,
                 totalPieces = totalPieces,
-                unlockedPieces = unlocked ?: 0
+                unlockedPieces = pieceEmojis.size,
+                pieceEmojis = pieceEmojis
             )
         }
     }

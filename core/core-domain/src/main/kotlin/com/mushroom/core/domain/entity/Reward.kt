@@ -31,7 +31,8 @@ enum class PeriodType { WEEKLY, MONTHLY }
 data class PuzzleProgress(
     val rewardId: Long,
     val totalPieces: Int,
-    val unlockedPieces: Int
+    val unlockedPieces: Int,
+    val pieceEmojis: List<MushroomLevel> = emptyList()
 ) {
     val percentage: Float get() = if (totalPieces == 0) 0f else unlockedPieces.toFloat() / totalPieces
     val isCompleted: Boolean get() = unlockedPieces >= totalPieces
