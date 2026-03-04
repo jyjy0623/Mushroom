@@ -27,6 +27,7 @@ import com.mushroom.feature.task.usecase.GetTaskTemplatesUseCase
 import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
 import com.mushroom.core.domain.repository.CheckInRepository
+import com.mushroom.core.domain.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -58,7 +60,9 @@ data class DailyTaskUiState(
     // true 表示今天已展示过"全部完成"横幅，UI 不再重复展示
     val celebrationShown: Boolean = false,
     // 连续打卡天数（用于今日进度卡展示里程碑提示）
-    val currentStreak: Int = 0
+    val currentStreak: Int = 0,
+    // 连续完成备忘录任务天数（用于今日进度卡提示）
+    val memoStreak: Int = 0
 )
 
 sealed class DailyTaskViewEvent {
@@ -74,7 +78,8 @@ class DailyTaskViewModel @Inject constructor(
     private val copyTasksUseCase: CopyTasksUseCase,
     private val applyTemplateUseCase: ApplyTaskTemplateUseCase,
     private val checkInTaskUseCase: CheckInTaskUseCase,
-    private val checkInRepo: CheckInRepository
+    private val checkInRepo: CheckInRepository,
+    private val taskRepo: TaskRepository
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -82,12 +87,34 @@ class DailyTaskViewModel @Inject constructor(
     private val celebrationShownDates = mutableSetOf<LocalDate>()
     // 连续打卡天数，初始0，每次打卡后刷新
     private val _currentStreak = MutableStateFlow(0)
+    // 连续备忘录任务完成天数
+    private val _memoStreak = MutableStateFlow(0)
 
     init {
-        // 初始化时加载连续打卡天数
+        // 初始化时加载连续打卡天数和备忘录连续天数
         viewModelScope.launch {
             _currentStreak.value = checkInRepo.getStreakCount(LocalDate.now())
+            _memoStreak.value = computeMemoStreak(LocalDate.now())
         }
+    }
+
+    /** 计算截至 [until] 的连续备忘录任务完成天数 */
+    private suspend fun computeMemoStreak(until: LocalDate): Int {
+        val from = until.minusDays(60)
+        val allTasks = taskRepo.getTasksByDateRange(from, until).first()
+        // 按日期分组，检查每天是否有已完成的 HOMEWORK_MEMO 任务
+        val doneMemoDates = allTasks
+            .filter { it.templateType == TaskTemplateType.HOMEWORK_MEMO &&
+                (it.status == TaskStatus.ON_TIME_DONE || it.status == TaskStatus.EARLY_DONE) }
+            .map { it.date }
+            .toSet()
+        var streak = 0
+        var current = until
+        while (doneMemoDates.contains(current)) {
+            streak++
+            current = current.minusDays(1)
+        }
+        return streak
     }
 
     val uiState: StateFlow<DailyTaskUiState> = combine(
@@ -97,8 +124,9 @@ class DailyTaskViewModel @Inject constructor(
                 Triple(date, tasks, uiModels)
             }
         },
-        _currentStreak
-    ) { (date, tasks, uiModels), streak ->
+        _currentStreak,
+        _memoStreak
+    ) { (date, tasks, uiModels), streak, memoStreak ->
         DailyTaskUiState(
             date = date,
             tasks = uiModels,
@@ -106,7 +134,8 @@ class DailyTaskViewModel @Inject constructor(
             completedCount = uiModels.count { it.isDone },
             totalCount = uiModels.size,
             celebrationShown = celebrationShownDates.contains(date),
-            currentStreak = streak
+            currentStreak = streak,
+            memoStreak = memoStreak
         )
     }.stateIn(
         scope = viewModelScope,
@@ -134,8 +163,9 @@ class DailyTaskViewModel @Inject constructor(
             checkInTaskUseCase(taskId)
                 .onSuccess { rewardSummary ->
                     _viewEvent.emit(DailyTaskViewEvent.ShowRewardDialog(rewardSummary))
-                    // 打卡后刷新连续天数
+                    // 打卡后刷新连续天数和备忘录连续天数
                     _currentStreak.value = checkInRepo.getStreakCount(LocalDate.now())
+                    _memoStreak.value = computeMemoStreak(LocalDate.now())
                 }
                 .onFailure { _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("打卡失败，请重试")) }
         }
