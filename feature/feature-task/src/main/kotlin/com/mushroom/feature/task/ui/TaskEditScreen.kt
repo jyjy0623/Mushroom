@@ -87,6 +87,7 @@ fun TaskEditScreen(
 
     val taskId = uiState.taskId
     val isSaving = uiState.isSaving
+    val isReadOnly = uiState.isReadOnly
     val titleError = uiState.validationErrors["title"]
     val minutesError = uiState.validationErrors["estimatedMinutes"]
     val title = uiState.title
@@ -99,19 +100,29 @@ fun TaskEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (taskId == null) "新建任务" else "编辑任务") },
+                title = {
+                    Text(
+                        when {
+                            isReadOnly -> "查看任务（已完成）"
+                            taskId == null -> "新建任务"
+                            else -> "编辑任务"
+                        }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    TextButton(
-                        onClick = { viewModel.save(date) },
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
-                        else Text("保存")
+                    if (!isReadOnly) {
+                        TextButton(
+                            onClick = { viewModel.save(date) },
+                            enabled = !isSaving
+                        ) {
+                            if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
+                            else Text("保存")
+                        }
                     }
                 }
             )
@@ -133,6 +144,7 @@ fun TaskEditScreen(
                 onValueChange = viewModel::updateTitle,
                 label = { Text("任务名称 *") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !isReadOnly,
                 isError = titleError != null,
                 supportingText = if (titleError != null) ({ Text(titleError) }) else null,
                 singleLine = true
@@ -143,17 +155,19 @@ fun TaskEditScreen(
                 onValueChange = viewModel::updateDescription,
                 label = { Text("任务说明（选填）") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !isReadOnly,
                 minLines = 2,
                 maxLines = 4
             )
 
-            SubjectDropdown(selected = subject, onSelect = viewModel::updateSubject)
+            SubjectDropdown(selected = subject, onSelect = viewModel::updateSubject, enabled = !isReadOnly)
 
             OutlinedTextField(
                 value = estimatedMinutes.toString(),
                 onValueChange = { it.toIntOrNull()?.let(viewModel::updateEstimatedMinutes) },
                 label = { Text("预计时长（分钟）") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !isReadOnly,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = minutesError != null,
                 supportingText = if (minutesError != null) ({ Text(minutesError) }) else null,
@@ -163,10 +177,11 @@ fun TaskEditScreen(
             DeadlineSection(
                 deadline = deadline,
                 date = date,
-                onDeadlineChange = viewModel::updateDeadline
+                onDeadlineChange = viewModel::updateDeadline,
+                enabled = !isReadOnly
             )
 
-            RepeatRuleSection(selected = repeatRule, onSelect = viewModel::updateRepeatRule)
+            RepeatRuleSection(selected = repeatRule, onSelect = viewModel::updateRepeatRule, enabled = !isReadOnly)
 
             HorizontalDivider()
 
@@ -179,6 +194,7 @@ fun TaskEditScreen(
                 useCustomEarlyReward = uiState.useCustomEarlyReward,
                 earlyRewardLevel = uiState.earlyRewardLevel,
                 earlyRewardAmount = uiState.earlyRewardAmount,
+                enabled = !isReadOnly,
                 onToggleCustomReward = viewModel::toggleCustomReward,
                 onBaseRewardLevelChange = viewModel::updateBaseRewardLevel,
                 onBaseRewardAmountChange = viewModel::updateBaseRewardAmount,
@@ -187,15 +203,17 @@ fun TaskEditScreen(
                 onEarlyRewardAmountChange = viewModel::updateEarlyRewardAmount
             )
 
-            HorizontalDivider()
+            if (!isReadOnly) {
+                HorizontalDivider()
 
-            // 另存为模板按钮
-            OutlinedButton(
-                onClick = { viewModel.saveAsTemplate() },
-                modifier = Modifier.fillMaxWidth()
+                // 另存为模板按钮
+                OutlinedButton(
+                    onClick = { viewModel.saveAsTemplate() },
+                    modifier = Modifier.fillMaxWidth()
             ) {
                 Text("另存为自定义模板")
             }
+            } // end if (!isReadOnly)
 
             Spacer(Modifier.height(16.dp))
         }
@@ -211,6 +229,7 @@ private fun RewardSection(
     useCustomEarlyReward: Boolean,
     earlyRewardLevel: MushroomLevel,
     earlyRewardAmount: Int,
+    enabled: Boolean = true,
     onToggleCustomReward: (Boolean) -> Unit,
     onBaseRewardLevelChange: (MushroomLevel) -> Unit,
     onBaseRewardAmountChange: (Int) -> Unit,
@@ -241,7 +260,7 @@ private fun RewardSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("自定义完成奖励", style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = useCustomReward, onCheckedChange = onToggleCustomReward)
+                Switch(checked = useCustomReward, onCheckedChange = onToggleCustomReward, enabled = enabled)
             }
             if (useCustomReward) {
                 Row(
@@ -252,13 +271,15 @@ private fun RewardSection(
                     MushroomLevelDropdown(
                         selected = baseRewardLevel,
                         onSelect = onBaseRewardLevelChange,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = enabled
                     )
                     OutlinedTextField(
                         value = baseRewardAmount.toString(),
                         onValueChange = { it.toIntOrNull()?.let(onBaseRewardAmountChange) },
                         label = { Text("×数量") },
                         modifier = Modifier.weight(0.4f),
+                        enabled = enabled,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
                     )
@@ -280,7 +301,7 @@ private fun RewardSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("自定义提前完成奖励", style = MaterialTheme.typography.bodyMedium)
-                    Switch(checked = useCustomEarlyReward, onCheckedChange = onToggleCustomEarlyReward)
+                    Switch(checked = useCustomEarlyReward, onCheckedChange = onToggleCustomEarlyReward, enabled = enabled)
                 }
                 if (useCustomEarlyReward) {
                     Row(
@@ -291,13 +312,15 @@ private fun RewardSection(
                         MushroomLevelDropdown(
                             selected = earlyRewardLevel,
                             onSelect = onEarlyRewardLevelChange,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = enabled
                         )
                         OutlinedTextField(
                             value = earlyRewardAmount.toString(),
                             onValueChange = { it.toIntOrNull()?.let(onEarlyRewardAmountChange) },
                             label = { Text("×数量") },
                             modifier = Modifier.weight(0.4f),
+                            enabled = enabled,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true
                         )
@@ -319,31 +342,38 @@ private fun RewardSection(
 private fun MushroomLevelDropdown(
     selected: MushroomLevel,
     onSelect: (MushroomLevel) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it },
-        modifier = modifier) {
+    ExposedDropdownMenuBox(
+        expanded = expanded && enabled,
+        onExpandedChange = { if (enabled) expanded = it },
+        modifier = modifier
+    ) {
         OutlinedTextField(
             value = selected.displayName,
             onValueChange = {},
             readOnly = true,
             label = { Text("蘑菇类型") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
+            enabled = enabled,
             singleLine = true
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf(
-                MushroomLevel.SMALL,
-                MushroomLevel.MEDIUM,
-                MushroomLevel.LARGE,
-                MushroomLevel.GOLD
-            ).forEach { level ->
-                DropdownMenuItem(
-                    text = { Text(level.displayName) },
-                    onClick = { onSelect(level); expanded = false }
-                )
+        if (enabled) {
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                listOf(
+                    MushroomLevel.SMALL,
+                    MushroomLevel.MEDIUM,
+                    MushroomLevel.LARGE,
+                    MushroomLevel.GOLD
+                ).forEach { level ->
+                    DropdownMenuItem(
+                        text = { Text(level.displayName) },
+                        onClick = { onSelect(level); expanded = false }
+                    )
+                }
             }
         }
     }
@@ -351,25 +381,31 @@ private fun MushroomLevelDropdown(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit) {
+private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit, enabled: Boolean = true) {
     var expanded by remember { mutableStateOf(false) }
     val subjectNames = mapOf(
         Subject.MATH to "数学", Subject.CHINESE to "语文", Subject.ENGLISH to "英语",
         Subject.PHYSICS to "物理", Subject.CHEMISTRY to "化学", Subject.BIOLOGY to "生物",
         Subject.HISTORY to "历史", Subject.GEOGRAPHY to "地理", Subject.OTHER to "其他"
     )
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+    ExposedDropdownMenuBox(
+        expanded = expanded && enabled,
+        onExpandedChange = { if (enabled) expanded = it }
+    ) {
         OutlinedTextField(
             value = subjectNames[selected] ?: selected.name,
             onValueChange = {},
             readOnly = true,
             label = { Text("学科") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor()
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            enabled = enabled
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            subjectNames.forEach { (s, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(s); expanded = false })
+        if (enabled) {
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                subjectNames.forEach { (s, label) ->
+                    DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(s); expanded = false })
+                }
             }
         }
     }
@@ -380,9 +416,10 @@ private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit) {
 private fun DeadlineSection(
     deadline: LocalDateTime?,
     date: LocalDate,
-    onDeadlineChange: (LocalDateTime?) -> Unit
+    onDeadlineChange: (LocalDateTime?) -> Unit,
+    enabled: Boolean = true
 ) {
-    val enabled = deadline != null
+    val hasDeadline = deadline != null
     var showTimePicker by remember { mutableStateOf(false) }
 
     Column {
@@ -393,20 +430,22 @@ private fun DeadlineSection(
             Text("截止时间", style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.CenterVertically))
             Switch(
-                checked = enabled,
+                checked = hasDeadline,
                 onCheckedChange = { checked ->
                     if (!checked) onDeadlineChange(null)
                     else onDeadlineChange(date.atTime(20, 0))
-                }
+                },
+                enabled = enabled
             )
         }
-        if (enabled && deadline != null) {
+        if (hasDeadline && deadline != null) {
             val timeText = "${deadline.hour}:${deadline.minute.toString().padStart(2, '0')}"
             Text(
                 "截止：$timeText",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { showTimePicker = true }
+                color = if (enabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = if (enabled) Modifier.clickable { showTimePicker = true } else Modifier
             )
             Text("设置截止时间后，提前完成可获得额外蘑菇奖励 ⚡",
                 style = MaterialTheme.typography.bodySmall,
@@ -414,7 +453,7 @@ private fun DeadlineSection(
         }
     }
 
-    if (showTimePicker && deadline != null) {
+    if (showTimePicker && deadline != null && enabled) {
         val timePickerState = rememberTimePickerState(
             initialHour = deadline.hour,
             initialMinute = deadline.minute,
@@ -447,7 +486,7 @@ private fun DeadlineSection(
 }
 
 @Composable
-private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Unit) {
+private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Unit, enabled: Boolean = true) {
     val dayLabels = mapOf(
         DayOfWeek.MONDAY to "周一",
         DayOfWeek.TUESDAY to "周二",
@@ -480,7 +519,8 @@ private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Un
                             is RepeatRule.Custom -> onSelect(RepeatRule.Custom(selectedDays))
                             else -> onSelect(rule)
                         }
-                    }
+                    },
+                    enabled = enabled
                 )
                 Text(label, modifier = Modifier.padding(start = 4.dp))
             }
@@ -503,7 +543,8 @@ private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Un
                             onCheckedChange = { checked ->
                                 val newDays = if (checked) selectedDays + day else selectedDays - day
                                 onSelect(RepeatRule.Custom(newDays))
-                            }
+                            },
+                            enabled = enabled
                         )
                     }
                 }

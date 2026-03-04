@@ -173,7 +173,9 @@ data class TaskEditUiState(
     val earlyRewardLevel: MushroomLevel = MushroomLevel.SMALL,
     val earlyRewardAmount: Int = 1,
     val useCustomReward: Boolean = false,
-    val useCustomEarlyReward: Boolean = false
+    val useCustomEarlyReward: Boolean = false,
+    // 已完成任务只读，禁止编辑保存
+    val isReadOnly: Boolean = false
 )
 
 sealed class TaskEditViewEvent {
@@ -221,6 +223,7 @@ class TaskEditViewModel @Inject constructor(
     fun updateEarlyRewardAmount(amount: Int) { _uiState.value = _uiState.value.copy(earlyRewardAmount = amount.coerceAtLeast(1)) }
 
     fun loadTask(task: Task) {
+        val isDone = task.status == TaskStatus.EARLY_DONE || task.status == TaskStatus.ON_TIME_DONE
         _uiState.value = TaskEditUiState(
             taskId = task.id,
             title = task.title,
@@ -234,12 +237,14 @@ class TaskEditViewModel @Inject constructor(
             baseRewardAmount = task.customRewardConfig?.amount ?: 1,
             useCustomEarlyReward = task.customEarlyRewardConfig != null,
             earlyRewardLevel = task.customEarlyRewardConfig?.level ?: MushroomLevel.SMALL,
-            earlyRewardAmount = task.customEarlyRewardConfig?.amount ?: 1
+            earlyRewardAmount = task.customEarlyRewardConfig?.amount ?: 1,
+            isReadOnly = isDone
         )
     }
 
     fun save(date: LocalDate) {
         val state = _uiState.value
+        if (state.isReadOnly) return   // 已完成任务不允许保存
         val errors = validate(state)
         if (errors.isNotEmpty()) {
             _uiState.value = state.copy(validationErrors = errors)
