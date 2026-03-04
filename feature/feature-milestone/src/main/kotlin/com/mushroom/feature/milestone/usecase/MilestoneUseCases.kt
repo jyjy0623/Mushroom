@@ -6,13 +6,11 @@ import com.mushroom.core.domain.entity.MilestoneStatus
 import com.mushroom.core.domain.entity.MilestoneType
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomRewardConfig
-import com.mushroom.core.domain.entity.RewardExchange
 import com.mushroom.core.domain.entity.ScoringRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.repository.MilestoneRepository
-import com.mushroom.core.domain.service.ParentGateway
 import com.mushroom.core.logging.MushroomLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -61,16 +59,11 @@ object DefaultScoringRules {
 // CreateMilestoneUseCase
 // -----------------------------------------------------------------------
 class CreateMilestoneUseCase @Inject constructor(
-    private val repo: MilestoneRepository,
-    private val parentGateway: ParentGateway
+    private val repo: MilestoneRepository
 ) {
     suspend operator fun invoke(milestone: Milestone): Result<Long> {
         MushroomLogger.i(TAG, "CreateMilestoneUseCase: name=${milestone.name} type=${milestone.type}")
         return runCatching {
-            parentGateway.requestExchangeApproval(
-                RewardExchange(rewardId = 0, mushroomLevel = MushroomLevel.SMALL, mushroomCount = 0,
-                    puzzlePiecesUnlocked = 0, minutesGained = null, createdAt = LocalDateTime.now())
-            )  // 家长权限验证
             val withRules = if (milestone.scoringRules.isEmpty()) {
                 milestone.copy(scoringRules = DefaultScoringRules.forType(milestone.type))
             } else {
@@ -86,17 +79,12 @@ class CreateMilestoneUseCase @Inject constructor(
 // -----------------------------------------------------------------------
 class RecordMilestoneScoreUseCase @Inject constructor(
     private val repo: MilestoneRepository,
-    private val eventBus: AppEventBus,
-    private val parentGateway: ParentGateway
+    private val eventBus: AppEventBus
 ) {
     suspend operator fun invoke(milestoneId: Long, score: Int): Result<Milestone> {
         MushroomLogger.i(TAG, "RecordMilestoneScoreUseCase: id=$milestoneId score=$score")
         return runCatching {
             require(score in 0..100) { "分数必须在0~100之间" }
-            parentGateway.requestExchangeApproval(
-                RewardExchange(rewardId = milestoneId, mushroomLevel = MushroomLevel.SMALL, mushroomCount = 0,
-                    puzzlePiecesUnlocked = 0, minutesGained = null, createdAt = LocalDateTime.now())
-            )   // 家长PIN验证
 
             // 保存成绩，更新状态为 SCORED
             repo.updateScore(milestoneId, score, MilestoneStatus.SCORED)

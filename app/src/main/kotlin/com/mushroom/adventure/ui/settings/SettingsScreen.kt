@@ -19,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
@@ -46,7 +45,6 @@ import kotlinx.coroutines.flow.collectLatest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateToPinSetup: () -> Unit = {},
     onCheckUpdate: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -77,28 +75,6 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // -------------------------------------------------------
-            // 家长设置
-            // -------------------------------------------------------
-            Text(
-                "家长设置",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Card(modifier = Modifier.fillMaxWidth()) {
-                SettingsItem(
-                    icon = Icons.Default.Lock,
-                    title = "设置家长 PIN",
-                    subtitle = "用于授权兑换奖品、录入成绩等家长操作",
-                    onClick = onNavigateToPinSetup
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
-
             // -------------------------------------------------------
             // 数据管理
             // -------------------------------------------------------

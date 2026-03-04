@@ -16,7 +16,6 @@ import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.RewardRepository
-import com.mushroom.core.domain.service.ParentGateway
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -70,13 +69,11 @@ class ExchangeMushroomsUseCaseTest {
 
     private val rewardRepo = mockk<RewardRepository>()
     private val mushroomRepo = mockk<MushroomRepository>()
-    private val parentGateway = mockk<ParentGateway>()
     private val eventBus = mockk<AppEventBus>()
 
     private val useCase = ExchangeMushroomsUseCase(
         rewardRepo = rewardRepo,
         mushroomRepo = mushroomRepo,
-        parentGateway = parentGateway,
         eventBus = eventBus
     )
 
@@ -236,23 +233,6 @@ class ExchangeMushroomsUseCaseTest {
         }
 
         @Test
-        fun `time-based exchange calls parent confirm when required`() = runTest {
-            val config = buildTimeLimitConfig(requireParentConfirm = true)
-            val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
-
-            coEvery { rewardRepo.getRewardById(1L) } returns reward
-            coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns null
-            coEvery { parentGateway.requestTimeRewardConfirmation(any()) } returns true
-            coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
-            coEvery { rewardRepo.insertExchange(any()) } returns 1L
-            coEvery { mushroomRepo.recordTransaction(any()) } just Runs
-
-            useCase(1L, MushroomLevel.SMALL, 1)
-
-            coVerify { parentGateway.requestTimeRewardConfirmation(1L) }
-        }
-
-        @Test
         fun `time-based exchange updates usage with correct new total`() = runTest {
             val config = buildTimeLimitConfig(unitMinutes = 30, maxMinutesPerPeriod = 120)
             val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
@@ -298,14 +278,12 @@ class ExchangeMushroomsUseCaseTest {
 class ClaimRewardUseCaseTest {
 
     private val rewardRepo = mockk<RewardRepository>()
-    private val parentGateway = mockk<ParentGateway>()
-    private val useCase = ClaimRewardUseCase(rewardRepo, parentGateway)
+    private val useCase = ClaimRewardUseCase(rewardRepo)
 
     @Test
-    fun `claim succeeds when puzzle is completed and parent approves`() = runTest {
+    fun `claim succeeds when puzzle is completed`() = runTest {
         val reward = buildReward(status = RewardStatus.COMPLETED)
         coEvery { rewardRepo.getRewardById(1L) } returns reward
-        coEvery { parentGateway.requestExchangeApproval(any()) } returns true
         coEvery { rewardRepo.updateReward(any()) } just Runs
 
         val result = useCase(1L)
@@ -339,7 +317,6 @@ class ClaimRewardUseCaseTest {
     fun `claim updates status to CLAIMED`() = runTest {
         val reward = buildReward(status = RewardStatus.COMPLETED)
         coEvery { rewardRepo.getRewardById(1L) } returns reward
-        coEvery { parentGateway.requestExchangeApproval(any()) } returns true
         coEvery { rewardRepo.updateReward(any()) } just Runs
 
         useCase(1L)
@@ -354,13 +331,11 @@ class ClaimRewardUseCaseTest {
 class CreateRewardUseCaseTest {
 
     private val rewardRepo = mockk<RewardRepository>()
-    private val parentGateway = mockk<ParentGateway>()
-    private val useCase = CreateRewardUseCase(rewardRepo, parentGateway)
+    private val useCase = CreateRewardUseCase(rewardRepo)
 
     @Test
     fun `create reward succeeds and returns inserted id`() = runTest {
         val reward = buildReward()
-        coEvery { parentGateway.requestExchangeApproval(any()) } returns true
         coEvery { rewardRepo.insertReward(reward) } returns 42L
 
         val result = useCase(reward)
@@ -370,23 +345,18 @@ class CreateRewardUseCaseTest {
     }
 
     @Test
-    fun `create reward calls parent approval before inserting`() = runTest {
+    fun `create reward calls repository insert`() = runTest {
         val reward = buildReward()
-        coEvery { parentGateway.requestExchangeApproval(any()) } returns true
         coEvery { rewardRepo.insertReward(any()) } returns 1L
 
         useCase(reward)
 
-        coVerify(ordering = io.mockk.Ordering.ORDERED) {
-            parentGateway.requestExchangeApproval(any())
-            rewardRepo.insertReward(any())
-        }
+        coVerify { rewardRepo.insertReward(any()) }
     }
 
     @Test
     fun `create reward fails when repository throws`() = runTest {
         val reward = buildReward()
-        coEvery { parentGateway.requestExchangeApproval(any()) } returns true
         coEvery { rewardRepo.insertReward(any()) } throws RuntimeException("DB error")
 
         val result = useCase(reward)

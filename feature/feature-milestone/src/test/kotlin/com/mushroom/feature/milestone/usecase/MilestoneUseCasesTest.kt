@@ -7,9 +7,7 @@ import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
-import com.mushroom.core.domain.entity.RewardExchange
 import com.mushroom.core.domain.repository.MilestoneRepository
-import com.mushroom.core.domain.service.ParentGateway
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -77,8 +75,7 @@ class MilestoneUseCasesTest {
 
         private val repo = mockk<MilestoneRepository>()
         private val eventBus = mockk<AppEventBus>()
-        private val parentGateway = mockk<ParentGateway>()
-        private val useCase = RecordMilestoneScoreUseCase(repo, eventBus, parentGateway)
+        private val useCase = RecordMilestoneScoreUseCase(repo, eventBus)
 
         private fun buildMilestone(id: Long = 1L, score: Int? = null) = Milestone(
             id = id,
@@ -93,7 +90,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `records score and emits MilestoneScored event`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.updateScore(any(), any(), any()) } just Runs
             every { repo.getAllMilestones() } returns flowOf(listOf(buildMilestone(score = 85)))
             val eventSlot = slot<AppEvent>()
@@ -110,7 +106,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `updates milestone status to SCORED then REWARDED`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.updateScore(any(), any(), any()) } just Runs
             every { repo.getAllMilestones() } returns flowOf(listOf(buildMilestone(score = 92)))
             coEvery { eventBus.emit(any()) } just Runs
@@ -123,8 +118,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `score out of range returns failure`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
-
             val result = useCase(1L, 150)  // > 100
 
             assertTrue(result.isFailure)
@@ -132,8 +125,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `negative score returns failure`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
-
             val result = useCase(1L, -1)
 
             assertTrue(result.isFailure)
@@ -141,7 +132,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `boundary score 0 is valid`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.updateScore(any(), any(), any()) } just Runs
             every { repo.getAllMilestones() } returns flowOf(listOf(buildMilestone(score = 0)))
             coEvery { eventBus.emit(any()) } just Runs
@@ -153,7 +143,6 @@ class MilestoneUseCasesTest {
 
         @Test
         fun `boundary score 100 is valid`() = runTest {
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.updateScore(any(), any(), any()) } just Runs
             every { repo.getAllMilestones() } returns flowOf(listOf(buildMilestone(score = 100)))
             coEvery { eventBus.emit(any()) } just Runs
@@ -234,8 +223,7 @@ class MilestoneUseCasesTest {
     inner class CreateMilestoneUseCaseTest {
 
         private val repo = mockk<MilestoneRepository>()
-        private val parentGateway = mockk<ParentGateway>()
-        private val useCase = CreateMilestoneUseCase(repo, parentGateway)
+        private val useCase = CreateMilestoneUseCase(repo)
 
         private fun buildMilestone(
             type: MilestoneType = MilestoneType.MINI_TEST,
@@ -254,7 +242,6 @@ class MilestoneUseCasesTest {
         @Test
         fun `create milestone succeeds and returns inserted id`() = runTest {
             val milestone = buildMilestone()
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } returns 10L
 
             val result = useCase(milestone)
@@ -266,7 +253,6 @@ class MilestoneUseCasesTest {
         @Test
         fun `auto-applies default scoring rules when rules are empty`() = runTest {
             val milestone = buildMilestone(type = MilestoneType.MINI_TEST, scoringRules = emptyList())
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } returns 1L
 
             useCase(milestone)
@@ -281,7 +267,6 @@ class MilestoneUseCasesTest {
         fun `preserves custom scoring rules when provided`() = runTest {
             val customRules = DefaultScoringRules.MIDTERM_FINAL
             val milestone = buildMilestone(scoringRules = customRules)
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } returns 1L
 
             useCase(milestone)
@@ -294,7 +279,6 @@ class MilestoneUseCasesTest {
         @Test
         fun `applies SCHOOL_EXAM default rules for SCHOOL_EXAM type`() = runTest {
             val milestone = buildMilestone(type = MilestoneType.SCHOOL_EXAM, scoringRules = emptyList())
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } returns 1L
 
             useCase(milestone)
@@ -307,7 +291,6 @@ class MilestoneUseCasesTest {
         @Test
         fun `applies MIDTERM_FINAL rules for MIDTERM type`() = runTest {
             val milestone = buildMilestone(type = MilestoneType.MIDTERM, scoringRules = emptyList())
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } returns 1L
 
             useCase(milestone)
@@ -320,7 +303,6 @@ class MilestoneUseCasesTest {
         @Test
         fun `create fails when repository throws`() = runTest {
             val milestone = buildMilestone()
-            coEvery { parentGateway.requestExchangeApproval(any()) } returns true
             coEvery { repo.insertMilestone(any()) } throws RuntimeException("DB error")
 
             val result = useCase(milestone)

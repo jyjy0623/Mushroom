@@ -14,7 +14,6 @@ import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.RewardRepository
-import com.mushroom.core.domain.service.ParentGateway
 import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.reward.puzzle.PuzzleCutter
 import kotlinx.coroutines.flow.Flow
@@ -40,16 +39,11 @@ class GetActiveRewardsUseCase @Inject constructor(
 // CreateRewardUseCase
 // -----------------------------------------------------------------------
 class CreateRewardUseCase @Inject constructor(
-    private val repo: RewardRepository,
-    private val parentGateway: ParentGateway
+    private val repo: RewardRepository
 ) {
     suspend operator fun invoke(reward: Reward): Result<Long> {
         MushroomLogger.i(TAG, "CreateRewardUseCase: name=${reward.name} type=${reward.type}")
         return runCatching {
-            parentGateway.requestExchangeApproval(
-                RewardExchange(rewardId = 0, mushroomLevel = MushroomLevel.SMALL, mushroomCount = 0,
-                    puzzlePiecesUnlocked = 0, minutesGained = null, createdAt = java.time.LocalDateTime.now())
-            )
             repo.insertReward(reward)
         }.onFailure { MushroomLogger.e(TAG, "CreateRewardUseCase failed", it) }
     }
@@ -61,7 +55,6 @@ class CreateRewardUseCase @Inject constructor(
 class ExchangeMushroomsUseCase @Inject constructor(
     private val rewardRepo: RewardRepository,
     private val mushroomRepo: MushroomRepository,
-    private val parentGateway: ParentGateway,
     private val eventBus: AppEventBus
 ) {
     suspend operator fun invoke(
@@ -152,10 +145,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
             // 查找上次兑换时间（通过 amount=1 的 minutesGained 记录，此处简化为直接允许）
         }
 
-        // 家长确认
-        if (config.requireParentConfirm) {
-            parentGateway.requestTimeRewardConfirmation(reward.id)
-        }
+        // 家长确认（已移除 PIN 机制，直接放行）
 
         val newUsed = usedMinutes + config.unitMinutes
         rewardRepo.updateTimeRewardUsage(reward.id, periodStart, newUsed)
@@ -236,18 +226,13 @@ class GetTimeRewardBalanceUseCase @Inject constructor(
 // ClaimRewardUseCase
 // -----------------------------------------------------------------------
 class ClaimRewardUseCase @Inject constructor(
-    private val repo: RewardRepository,
-    private val parentGateway: ParentGateway
+    private val repo: RewardRepository
 ) {
     suspend operator fun invoke(rewardId: Long): Result<Unit> {
         MushroomLogger.i(TAG, "ClaimRewardUseCase: rewardId=$rewardId")
         return runCatching {
             val reward = repo.getRewardById(rewardId) ?: error("奖品不存在")
             check(reward.status == RewardStatus.COMPLETED) { "奖品拼图尚未完成，无法领取" }
-            parentGateway.requestExchangeApproval(
-                RewardExchange(rewardId = rewardId, mushroomLevel = MushroomLevel.SMALL, mushroomCount = 0,
-                    puzzlePiecesUnlocked = 0, minutesGained = null, createdAt = java.time.LocalDateTime.now())
-            )
             repo.updateReward(reward.copy(status = RewardStatus.CLAIMED))
         }.onFailure { MushroomLogger.e(TAG, "ClaimRewardUseCase failed", it) }
     }

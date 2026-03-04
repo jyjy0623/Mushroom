@@ -201,7 +201,6 @@ data class RewardCreateUiState(
     val periodType: PeriodType = PeriodType.WEEKLY,
     val maxMinutesPerPeriodText: String = "120",
     val cooldownDaysText: String = "0",
-    val requireParentConfirm: Boolean = true,
     // form state
     val isSaving: Boolean = false,
     val validationErrors: Map<String, String> = emptyMap()
@@ -232,7 +231,6 @@ class RewardCreateViewModel @Inject constructor(
     fun updatePeriodType(value: PeriodType) = _uiState.update { it.copy(periodType = value) }
     fun updateMaxMinutesPerPeriodText(value: String) = _uiState.update { it.copy(maxMinutesPerPeriodText = value) }
     fun updateCooldownDaysText(value: String) = _uiState.update { it.copy(cooldownDaysText = value) }
-    fun updateRequireParentConfirm(value: Boolean) = _uiState.update { it.copy(requireParentConfirm = value) }
 
     fun save() {
         val state = _uiState.value
@@ -269,7 +267,7 @@ class RewardCreateViewModel @Inject constructor(
                         periodType = state.periodType,
                         maxMinutesPerPeriod = maxMinutesPerPeriod,
                         cooldownDays = cooldownDays,
-                        requireParentConfirm = state.requireParentConfirm
+                        requireParentConfirm = false
                     )
                 } else null
             )

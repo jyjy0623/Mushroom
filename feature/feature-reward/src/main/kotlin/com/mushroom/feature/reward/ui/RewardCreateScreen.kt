@@ -30,7 +30,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -147,14 +146,12 @@ fun RewardCreateScreen(
                     periodType = uiState.periodType,
                     maxMinutesPerPeriodText = uiState.maxMinutesPerPeriodText,
                     cooldownDaysText = uiState.cooldownDaysText,
-                    requireParentConfirm = uiState.requireParentConfirm,
                     unitMinutesError = uiState.validationErrors["unitMinutes"],
                     maxMinutesError = uiState.validationErrors["maxMinutesPerPeriod"],
                     onUnitMinutesChange = viewModel::updateUnitMinutesText,
                     onPeriodTypeChange = viewModel::updatePeriodType,
                     onMaxMinutesChange = viewModel::updateMaxMinutesPerPeriodText,
-                    onCooldownDaysChange = viewModel::updateCooldownDaysText,
-                    onRequireParentConfirmChange = viewModel::updateRequireParentConfirm
+                    onCooldownDaysChange = viewModel::updateCooldownDaysText
                 )
             }
 
@@ -276,14 +273,12 @@ private fun TimeConfigSection(
     periodType: PeriodType,
     maxMinutesPerPeriodText: String,
     cooldownDaysText: String,
-    requireParentConfirm: Boolean,
     unitMinutesError: String?,
     maxMinutesError: String?,
     onUnitMinutesChange: (String) -> Unit,
     onPeriodTypeChange: (PeriodType) -> Unit,
     onMaxMinutesChange: (String) -> Unit,
-    onCooldownDaysChange: (String) -> Unit,
-    onRequireParentConfirmChange: (Boolean) -> Unit
+    onCooldownDaysChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -346,19 +341,6 @@ private fun TimeConfigSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
             )
-
-            // 需要家长确认
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("使用时需家长确认", style = MaterialTheme.typography.bodyMedium)
-                Switch(
-                    checked = requireParentConfirm,
-                    onCheckedChange = onRequireParentConfirmChange
-                )
-            }
         }
     }
 }

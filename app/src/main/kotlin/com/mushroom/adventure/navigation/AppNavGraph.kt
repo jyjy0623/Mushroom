@@ -11,7 +11,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.mushroom.adventure.parent.ui.PinSetupScreen
 import com.mushroom.adventure.ui.settings.SettingsScreen
 import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
@@ -165,17 +164,9 @@ fun AppNavGraph(
         // ---- 设置（Sprint 5 实装）----
         composable(AppDestination.Settings.route) {
             SettingsScreen(
-                onNavigateToPinSetup = {
-                    navController.navigate(AppDestination.PinSetup.route)
-                },
                 onCheckUpdate = {
                     updateViewModel.checkForUpdate(forceShow = true)
                 }
-            )
-        }
-        composable(AppDestination.PinSetup.route) {
-            PinSetupScreen(
-                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
