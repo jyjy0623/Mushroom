@@ -201,7 +201,7 @@ private fun CoverImagePicker(
             AsyncImage(
                 model = imageUri,
                 contentDescription = "奖品封面",
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
             // 半透明蒙层 + 提示

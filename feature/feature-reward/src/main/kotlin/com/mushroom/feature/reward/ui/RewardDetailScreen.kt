@@ -143,7 +143,7 @@ fun RewardDetailScreen(
                     AsyncImage(
                         model = reward.imageUri,
                         contentDescription = "奖品封面",
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {

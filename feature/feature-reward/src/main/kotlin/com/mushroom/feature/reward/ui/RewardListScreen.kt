@@ -116,7 +116,7 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                     AsyncImage(
                         model = reward.imageUri,
                         contentDescription = "奖品封面",
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
