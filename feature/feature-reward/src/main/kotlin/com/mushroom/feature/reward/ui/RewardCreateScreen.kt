@@ -127,10 +127,10 @@ fun RewardCreateScreen(
             // 兑换条件（蘑菇类型 + 数量）
             ExchangeRequirementSection(
                 level = uiState.requiredLevel,
-                amount = uiState.requiredAmount,
+                amountText = uiState.requiredAmountText,
                 amountError = uiState.validationErrors["requiredAmount"],
                 onLevelChange = viewModel::updateRequiredLevel,
-                onAmountChange = viewModel::updateRequiredAmount
+                onAmountChange = viewModel::updateRequiredAmountText
             )
 
             HorizontalDivider()
@@ -138,22 +138,22 @@ fun RewardCreateScreen(
             // 根据类型显示不同配置
             when (uiState.type) {
                 RewardType.PHYSICAL -> PhysicalConfigSection(
-                    puzzlePieces = uiState.puzzlePieces,
+                    puzzlePiecesText = uiState.puzzlePiecesText,
                     puzzlePiecesError = uiState.validationErrors["puzzlePieces"],
-                    onPuzzlePiecesChange = viewModel::updatePuzzlePieces
+                    onPuzzlePiecesChange = viewModel::updatePuzzlePiecesText
                 )
                 RewardType.TIME_BASED -> TimeConfigSection(
-                    unitMinutes = uiState.unitMinutes,
+                    unitMinutesText = uiState.unitMinutesText,
                     periodType = uiState.periodType,
-                    maxMinutesPerPeriod = uiState.maxMinutesPerPeriod,
-                    cooldownDays = uiState.cooldownDays,
+                    maxMinutesPerPeriodText = uiState.maxMinutesPerPeriodText,
+                    cooldownDaysText = uiState.cooldownDaysText,
                     requireParentConfirm = uiState.requireParentConfirm,
                     unitMinutesError = uiState.validationErrors["unitMinutes"],
                     maxMinutesError = uiState.validationErrors["maxMinutesPerPeriod"],
-                    onUnitMinutesChange = viewModel::updateUnitMinutes,
+                    onUnitMinutesChange = viewModel::updateUnitMinutesText,
                     onPeriodTypeChange = viewModel::updatePeriodType,
-                    onMaxMinutesChange = viewModel::updateMaxMinutesPerPeriod,
-                    onCooldownDaysChange = viewModel::updateCooldownDays,
+                    onMaxMinutesChange = viewModel::updateMaxMinutesPerPeriodText,
+                    onCooldownDaysChange = viewModel::updateCooldownDaysText,
                     onRequireParentConfirmChange = viewModel::updateRequireParentConfirm
                 )
             }
@@ -186,10 +186,10 @@ private fun RewardTypeSection(selected: RewardType, onSelect: (RewardType) -> Un
 @Composable
 private fun ExchangeRequirementSection(
     level: MushroomLevel,
-    amount: Int,
+    amountText: String,
     amountError: String?,
     onLevelChange: (MushroomLevel) -> Unit,
-    onAmountChange: (Int) -> Unit
+    onAmountChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -217,8 +217,8 @@ private fun ExchangeRequirementSection(
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    value = amount.toString(),
-                    onValueChange = { it.toIntOrNull()?.let(onAmountChange) },
+                    value = amountText,
+                    onValueChange = onAmountChange,
                     label = { Text("×数量") },
                     modifier = Modifier.weight(0.4f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -233,9 +233,9 @@ private fun ExchangeRequirementSection(
 
 @Composable
 private fun PhysicalConfigSection(
-    puzzlePieces: Int,
+    puzzlePiecesText: String,
     puzzlePiecesError: String?,
-    onPuzzlePiecesChange: (Int) -> Unit
+    onPuzzlePiecesChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -253,8 +253,8 @@ private fun PhysicalConfigSection(
                 fontWeight = FontWeight.Bold
             )
             OutlinedTextField(
-                value = puzzlePieces.toString(),
-                onValueChange = { it.toIntOrNull()?.let(onPuzzlePiecesChange) },
+                value = puzzlePiecesText,
+                onValueChange = onPuzzlePiecesChange,
                 label = { Text("拼图总块数 *") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -272,17 +272,17 @@ private fun PhysicalConfigSection(
 
 @Composable
 private fun TimeConfigSection(
-    unitMinutes: Int,
+    unitMinutesText: String,
     periodType: PeriodType,
-    maxMinutesPerPeriod: Int,
-    cooldownDays: Int,
+    maxMinutesPerPeriodText: String,
+    cooldownDaysText: String,
     requireParentConfirm: Boolean,
     unitMinutesError: String?,
     maxMinutesError: String?,
-    onUnitMinutesChange: (Int) -> Unit,
+    onUnitMinutesChange: (String) -> Unit,
     onPeriodTypeChange: (PeriodType) -> Unit,
-    onMaxMinutesChange: (Int) -> Unit,
-    onCooldownDaysChange: (Int) -> Unit,
+    onMaxMinutesChange: (String) -> Unit,
+    onCooldownDaysChange: (String) -> Unit,
     onRequireParentConfirmChange: (Boolean) -> Unit
 ) {
     Card(
@@ -303,8 +303,8 @@ private fun TimeConfigSection(
 
             // 每次获得时长
             OutlinedTextField(
-                value = unitMinutes.toString(),
-                onValueChange = { it.toIntOrNull()?.let(onUnitMinutesChange) },
+                value = unitMinutesText,
+                onValueChange = onUnitMinutesChange,
                 label = { Text("每次兑换获得（分钟）*") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -327,8 +327,8 @@ private fun TimeConfigSection(
 
             // 周期上限
             OutlinedTextField(
-                value = maxMinutesPerPeriod.toString(),
-                onValueChange = { it.toIntOrNull()?.let(onMaxMinutesChange) },
+                value = maxMinutesPerPeriodText,
+                onValueChange = onMaxMinutesChange,
                 label = { Text("周期最多使用（分钟）*") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -339,8 +339,8 @@ private fun TimeConfigSection(
 
             // 冷却天数
             OutlinedTextField(
-                value = cooldownDays.toString(),
-                onValueChange = { it.toIntOrNull()?.let(onCooldownDaysChange) },
+                value = cooldownDaysText,
+                onValueChange = onCooldownDaysChange,
                 label = { Text("冷却天数（0 表示不限）") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

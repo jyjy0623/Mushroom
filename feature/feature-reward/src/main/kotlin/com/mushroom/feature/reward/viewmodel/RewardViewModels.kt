@@ -70,6 +70,15 @@ class RewardListViewModel @Inject constructor(
                         // suspend → 包成只 emit 一次的 Flow
                         kotlinx.coroutines.flow.flow {
                             val balance = getTimeRewardBalanceUseCase(reward.id)
+                                ?: reward.timeLimitConfig?.let { cfg ->
+                                    // 从未兑换时 DB 无记录，构造默认 balance 用于卡片显示
+                                    TimeRewardBalance(
+                                        rewardId = reward.id,
+                                        periodStart = java.time.LocalDate.now(),
+                                        maxMinutes = cfg.maxMinutesPerPeriod,
+                                        usedMinutes = 0
+                                    )
+                                }
                             emit(RewardUiModel(reward = reward, timeBalance = balance))
                         }
                 }
@@ -135,6 +144,14 @@ class RewardDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val balance = getTimeRewardBalanceUseCase(rewardId)
+                ?: _uiState.value.reward?.timeLimitConfig?.let { cfg ->
+                    TimeRewardBalance(
+                        rewardId = rewardId,
+                        periodStart = java.time.LocalDate.now(),
+                        maxMinutes = cfg.maxMinutesPerPeriod,
+                        usedMinutes = 0
+                    )
+                }
             _uiState.update { it.copy(timeBalance = balance) }
         }
     }
@@ -176,14 +193,14 @@ data class RewardCreateUiState(
     val name: String = "",
     val type: RewardType = RewardType.PHYSICAL,
     // PHYSICAL fields
-    val puzzlePieces: Int = 9,
+    val puzzlePiecesText: String = "9",
     val requiredLevel: MushroomLevel = MushroomLevel.SMALL,
-    val requiredAmount: Int = 1,
+    val requiredAmountText: String = "1",
     // TIME_BASED fields
-    val unitMinutes: Int = 30,
+    val unitMinutesText: String = "30",
     val periodType: PeriodType = PeriodType.WEEKLY,
-    val maxMinutesPerPeriod: Int = 120,
-    val cooldownDays: Int = 0,
+    val maxMinutesPerPeriodText: String = "120",
+    val cooldownDaysText: String = "0",
     val requireParentConfirm: Boolean = true,
     // form state
     val isSaving: Boolean = false,
@@ -208,24 +225,31 @@ class RewardCreateViewModel @Inject constructor(
 
     fun updateName(value: String) = _uiState.update { it.copy(name = value) }
     fun updateType(value: RewardType) = _uiState.update { it.copy(type = value) }
-    fun updatePuzzlePieces(value: Int) = _uiState.update { it.copy(puzzlePieces = value) }
+    fun updatePuzzlePiecesText(value: String) = _uiState.update { it.copy(puzzlePiecesText = value) }
     fun updateRequiredLevel(value: MushroomLevel) = _uiState.update { it.copy(requiredLevel = value) }
-    fun updateRequiredAmount(value: Int) = _uiState.update { it.copy(requiredAmount = value) }
-    fun updateUnitMinutes(value: Int) = _uiState.update { it.copy(unitMinutes = value) }
+    fun updateRequiredAmountText(value: String) = _uiState.update { it.copy(requiredAmountText = value) }
+    fun updateUnitMinutesText(value: String) = _uiState.update { it.copy(unitMinutesText = value) }
     fun updatePeriodType(value: PeriodType) = _uiState.update { it.copy(periodType = value) }
-    fun updateMaxMinutesPerPeriod(value: Int) = _uiState.update { it.copy(maxMinutesPerPeriod = value) }
-    fun updateCooldownDays(value: Int) = _uiState.update { it.copy(cooldownDays = value) }
+    fun updateMaxMinutesPerPeriodText(value: String) = _uiState.update { it.copy(maxMinutesPerPeriodText = value) }
+    fun updateCooldownDaysText(value: String) = _uiState.update { it.copy(cooldownDaysText = value) }
     fun updateRequireParentConfirm(value: Boolean) = _uiState.update { it.copy(requireParentConfirm = value) }
 
     fun save() {
         val state = _uiState.value
         val errors = mutableMapOf<String, String>()
+
+        val puzzlePieces = state.puzzlePiecesText.toIntOrNull() ?: 0
+        val requiredAmount = state.requiredAmountText.toIntOrNull() ?: 0
+        val unitMinutes = state.unitMinutesText.toIntOrNull() ?: 0
+        val maxMinutesPerPeriod = state.maxMinutesPerPeriodText.toIntOrNull() ?: 0
+        val cooldownDays = state.cooldownDaysText.toIntOrNull() ?: 0
+
         if (state.name.isBlank()) errors["name"] = "请输入奖品名称"
-        if (state.type == RewardType.PHYSICAL && state.puzzlePieces < 1) errors["puzzlePieces"] = "拼图块数至少为 1"
-        if (state.requiredAmount < 1) errors["requiredAmount"] = "兑换数量至少为 1"
+        if (state.type == RewardType.PHYSICAL && puzzlePieces < 1) errors["puzzlePieces"] = "拼图块数至少为 1"
+        if (requiredAmount < 1) errors["requiredAmount"] = "兑换数量至少为 1"
         if (state.type == RewardType.TIME_BASED) {
-            if (state.unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
-            if (state.maxMinutesPerPeriod < state.unitMinutes) errors["maxMinutesPerPeriod"] = "周期上限不能小于单次时长"
+            if (unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
+            if (maxMinutesPerPeriod < unitMinutes) errors["maxMinutesPerPeriod"] = "周期上限不能小于单次时长"
         }
         if (errors.isNotEmpty()) {
             _uiState.update { it.copy(validationErrors = errors) }
@@ -237,14 +261,14 @@ class RewardCreateViewModel @Inject constructor(
             val reward = Reward(
                 name = state.name.trim(),
                 type = state.type,
-                requiredMushrooms = mapOf(state.requiredLevel to state.requiredAmount),
-                puzzlePieces = if (state.type == RewardType.PHYSICAL) state.puzzlePieces else 0,
+                requiredMushrooms = mapOf(state.requiredLevel to requiredAmount),
+                puzzlePieces = if (state.type == RewardType.PHYSICAL) puzzlePieces else 0,
                 timeLimitConfig = if (state.type == RewardType.TIME_BASED) {
                     TimeLimitConfig(
-                        unitMinutes = state.unitMinutes,
+                        unitMinutes = unitMinutes,
                         periodType = state.periodType,
-                        maxMinutesPerPeriod = state.maxMinutesPerPeriod,
-                        cooldownDays = state.cooldownDays,
+                        maxMinutesPerPeriod = maxMinutesPerPeriod,
+                        cooldownDays = cooldownDays,
                         requireParentConfirm = state.requireParentConfirm
                     )
                 } else null
