@@ -1,3 +1,5 @@
+package com.mushroom.adventure
+
 import android.app.Application
 import com.mushroom.core.data.seed.DeductionConfigSeed
 import com.mushroom.core.data.seed.TaskTemplateSeed
