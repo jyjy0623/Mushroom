@@ -99,13 +99,12 @@ fun StatisticsScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("加载中…")
                 }
-                return@Scaffold
-            }
-
-            when (tabIndex) {
-                0 -> CheckInTab(stats = uiState.checkInStats)
-                1 -> MushroomTab(stats = uiState.mushroomStats)
-                2 -> ScoreTab(scoreStats = uiState.scoreStats)
+            } else {
+                when (tabIndex) {
+                    0 -> CheckInTab(stats = uiState.checkInStats)
+                    1 -> MushroomTab(stats = uiState.mushroomStats)
+                    2 -> ScoreTab(scoreStats = uiState.scoreStats)
+                }
             }
         }
     }
@@ -120,8 +119,7 @@ private fun CheckInTab(stats: CheckInStatistics?) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无打卡数据")
         }
-        return
-    }
+    } else {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -191,6 +189,7 @@ private fun CheckInTab(stats: CheckInStatistics?) {
             }
         }
     }
+    }
 }
 
 @Composable
@@ -210,8 +209,7 @@ private fun MushroomTab(stats: MushroomStatistics?) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无蘑菇数据")
         }
-        return
-    }
+    } else {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -254,6 +252,7 @@ private fun MushroomTab(stats: MushroomStatistics?) {
             }
         }
     }
+    }
 }
 
 // -----------------------------------------------------------------------
@@ -283,9 +282,7 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("${subjectLabel(selectedSubject)}暂无成绩记录")
             }
-            return
-        }
-
+        } else {
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -331,6 +328,7 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>) {
                     }
                 }
             }
+        }
         }
     }
 }
