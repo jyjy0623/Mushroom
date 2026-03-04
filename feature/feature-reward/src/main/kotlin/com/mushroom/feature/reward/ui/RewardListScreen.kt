@@ -66,9 +66,7 @@ fun RewardListScreen(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("加载中…", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            return@Scaffold
-        }
-        if (uiState.rewards.isEmpty()) {
+        } else if (uiState.rewards.isEmpty()) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -77,8 +75,7 @@ fun RewardListScreen(
             ) {
                 Text("还没有奖品，请让家长创建", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            return@Scaffold
-        }
+        } else {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(12.dp),
@@ -91,6 +88,7 @@ fun RewardListScreen(
             items(uiState.rewards, key = { it.reward.id }) { model ->
                 RewardCard(model = model, onClick = { onNavigateToDetail(model.reward.id) })
             }
+        }
         }
     }
 }
@@ -122,7 +120,7 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 40.sp else "⏱" to 48.sp
+                    val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 44.sp else "⏰" to 44.sp
                     Text(icon, fontSize = iconSize)
                 }
             }

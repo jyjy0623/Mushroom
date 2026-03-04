@@ -147,7 +147,7 @@ fun RewardDetailScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = 48.sp)
+                    Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏰", fontSize = 48.sp)
                 }
             }
 
@@ -276,7 +276,14 @@ private fun PuzzleGrid(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .background(color = bgColor, shape = RoundedCornerShape(4.dp)),
+                    .background(color = bgColor, shape = RoundedCornerShape(4.dp))
+                    .then(
+                        if (!isUnlocked) Modifier.border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isUnlocked) {

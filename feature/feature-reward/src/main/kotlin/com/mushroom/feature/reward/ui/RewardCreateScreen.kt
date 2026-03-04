@@ -234,7 +234,7 @@ private fun CoverImagePicker(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    if (rewardType == RewardType.PHYSICAL) "🎁" else "⏱",
+                    if (rewardType == RewardType.PHYSICAL) "🎁" else "⏰",
                     fontSize = 32.sp
                 )
             }
