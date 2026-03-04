@@ -6,9 +6,10 @@ on:
     tags:
       - 'v*'
 
-# 显式声明权限：允许创建 Release 和上传 Assets
+# 显式声明权限：允许创建 Release、上传 Assets、写 Issues
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build-and-release:
@@ -87,3 +88,60 @@ jobs:
           files: app/build/outputs/apk/release/mushroom-adventure-${{ steps.version.outputs.NAME }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 10. 在本次 Release 关联的 Bug Issue 上追加「已发版，等待回归」评论
+      #     识别规则：Release Notes 中出现 refs #N 且 Issue 带 bug label
+      - name: Notify open bug issues of new release
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = '${{ steps.version.outputs.TAG }}';
+            const name = '${{ steps.version.outputs.NAME }}';
+
+            // 从 Release Notes 提取 refs #N
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tag,
+            });
+
+            const body = release.body || '';
+            const issueNums = [...body.matchAll(/refs\s+#(\d+)/gi)].map(m => parseInt(m[1]));
+            const unique = [...new Set(issueNums)];
+
+            for (const num of unique) {
+              // 只处理仍处于 open 状态的 Issue
+              let issue;
+              try {
+                ({ data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: num,
+                }));
+              } catch (e) { continue; }
+
+              if (issue.state !== 'open') continue;
+
+              const labels = issue.labels.map(l => l.name);
+              if (!labels.includes('bug')) continue;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: num,
+                body: [
+                  `🚀 **${tag} 已发布，等待回归验收**`,
+                  '',
+                  `修复已包含在 [蘑菇大冒险 ${tag}](${release.html_url}) 中。`,
+                  '',
+                  '**回归步骤**：',
+                  '1. 从 Release 页面下载并安装 APK',
+                  '2. 执行 `BugIssueTestCase.md` 中对应的验收用例',
+                  '3. 验证通过后，**在此 Issue 页面点击「Close issue」关闭**',
+                  '4. 通知 Claude Code：`#' + num + ' 回归通过`',
+                ].join('\n')
+              });
+            }

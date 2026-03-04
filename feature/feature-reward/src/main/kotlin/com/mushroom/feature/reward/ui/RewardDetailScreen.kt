@@ -1,10 +1,8 @@
 package com.mushroom.feature.reward.ui
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -250,33 +248,21 @@ private fun PuzzleGrid(totalPieces: Int, animatedUnlocked: Int) {
     ) {
         for (i in 0 until totalPieces) {
             val isUnlocked = i < animatedUnlocked
-            AnimatedVisibility(
-                visible = isUnlocked,
-                enter = fadeIn(animationSpec = tween(300)) +
-                        scaleIn(initialScale = 0.4f, animationSpec = tween(400, easing = FastOutSlowInEasing))
+            val bgColor by animateColorAsState(
+                targetValue = if (isUnlocked) MaterialTheme.colorScheme.primary
+                              else MaterialTheme.colorScheme.surfaceVariant,
+                animationSpec = tween(400, easing = FastOutSlowInEasing),
+                label = "piece_color_$i"
+            )
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(color = bgColor, shape = RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(4.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
+                if (isUnlocked) {
                     Text("🍄", fontSize = 14.sp)
                 }
-            }
-            if (!isUnlocked) {
-                // 占位格：未解锁
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                )
             }
         }
     }

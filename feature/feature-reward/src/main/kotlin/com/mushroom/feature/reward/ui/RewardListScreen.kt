@@ -112,7 +112,8 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = 32.sp)
+                val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 32.sp else "⏱" to 40.sp
+                Text(icon, fontSize = iconSize)
             }
 
             Spacer(Modifier.height(8.dp))

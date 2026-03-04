@@ -17,6 +17,7 @@ import com.mushroom.feature.reward.usecase.GetActiveRewardsUseCase
 import com.mushroom.feature.reward.usecase.GetPuzzleProgressUseCase
 import com.mushroom.feature.reward.usecase.GetTimeRewardBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -162,12 +163,26 @@ class RewardDetailViewModel @Inject constructor(
             val result = exchangeMushroomsUseCase(rewardId, level, amount)
             result.onSuccess { progress ->
                 _uiState.update { it.copy(isExchanging = false, puzzleProgress = progress) }
+                refreshTimeBalance(rewardId)
                 _viewEvent.emit(RewardDetailViewEvent.ExchangeSuccess)
             }.onFailure { e ->
                 _uiState.update { it.copy(isExchanging = false, error = e.message) }
                 _viewEvent.emit(RewardDetailViewEvent.ShowSnackbar(e.message ?: "兑换失败"))
             }
         }
+    }
+
+    private suspend fun refreshTimeBalance(rewardId: Long) {
+        val balance = getTimeRewardBalanceUseCase(rewardId)
+            ?: _uiState.value.reward?.timeLimitConfig?.let { cfg ->
+                TimeRewardBalance(
+                    rewardId = rewardId,
+                    periodStart = java.time.LocalDate.now(),
+                    maxMinutes = cfg.maxMinutesPerPeriod,
+                    usedMinutes = 0
+                )
+            }
+        _uiState.update { it.copy(timeBalance = balance) }
     }
 
     fun claimReward(rewardId: Long) {
