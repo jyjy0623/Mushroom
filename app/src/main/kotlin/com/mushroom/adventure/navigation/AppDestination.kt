@@ -8,9 +8,10 @@ sealed class AppDestination(val route: String) {
     object Statistics : AppDestination("statistics")
 
     // 任务相关
-    object TaskEdit : AppDestination("task_edit/{taskId}") {
+    object TaskEdit : AppDestination("task_edit/{taskId}/{date}") {
         const val ARG_TASK_ID = "taskId"
-        fun route(taskId: Long = -1L) = "task_edit/$taskId"
+        const val ARG_DATE = "date"
+        fun route(taskId: Long = -1L, date: String = "") = "task_edit/$taskId/$date"
     }
     object TaskTemplate : AppDestination("task_template")
 

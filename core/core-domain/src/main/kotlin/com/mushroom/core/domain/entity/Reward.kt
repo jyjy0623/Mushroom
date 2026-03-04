@@ -8,11 +8,17 @@ data class Reward(
     val name: String,
     val imageUri: String = "",
     val type: RewardType,
-    val requiredMushrooms: Map<MushroomLevel, Int>,
+    /** 兑换该奖品所需的总积分（实物型）；时长型保持为 0 */
+    val requiredPoints: Int = 0,
     val puzzlePieces: Int = 1,
     val timeLimitConfig: TimeLimitConfig?,
     val status: RewardStatus = RewardStatus.ACTIVE
-)
+) {
+    /** 每块拼图所需积分（向上取整，至少1分） */
+    val pointsPerPiece: Int get() =
+        if (puzzlePieces <= 0) requiredPoints
+        else maxOf(1, (requiredPoints + puzzlePieces - 1) / puzzlePieces)
+}
 
 enum class RewardType { PHYSICAL, TIME_BASED }
 

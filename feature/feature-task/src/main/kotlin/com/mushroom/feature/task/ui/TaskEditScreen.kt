@@ -15,7 +15,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
@@ -63,6 +66,9 @@ import com.mushroom.feature.task.viewmodel.TaskEditViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +103,12 @@ fun TaskEditScreen(
     val repeatRule = uiState.repeatRule
     val description = uiState.description
 
+    // 新建任务时允许修改日期；编辑/只读时固定
+    var selectedDate by remember { mutableStateOf(date) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val today = LocalDate.now()
+    val dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日 EEEE")
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -117,7 +129,7 @@ fun TaskEditScreen(
                 actions = {
                     if (!isReadOnly) {
                         TextButton(
-                            onClick = { viewModel.save(date) },
+                            onClick = { viewModel.save(selectedDate) },
                             enabled = !isSaving
                         ) {
                             if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
@@ -129,6 +141,35 @@ fun TaskEditScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+
+        // 日期选择器对话框（仅新建任务时可用）
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedDate
+                    .atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                    .toInstant().toEpochMilli()
+            )
+            DatePickerDialog(
+                onDismissRequest = { showDatePicker = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val picked = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.of("Asia/Shanghai"))
+                                .toLocalDate()
+                            if (!picked.isBefore(today)) selectedDate = picked
+                        }
+                        showDatePicker = false
+                    }) { Text("确定") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                }
+            ) {
+                DatePicker(state = datePickerState)
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -138,6 +179,24 @@ fun TaskEditScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(Modifier.height(8.dp))
+
+            // 任务日期（仅新建时可修改）
+            if (taskId == null) {
+                OutlinedTextField(
+                    value = selectedDate.format(dateFmt),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("任务日期") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    trailingIcon = {
+                        TextButton(onClick = { showDatePicker = true }) { Text("修改") }
+                    },
+                    singleLine = true,
+                    enabled = false
+                )
+            }
 
             OutlinedTextField(
                 value = title,
@@ -176,7 +235,7 @@ fun TaskEditScreen(
 
             DeadlineSection(
                 deadline = deadline,
-                date = date,
+                date = selectedDate,
                 onDeadlineChange = viewModel::updateDeadline,
                 enabled = !isReadOnly
             )

@@ -209,9 +209,8 @@ data class RewardCreateUiState(
     val type: RewardType = RewardType.PHYSICAL,
     val imageUri: String = "",
     // PHYSICAL fields
-    val puzzlePiecesText: String = "9",
-    val requiredLevel: MushroomLevel = MushroomLevel.SMALL,
-    val requiredAmountText: String = "1",
+    val puzzlePiecesText: String = "20",
+    val requiredPointsText: String = "100",
     // TIME_BASED fields
     val unitMinutesText: String = "30",
     val periodType: PeriodType = PeriodType.WEEKLY,
@@ -242,8 +241,7 @@ class RewardCreateViewModel @Inject constructor(
     fun updateType(value: RewardType) = _uiState.update { it.copy(type = value) }
     fun updateImageUri(value: String) = _uiState.update { it.copy(imageUri = value) }
     fun updatePuzzlePiecesText(value: String) = _uiState.update { it.copy(puzzlePiecesText = value) }
-    fun updateRequiredLevel(value: MushroomLevel) = _uiState.update { it.copy(requiredLevel = value) }
-    fun updateRequiredAmountText(value: String) = _uiState.update { it.copy(requiredAmountText = value) }
+    fun updateRequiredPointsText(value: String) = _uiState.update { it.copy(requiredPointsText = value) }
     fun updateUnitMinutesText(value: String) = _uiState.update { it.copy(unitMinutesText = value) }
     fun updatePeriodType(value: PeriodType) = _uiState.update { it.copy(periodType = value) }
     fun updateMaxMinutesPerPeriodText(value: String) = _uiState.update { it.copy(maxMinutesPerPeriodText = value) }
@@ -254,14 +252,16 @@ class RewardCreateViewModel @Inject constructor(
         val errors = mutableMapOf<String, String>()
 
         val puzzlePieces = state.puzzlePiecesText.toIntOrNull() ?: 0
-        val requiredAmount = state.requiredAmountText.toIntOrNull() ?: 0
+        val requiredPoints = state.requiredPointsText.toIntOrNull() ?: 0
         val unitMinutes = state.unitMinutesText.toIntOrNull() ?: 0
         val maxMinutesPerPeriod = state.maxMinutesPerPeriodText.toIntOrNull() ?: 0
         val cooldownDays = state.cooldownDaysText.toIntOrNull() ?: 0
 
         if (state.name.isBlank()) errors["name"] = "请输入奖品名称"
-        if (state.type == RewardType.PHYSICAL && puzzlePieces < 1) errors["puzzlePieces"] = "拼图块数至少为 1"
-        if (requiredAmount < 1) errors["requiredAmount"] = "兑换数量至少为 1"
+        if (state.type == RewardType.PHYSICAL) {
+            if (puzzlePieces < 1) errors["puzzlePieces"] = "拼图块数至少为 1"
+            if (requiredPoints < 1) errors["requiredPoints"] = "所需积分至少为 1"
+        }
         if (state.type == RewardType.TIME_BASED) {
             if (unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
             if (maxMinutesPerPeriod < unitMinutes) errors["maxMinutesPerPeriod"] = "周期上限不能小于单次时长"
@@ -277,7 +277,7 @@ class RewardCreateViewModel @Inject constructor(
                 name = state.name.trim(),
                 type = state.type,
                 imageUri = state.imageUri,
-                requiredMushrooms = mapOf(state.requiredLevel to requiredAmount),
+                requiredPoints = if (state.type == RewardType.PHYSICAL) requiredPoints else 0,
                 puzzlePieces = if (state.type == RewardType.PHYSICAL) puzzlePieces else 0,
                 timeLimitConfig = if (state.type == RewardType.TIME_BASED) {
                     TimeLimitConfig(

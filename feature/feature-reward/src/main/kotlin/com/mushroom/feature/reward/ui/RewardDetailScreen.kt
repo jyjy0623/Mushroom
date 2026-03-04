@@ -247,7 +247,8 @@ private fun PhysicalRewardContent(
         // 兑换区域
         ExchangeSection(
             isExchanging = uiState.isExchanging,
-            requiredMushrooms = reward.requiredMushrooms,
+            pointsPerPiece = reward.pointsPerPiece,
+            remainingPieces = (reward.puzzlePieces) - (progress?.unlockedPieces ?: 0),
             onExchange = onExchange
         )
     }
@@ -334,18 +335,25 @@ private fun TimeRewardContent(
             "每次可获得 ${config.unitMinutes} 分钟",
             style = MaterialTheme.typography.bodyMedium
         )
-        ExchangeSection(isExchanging = uiState.isExchanging, requiredMushrooms = uiState.reward?.requiredMushrooms ?: emptyMap(), onExchange = onExchange)
+        ExchangeSection(isExchanging = uiState.isExchanging, pointsPerPiece = 0, remainingPieces = Int.MAX_VALUE, onExchange = onExchange)
     }
 }
 
 @Composable
 private fun ExchangeSection(
     isExchanging: Boolean,
-    requiredMushrooms: Map<MushroomLevel, Int>,
+    pointsPerPiece: Int,
+    remainingPieces: Int,
     onExchange: (MushroomLevel, Int) -> Unit
 ) {
     var selectedLevel by remember { mutableStateOf(MushroomLevel.SMALL) }
     var amount by remember { mutableStateOf(1) }
+
+    // 实时计算：贡献积分 → 可解锁块数
+    val contributedPoints = amount * selectedLevel.exchangePoints
+    val piecesToUnlock = if (pointsPerPiece > 0)
+        minOf(contributedPoints / pointsPerPiece, remainingPieces)
+    else 0
 
     Card(
         Modifier.fillMaxWidth(),
@@ -355,13 +363,10 @@ private fun ExchangeSection(
             Text("消耗蘑菇", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
             // 兑换条件说明
-            if (requiredMushrooms.isNotEmpty()) {
+            if (pointsPerPiece > 0) {
                 Spacer(Modifier.height(4.dp))
-                val conditionText = requiredMushrooms.entries.joinToString(" + ") { (level, count) ->
-                    "${mushroomEmoji(level)} ${level.displayName} × $count"
-                }
                 Text(
-                    "兑换条件：$conditionText",
+                    "每块拼图需 $pointsPerPiece 积分",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -395,9 +400,9 @@ private fun ExchangeSection(
                 }
             }
             Spacer(Modifier.height(4.dp))
-            // 已选等级文字提示（fixes #28）
+            // 已选等级文字提示
             Text(
-                "已选：${mushroomEmoji(selectedLevel)} ${selectedLevel.displayName}",
+                "已选：${mushroomEmoji(selectedLevel)} ${selectedLevel.displayName}（${selectedLevel.exchangePoints}分/个）",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -409,6 +414,22 @@ private fun ExchangeSection(
                 Text("  $amount  ", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 OutlinedButton(onClick = { amount++ }) { Text("+") }
             }
+
+            // 实时预览
+            if (pointsPerPiece > 0) {
+                Spacer(Modifier.height(8.dp))
+                val previewColor = if (piecesToUnlock > 0)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.error
+                Text(
+                    "贡献积分：$contributedPoints 分 → 可解锁：$piecesToUnlock 块",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = previewColor,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
             Spacer(Modifier.height(12.dp))
 
             Button(

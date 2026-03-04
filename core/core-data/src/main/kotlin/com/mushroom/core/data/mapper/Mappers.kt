@@ -173,7 +173,7 @@ object RewardMapper {
         name = e.name,
         imageUri = e.imageUri,
         type = RewardType.valueOf(e.type),
-        requiredMushrooms = decodeRequiredMushrooms(e.requiredMushrooms),
+        requiredPoints = decodeRequiredPoints(e.requiredMushrooms),
         puzzlePieces = e.puzzlePieces,
         timeLimitConfig = e.timeLimitConfig?.let { decodeTimeLimitConfig(it) },
         status = RewardStatus.valueOf(e.status)
@@ -184,18 +184,25 @@ object RewardMapper {
         name = d.name,
         imageUri = d.imageUri,
         type = d.type.name,
-        requiredMushrooms = encodeRequiredMushrooms(d.requiredMushrooms),
+        requiredMushrooms = d.requiredPoints.toString(),
         puzzlePieces = d.puzzlePieces,
         timeLimitConfig = d.timeLimitConfig?.let { encodeTimeLimitConfig(it) },
         status = d.status.name
     )
 
-    private fun encodeRequiredMushrooms(map: Map<MushroomLevel, Int>): String =
-        Json.encodeToString(map.map { (k, v) -> k.name to v }.toMap())
-
-    private fun decodeRequiredMushrooms(s: String): Map<MushroomLevel, Int> =
-        Json.decodeFromString<Map<String, Int>>(s)
-            .mapKeys { MushroomLevel.valueOf(it.key) }
+    /** 兼容旧格式（JSON Map）和新格式（纯数字字符串） */
+    private fun decodeRequiredPoints(s: String): Int {
+        val trimmed = s.trim()
+        // 新格式：纯数字
+        trimmed.toIntOrNull()?.let { return it }
+        // 旧格式：JSON Map {"SMALL":1,"GOLD":2,...} → 折算为积分总和
+        return runCatching {
+            Json.decodeFromString<Map<String, Int>>(trimmed)
+                .entries.sumOf { (k, v) ->
+                    runCatching { MushroomLevel.valueOf(k).exchangePoints * v }.getOrDefault(0)
+                }
+        }.getOrDefault(0)
+    }
 
     private fun encodeTimeLimitConfig(c: TimeLimitConfig): String =
         buildJsonObject {

@@ -24,9 +24,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -43,9 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -56,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.PeriodType
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewEvent
@@ -146,23 +140,15 @@ fun RewardCreateScreen(
 
             HorizontalDivider()
 
-            // 兑换条件（蘑菇类型 + 数量）
-            ExchangeRequirementSection(
-                level = uiState.requiredLevel,
-                amountText = uiState.requiredAmountText,
-                amountError = uiState.validationErrors["requiredAmount"],
-                onLevelChange = viewModel::updateRequiredLevel,
-                onAmountChange = viewModel::updateRequiredAmountText
-            )
-
-            HorizontalDivider()
-
             // 根据类型显示不同配置
             when (uiState.type) {
                 RewardType.PHYSICAL -> PhysicalConfigSection(
                     puzzlePiecesText = uiState.puzzlePiecesText,
                     puzzlePiecesError = uiState.validationErrors["puzzlePieces"],
-                    onPuzzlePiecesChange = viewModel::updatePuzzlePiecesText
+                    requiredPointsText = uiState.requiredPointsText,
+                    requiredPointsError = uiState.validationErrors["requiredPoints"],
+                    onPuzzlePiecesChange = viewModel::updatePuzzlePiecesText,
+                    onRequiredPointsChange = viewModel::updateRequiredPointsText
                 )
                 RewardType.TIME_BASED -> TimeConfigSection(
                     unitMinutesText = uiState.unitMinutesText,
@@ -263,59 +249,18 @@ private fun RewardTypeSection(selected: RewardType, onSelect: (RewardType) -> Un
 }
 
 @Composable
-private fun ExchangeRequirementSection(
-    level: MushroomLevel,
-    amountText: String,
-    amountError: String?,
-    onLevelChange: (MushroomLevel) -> Unit,
-    onAmountChange: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                "兑换所需蘑菇",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RewardMushroomLevelDropdown(
-                    selected = level,
-                    onSelect = onLevelChange,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = onAmountChange,
-                    label = { Text("×数量") },
-                    modifier = Modifier.weight(0.4f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = amountError != null,
-                    supportingText = if (amountError != null) ({ Text(amountError) }) else null,
-                    singleLine = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun PhysicalConfigSection(
     puzzlePiecesText: String,
     puzzlePiecesError: String?,
-    onPuzzlePiecesChange: (String) -> Unit
+    requiredPointsText: String,
+    requiredPointsError: String?,
+    onPuzzlePiecesChange: (String) -> Unit,
+    onRequiredPointsChange: (String) -> Unit
 ) {
+    val pieces = puzzlePiecesText.toIntOrNull() ?: 0
+    val points = requiredPointsText.toIntOrNull() ?: 0
+    val perPiece = if (pieces > 0) maxOf(1, (points + pieces - 1) / pieces) else 0
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -327,9 +272,20 @@ private fun PhysicalConfigSection(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "拼图设置",
+                "兑换条件（积分）",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
+            )
+            OutlinedTextField(
+                value = requiredPointsText,
+                onValueChange = onRequiredPointsChange,
+                label = { Text("所需总积分 *") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = requiredPointsError != null,
+                supportingText = if (requiredPointsError != null) ({ Text(requiredPointsError) })
+                else ({ Text("兑换蘑菇时按等级折算积分，累计达到门槛即可解锁拼图") }),
+                singleLine = true
             )
             OutlinedTextField(
                 value = puzzlePiecesText,
@@ -340,8 +296,10 @@ private fun PhysicalConfigSection(
                 isError = puzzlePiecesError != null,
                 supportingText = if (puzzlePiecesError != null) {
                     { Text(puzzlePiecesError) }
+                } else if (perPiece > 0) {
+                    { Text("每块需 $perPiece 积分，拼完即可领取奖品") }
                 } else {
-                    { Text("每兑换一次蘑菇解锁一块拼图，拼完即可领取奖品", style = MaterialTheme.typography.bodySmall) }
+                    { Text("拼完所有拼图即可领取奖品") }
                 },
                 singleLine = true
             )
@@ -423,44 +381,6 @@ private fun TimeConfigSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RewardMushroomLevelDropdown(
-    selected: MushroomLevel,
-    onSelect: (MushroomLevel) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = selected.displayName,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("蘑菇类型") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
-            singleLine = true
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            listOf(
-                MushroomLevel.SMALL,
-                MushroomLevel.MEDIUM,
-                MushroomLevel.LARGE,
-                MushroomLevel.GOLD
-            ).forEach { level ->
-                DropdownMenuItem(
-                    text = { Text(level.displayName) },
-                    onClick = { onSelect(level); expanded = false }
-                )
-            }
         }
     }
 }

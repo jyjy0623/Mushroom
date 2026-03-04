@@ -42,8 +42,8 @@ fun AppNavGraph(
         // ---- 任务模块 ----
         composable(AppDestination.DailyTaskList.route) {
             DailyTaskListScreen(
-                onNavigateToAddTask = {
-                    navController.navigate(AppDestination.TaskEdit.route())
+                onNavigateToAddTask = { dateIso ->
+                    navController.navigate(AppDestination.TaskEdit.route(date = dateIso))
                 },
                 onNavigateToEditTask = { taskId ->
                     navController.navigate(AppDestination.TaskEdit.route(taskId))
@@ -61,13 +61,23 @@ fun AppNavGraph(
         }
         composable(
             route = AppDestination.TaskEdit.route,
-            arguments = listOf(navArgument(AppDestination.TaskEdit.ARG_TASK_ID) {
-                type = NavType.LongType
-                defaultValue = -1L
-            })
-        ) {
+            arguments = listOf(
+                navArgument(AppDestination.TaskEdit.ARG_TASK_ID) {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                },
+                navArgument(AppDestination.TaskEdit.ARG_DATE) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            val dateStr = backStackEntry.arguments?.getString(AppDestination.TaskEdit.ARG_DATE)
+            val date = dateStr?.takeIf { it.isNotEmpty() }?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            } ?: LocalDate.now()
             TaskEditScreen(
-                date = LocalDate.now(),
+                date = date,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

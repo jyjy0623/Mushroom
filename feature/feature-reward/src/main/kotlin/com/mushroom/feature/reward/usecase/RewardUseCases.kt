@@ -85,13 +85,20 @@ class ExchangeMushroomsUseCase @Inject constructor(
         val remaining = reward.puzzlePieces - progress.unlockedPieces
         check(remaining > 0) { "拼图已完成" }
 
-        val piecesToUnlock = minOf(amount, remaining)
+        // 按积分折算：贡献积分 = 蘑菇数量 × 该等级积分值
+        val contributedPoints = amount * mushroomLevel.exchangePoints
+        val pointsPerPiece = reward.pointsPerPiece
+        val piecesToUnlock = minOf(contributedPoints / pointsPerPiece, remaining)
+        check(piecesToUnlock > 0) {
+            "积分不足：${mushroomLevel.displayName}×$amount = ${contributedPoints}分，" +
+            "解锁1块拼图需 ${pointsPerPiece}分"
+        }
 
         // 余额检验：确保选中等级蘑菇余额足够
         val balance = mushroomRepo.getBalance().first()
         val available = balance.get(mushroomLevel)
-        check(available >= piecesToUnlock) {
-            "${mushroomLevel.displayName}余额不足（需要 $piecesToUnlock，当前 $available）"
+        check(available >= amount) {
+            "${mushroomLevel.displayName}余额不足（需要 $amount，当前 $available）"
         }
 
         // 写入交换记录
@@ -99,7 +106,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
             RewardExchange(
                 rewardId = reward.id,
                 mushroomLevel = mushroomLevel,
-                mushroomCount = piecesToUnlock,
+                mushroomCount = amount,
                 puzzlePiecesUnlocked = piecesToUnlock,
                 minutesGained = null,
                 createdAt = LocalDateTime.now()
@@ -111,10 +118,10 @@ class ExchangeMushroomsUseCase @Inject constructor(
             MushroomTransaction(
                 level = mushroomLevel,
                 action = MushroomAction.SPEND,
-                amount = piecesToUnlock,
+                amount = amount,
                 sourceType = MushroomSource.EXCHANGE,
                 sourceId = reward.id,
-                note = "兑换奖品「${reward.name}」拼图",
+                note = "兑换奖品「${reward.name}」拼图 +${piecesToUnlock}块",
                 createdAt = LocalDateTime.now()
             )
         )

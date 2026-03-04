@@ -78,7 +78,7 @@ private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyTaskListScreen(
-    onNavigateToAddTask: () -> Unit,
+    onNavigateToAddTask: (dateIso: String) -> Unit,
     onNavigateToEditTask: (Long) -> Unit,
     onNavigateToTemplates: () -> Unit,
     onNavigateToAddMilestone: () -> Unit = {},
@@ -155,6 +155,7 @@ fun DailyTaskListScreen(
             )
         },
         floatingActionButton = {
+            val isPastDate = uiState.date.isBefore(LocalDate.now())
             Column(horizontalAlignment = Alignment.End) {
                 // 展开后显示的次级按钮
                 if (fabExpanded) {
@@ -193,15 +194,18 @@ fun DailyTaskListScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                 }
-                FloatingActionButton(onClick = {
-                    if (fabExpanded) {
-                        fabExpanded = false
-                        onNavigateToAddTask()
-                    } else {
-                        fabExpanded = true
+                // 历史日期（过去）隐藏新建按钮
+                if (!isPastDate) {
+                    FloatingActionButton(onClick = {
+                        if (fabExpanded) {
+                            fabExpanded = false
+                            onNavigateToAddTask(uiState.date.toString())
+                        } else {
+                            fabExpanded = true
+                        }
+                    }) {
+                        Icon(Icons.Filled.Add, contentDescription = "新建")
                     }
-                }) {
-                    Icon(Icons.Filled.Add, contentDescription = "新建")
                 }
             }
         },
