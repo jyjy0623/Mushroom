@@ -28,7 +28,12 @@ class LogExporter(
         ZipOutputStream(zipFile.outputStream().buffered()).use { zos ->
             val logDir = File(context.filesDir, "logs")
             val logFiles = logDir.listFiles()
-                ?.filter { it.name.endsWith(".txt") }
+                ?.filter { it.name.endsWith(".txt") && !it.name.startsWith("crash_") }
+                ?.sortedBy { it.name }
+                ?: emptyList()
+
+            val crashFiles = logDir.listFiles()
+                ?.filter { it.name.startsWith("crash_") && it.name.endsWith(".txt") }
                 ?.sortedBy { it.name }
                 ?: emptyList()
 
@@ -47,13 +52,20 @@ class LogExporter(
 
             // 写入 CLAUDE_ANALYSIS_BRIEF.md
             zos.putNextEntry(ZipEntry("CLAUDE_ANALYSIS_BRIEF.md"))
-            zos.write(buildClaudeAnalysisBrief(logFiles, errorLines).toByteArray(Charsets.UTF_8))
+            zos.write(buildClaudeAnalysisBrief(logFiles, crashFiles, errorLines).toByteArray(Charsets.UTF_8))
             zos.closeEntry()
 
             // 写入所有日志文件
             logFiles.forEach { logFile ->
                 zos.putNextEntry(ZipEntry("logs/${logFile.name}"))
                 logFile.inputStream().use { it.copyTo(zos) }
+                zos.closeEntry()
+            }
+
+            // 写入崩溃日志（独立目录，优先级最高）
+            crashFiles.forEach { crashFile ->
+                zos.putNextEntry(ZipEntry("crashes/${crashFile.name}"))
+                crashFile.inputStream().use { it.copyTo(zos) }
                 zos.closeEntry()
             }
         }
@@ -103,7 +115,7 @@ class LogExporter(
         }
     }
 
-    private fun buildClaudeAnalysisBrief(logFiles: List<File>, errorIndex: String): String {
+    private fun buildClaudeAnalysisBrief(logFiles: List<File>, crashFiles: List<File>, errorIndex: String): String {
         return buildString {
             appendLine("# CLAUDE_ANALYSIS_BRIEF.md")
             appendLine("# 蘑菇大冒险 - Claude 分析入口")
@@ -111,10 +123,17 @@ class LogExporter(
             appendLine("## 如何开始分析")
             appendLine()
             appendLine("1. 首先阅读本文件了解日志结构")
-            appendLine("2. 查看 `error_index.txt` 获取所有 ERROR/WARN 行汇总")
-            appendLine("3. 按需读取 `logs/` 目录下的具体日志文件")
-            appendLine("4. 日志以 `SESSION START` 标记分隔每次 App 启动")
+            appendLine("2. **优先查看 `crashes/` 目录**（若有崩溃日志，根因在此）")
+            appendLine("3. 查看 `error_index.txt` 获取所有 ERROR/WARN 行汇总")
+            appendLine("4. 按需读取 `logs/` 目录下的具体日志文件")
+            appendLine("5. 日志以 `SESSION START` 标记分隔每次 App 启动")
             appendLine()
+            if (crashFiles.isNotEmpty()) {
+                appendLine("## ⚠️ 崩溃日志（${crashFiles.size} 个）")
+                appendLine()
+                crashFiles.forEach { appendLine("- crashes/${it.name}") }
+                appendLine()
+            }
             appendLine("## 日志文件列表")
             appendLine()
             logFiles.forEach { appendLine("- logs/${it.name}") }

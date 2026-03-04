@@ -1,5 +1,3 @@
-package com.mushroom.adventure
-
 import android.app.Application
 import com.mushroom.core.data.seed.DeductionConfigSeed
 import com.mushroom.core.data.seed.TaskTemplateSeed
@@ -13,7 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 private const val TAG = "APP"
@@ -36,6 +36,8 @@ class MushroomApp : Application() {
         logFileWriter.writeSessionStart()
         MushroomLogger.i(TAG, "MushroomApp.onCreate — application started")
 
+        installCrashHandler()
+
         appScope.launch { taskTemplateSeed.seed() }
         appScope.launch { deductionConfigSeed.seed() }
 
@@ -47,5 +49,30 @@ class MushroomApp : Application() {
 
         // Touch the engine so its init block subscribes to the event bus
         MushroomLogger.i(TAG, "MushroomRewardEngine initialized: $mushroomRewardEngine")
+    }
+
+    /**
+     * 注册全局未捕获异常处理器。
+     * 崩溃发生时同步写入 crash_*.txt，确保日志在进程被 kill 前落盘。
+     */
+    private fun installCrashHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                val timestamp = LocalDateTime.now().toString().replace(':', '-')
+                val crashFile = File(filesDir, "logs/crash_$timestamp.txt")
+                crashFile.parentFile?.mkdirs()
+                crashFile.writeText(buildString {
+                    appendLine("========== CRASH @ $timestamp ==========")
+                    appendLine("Thread: ${thread.name}")
+                    appendLine()
+                    appendLine(throwable.stackTraceToString())
+                })
+                MushroomLogger.e(TAG, "UNCAUGHT EXCEPTION on thread=${thread.name}", throwable)
+            } catch (_: Throwable) {
+                // 写文件本身失败时不能再抛，否则死循环
+            }
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
     }
 }
