@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DatePicker
@@ -81,6 +82,7 @@ fun DailyTaskListScreen(
     onNavigateToEditTask: (Long) -> Unit,
     onNavigateToTemplates: () -> Unit,
     onNavigateToAddMilestone: () -> Unit = {},
+    onNavigateToCheckInHistory: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -143,6 +145,11 @@ fun DailyTaskListScreen(
                         IconButton(onClick = { viewModel.navigateNextDay() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "后一天")
                         }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToCheckInHistory) {
+                        Icon(Icons.Filled.DateRange, contentDescription = "打卡历史")
                     }
                 }
             )

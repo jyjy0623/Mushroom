@@ -53,6 +53,7 @@ private val MONTH_FMT = DateTimeFormatter.ofPattern("yyyy年MM月")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckInCalendarScreen(
+    onNavigateBack: () -> Unit = {},
     viewModel: CheckInCalendarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -75,6 +76,11 @@ fun CheckInCalendarScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { viewModel.navigateToPreviousMonth() }) {
