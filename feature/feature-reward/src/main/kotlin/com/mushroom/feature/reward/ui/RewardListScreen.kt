@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.RewardStatus
@@ -111,7 +112,7 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = androidx.compose.ui.unit.TextUnit(28f, androidx.compose.ui.unit.TextUnitType.Sp))
+                Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = 32.sp)
             }
 
             Spacer(Modifier.height(8.dp))

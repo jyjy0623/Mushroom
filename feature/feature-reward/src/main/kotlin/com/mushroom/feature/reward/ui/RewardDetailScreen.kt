@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -231,6 +234,7 @@ private fun PhysicalRewardContent(
         // 兑换区域
         ExchangeSection(
             isExchanging = uiState.isExchanging,
+            requiredMushrooms = reward.requiredMushrooms,
             onExchange = onExchange
         )
     }
@@ -317,13 +321,14 @@ private fun TimeRewardContent(
             "每次可获得 ${config.unitMinutes} 分钟",
             style = MaterialTheme.typography.bodyMedium
         )
-        ExchangeSection(isExchanging = uiState.isExchanging, onExchange = onExchange)
+        ExchangeSection(isExchanging = uiState.isExchanging, requiredMushrooms = uiState.reward?.requiredMushrooms ?: emptyMap(), onExchange = onExchange)
     }
 }
 
 @Composable
 private fun ExchangeSection(
     isExchanging: Boolean,
+    requiredMushrooms: Map<MushroomLevel, Int>,
     onExchange: (MushroomLevel, Int) -> Unit
 ) {
     var selectedLevel by remember { mutableStateOf(MushroomLevel.SMALL) }
@@ -335,16 +340,44 @@ private fun ExchangeSection(
     ) {
         Column(Modifier.padding(16.dp)) {
             Text("消耗蘑菇", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+            // 兑换条件说明
+            if (requiredMushrooms.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                val conditionText = requiredMushrooms.entries.joinToString(" + ") { (level, count) ->
+                    "${mushroomEmoji(level)} ${level.displayName} × $count"
+                }
+                Text(
+                    "兑换条件：$conditionText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
-            // 等级选择
+            // 等级选择：用 Box 替代 OutlinedButton 避免内部 padding 裁剪 emoji
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MushroomLevel.values().forEach { level ->
-                    OutlinedButton(
-                        onClick = { selectedLevel = level },
-                        modifier = Modifier.size(48.dp)
+                    val isSelected = selectedLevel == level
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline,
+                                shape = CircleShape
+                            )
+                            .clickable { selectedLevel = level },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(mushroomEmoji(level), fontSize = 16.sp)
+                        Text(mushroomEmoji(level), fontSize = 20.sp)
                     }
                 }
             }
