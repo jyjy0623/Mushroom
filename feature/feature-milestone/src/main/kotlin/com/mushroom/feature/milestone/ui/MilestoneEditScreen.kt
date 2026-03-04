@@ -194,7 +194,7 @@ fun MilestoneEditScreen(
                             )
                             Spacer(Modifier.width(4.dp))
                             OutlinedTextField(
-                                value = rule.rewardConfig.amount.toString(),
+                                value = uiState.ruleAmountTexts.getOrElse(index) { rule.rewardConfig.amount.toString() },
                                 onValueChange = { viewModel.updateRuleAmount(index, it) },
                                 modifier = Modifier.width(64.dp),
                                 singleLine = true,

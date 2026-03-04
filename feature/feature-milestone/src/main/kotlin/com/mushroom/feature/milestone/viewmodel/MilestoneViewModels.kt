@@ -91,6 +91,7 @@ data class MilestoneEditUiState(
     val subject: Subject = Subject.MATH,
     val scheduledDate: LocalDate = LocalDate.now(),
     val scoringRules: List<ScoringRule> = DefaultScoringRules.forType(MilestoneType.MINI_TEST),
+    val ruleAmountTexts: List<String> = DefaultScoringRules.forType(MilestoneType.MINI_TEST).map { it.rewardConfig.amount.toString() },
     val isUsingDefaultRules: Boolean = true,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false
@@ -117,15 +118,21 @@ class MilestoneEditViewModel @Inject constructor(
         _uiState.update { state ->
             val rules = if (state.isUsingDefaultRules) DefaultScoringRules.forType(type)
                         else state.scoringRules
-            state.copy(type = type, scoringRules = rules)
+            state.copy(
+                type = type,
+                scoringRules = rules,
+                ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() }
+            )
         }
     }
     fun updateSubject(subject: Subject) { _uiState.update { it.copy(subject = subject) } }
     fun updateScheduledDate(date: LocalDate) { _uiState.update { it.copy(scheduledDate = date) } }
     fun applyDefaultRules() {
         _uiState.update { state ->
+            val rules = DefaultScoringRules.forType(state.type)
             state.copy(
-                scoringRules = DefaultScoringRules.forType(state.type),
+                scoringRules = rules,
+                ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() },
                 isUsingDefaultRules = true
             )
         }
@@ -133,15 +140,30 @@ class MilestoneEditViewModel @Inject constructor(
 
     /** 修改某档分数段的奖励数量（index 对应 scoringRules 列表下标） */
     fun updateRuleAmount(index: Int, amountText: String) {
-        val amount = amountText.toIntOrNull()?.coerceAtLeast(0) ?: return
         _uiState.update { state ->
-            val updated = state.scoringRules.toMutableList()
-            if (index in updated.indices) {
-                updated[index] = updated[index].copy(
-                    rewardConfig = updated[index].rewardConfig.copy(amount = amount)
-                )
+            // 先更新原始文本，保证空字符串可以显示（退格不卡在"1"）
+            val updatedTexts = state.ruleAmountTexts.toMutableList()
+            if (index in updatedTexts.indices) updatedTexts[index] = amountText
+
+            // 只在能解析为合法整数时同步更新 scoringRules
+            val amount = amountText.toIntOrNull()?.coerceAtLeast(0)
+            val updatedRules = if (amount != null) {
+                state.scoringRules.toMutableList().also { rules ->
+                    if (index in rules.indices) {
+                        rules[index] = rules[index].copy(
+                            rewardConfig = rules[index].rewardConfig.copy(amount = amount)
+                        )
+                    }
+                }
+            } else {
+                state.scoringRules
             }
-            state.copy(scoringRules = updated, isUsingDefaultRules = false)
+
+            state.copy(
+                scoringRules = updatedRules,
+                ruleAmountTexts = updatedTexts,
+                isUsingDefaultRules = false
+            )
         }
     }
 
