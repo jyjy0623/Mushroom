@@ -30,12 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.feature.reward.viewmodel.RewardListViewModel
@@ -104,7 +106,7 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 奖品图标占位
+            // 奖品封面
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -112,8 +114,17 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 40.sp else "⏱" to 48.sp
-                Text(icon, fontSize = iconSize)
+                if (reward.imageUri.isNotEmpty()) {
+                    AsyncImage(
+                        model = reward.imageUri,
+                        contentDescription = "奖品封面",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 40.sp else "⏱" to 48.sp
+                    Text(icon, fontSize = iconSize)
+                }
             }
 
             Spacer(Modifier.height(8.dp))

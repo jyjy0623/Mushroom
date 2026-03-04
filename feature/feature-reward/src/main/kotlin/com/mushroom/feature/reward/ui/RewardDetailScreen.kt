@@ -47,11 +47,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.core.domain.entity.RewardType
@@ -129,7 +131,7 @@ fun RewardDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 封面图占位
+            // 封面图
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,7 +139,16 @@ fun RewardDetailScreen(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = 48.sp)
+                if (reward.imageUri.isNotEmpty()) {
+                    AsyncImage(
+                        model = reward.imageUri,
+                        contentDescription = "奖品封面",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏱", fontSize = 48.sp)
+                }
             }
 
             when (reward.type) {

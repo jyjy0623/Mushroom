@@ -207,6 +207,7 @@ class RewardDetailViewModel @Inject constructor(
 data class RewardCreateUiState(
     val name: String = "",
     val type: RewardType = RewardType.PHYSICAL,
+    val imageUri: String = "",
     // PHYSICAL fields
     val puzzlePiecesText: String = "9",
     val requiredLevel: MushroomLevel = MushroomLevel.SMALL,
@@ -239,6 +240,7 @@ class RewardCreateViewModel @Inject constructor(
 
     fun updateName(value: String) = _uiState.update { it.copy(name = value) }
     fun updateType(value: RewardType) = _uiState.update { it.copy(type = value) }
+    fun updateImageUri(value: String) = _uiState.update { it.copy(imageUri = value) }
     fun updatePuzzlePiecesText(value: String) = _uiState.update { it.copy(puzzlePiecesText = value) }
     fun updateRequiredLevel(value: MushroomLevel) = _uiState.update { it.copy(requiredLevel = value) }
     fun updateRequiredAmountText(value: String) = _uiState.update { it.copy(requiredAmountText = value) }
@@ -274,6 +276,7 @@ class RewardCreateViewModel @Inject constructor(
             val reward = Reward(
                 name = state.name.trim(),
                 type = state.type,
+                imageUri = state.imageUri,
                 requiredMushrooms = mapOf(state.requiredLevel to requiredAmount),
                 puzzlePieces = if (state.type == RewardType.PHYSICAL) puzzlePieces else 0,
                 timeLimitConfig = if (state.type == RewardType.TIME_BASED) {
