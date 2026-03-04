@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -178,21 +180,28 @@ fun MilestoneEditScreen(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    uiState.scoringRules.filter { it.rewardConfig.amount > 0 }.forEach { rule ->
-                        Text(
-                            "${rule.minScore}-${rule.maxScore}分 → " +
-                                "${rule.rewardConfig.level.displayName}×${rule.rewardConfig.amount}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
-                    }
-                    uiState.scoringRules.firstOrNull { it.rewardConfig.amount == 0 }?.let { rule ->
-                        Text(
-                            "${rule.minScore}-${rule.maxScore}分 → 无奖励",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
+                    uiState.scoringRules.forEachIndexed { index, rule ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${rule.minScore}-${rule.maxScore}分 → ${rule.rewardConfig.level.displayName} ×",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            OutlinedTextField(
+                                value = rule.rewardConfig.amount.toString(),
+                                onValueChange = { viewModel.updateRuleAmount(index, it) },
+                                modifier = Modifier.width(64.dp),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }

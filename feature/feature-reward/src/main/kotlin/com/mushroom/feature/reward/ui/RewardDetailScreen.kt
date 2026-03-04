@@ -367,6 +367,13 @@ private fun ExchangeSection(
                     }
                 }
             }
+            Spacer(Modifier.height(4.dp))
+            // 已选等级文字提示（fixes #28）
+            Text(
+                "已选：${mushroomEmoji(selectedLevel)} ${selectedLevel.displayName}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.height(8.dp))
 
             // 数量选择

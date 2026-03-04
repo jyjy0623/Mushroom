@@ -87,6 +87,13 @@ class ExchangeMushroomsUseCase @Inject constructor(
 
         val piecesToUnlock = minOf(amount, remaining)
 
+        // 余额检验：确保选中等级蘑菇余额足够
+        val balance = mushroomRepo.getBalance().first()
+        val available = balance.get(mushroomLevel)
+        check(available >= piecesToUnlock) {
+            "${mushroomLevel.displayName}余额不足（需要 $piecesToUnlock，当前 $available）"
+        }
+
         // 写入交换记录
         rewardRepo.insertExchange(
             RewardExchange(
@@ -149,6 +156,13 @@ class ExchangeMushroomsUseCase @Inject constructor(
 
         val newUsed = usedMinutes + config.unitMinutes
         rewardRepo.updateTimeRewardUsage(reward.id, periodStart, newUsed)
+
+        // 余额检验：确保选中等级蘑菇余额足够
+        val mushroomBalance = mushroomRepo.getBalance().first()
+        val available = mushroomBalance.get(mushroomLevel)
+        check(available >= amount) {
+            "${mushroomLevel.displayName}余额不足（需要 $amount，当前 $available）"
+        }
 
         rewardRepo.insertExchange(
             RewardExchange(

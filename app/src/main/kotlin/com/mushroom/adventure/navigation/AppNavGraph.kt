@@ -52,7 +52,7 @@ fun AppNavGraph(
                     navController.navigate(AppDestination.TaskTemplate.route)
                 },
                 onNavigateToAddMilestone = {
-                    navController.navigate(AppDestination.MilestoneEdit.route())
+                    navController.navigate(AppDestination.MilestoneList.route)
                 },
                 onNavigateToCheckInHistory = {
                     navController.navigate(AppDestination.CheckInHistory.route)

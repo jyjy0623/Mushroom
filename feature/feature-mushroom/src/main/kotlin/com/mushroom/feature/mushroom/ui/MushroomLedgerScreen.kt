@@ -50,6 +50,7 @@ import java.time.format.DateTimeFormatter
 
 private val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
 private val DATE_LABEL_FMT = DateTimeFormatter.ofPattern("MM月dd日")
+private val MONTH_LABEL_FMT = DateTimeFormatter.ofPattern("MM月")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,17 +71,26 @@ fun MushroomLedgerScreen(
 
     val today = LocalDate.now()
     val currentYear = today.year
+    val currentMonth = today.year * 100 + today.monthValue  // yyyyMM key
 
-    // Group by date descending, then by year descending
+    // Group by date descending, then by year+month descending
     val groupedByDate = ledger
         .groupBy { it.createdAt.toLocalDate() }
         .toSortedMap(compareByDescending { it })
-    val yearToDateList: Map<Int, List<LocalDate>> = groupedByDate.keys
+
+    // year → month → [dates]
+    val yearToMonthToDateList: Map<Int, Map<Int, List<LocalDate>>> = groupedByDate.keys
         .groupBy { it.year }
         .toSortedMap(compareByDescending { it })
+        .mapValues { (_, dates) ->
+            dates.groupBy { it.monthValue }
+                .toSortedMap(compareByDescending { it })
+        }
 
     // Expansion state: current year expanded by default, others collapsed
     val expandedYears = rememberSaveable { mutableStateOf(setOf(currentYear)) }
+    // Current month expanded by default
+    val expandedMonths = rememberSaveable { mutableStateOf(setOf(currentMonth)) }
     // Today expanded by default
     val expandedDates = rememberSaveable { mutableStateOf(setOf(today.toString())) }
 
@@ -119,9 +129,10 @@ fun MushroomLedgerScreen(
                     )
                 }
             } else {
-                yearToDateList.forEach { (year, dates) ->
+                yearToMonthToDateList.forEach { (year, monthToDateList) ->
                     val isYearExpanded = year in expandedYears.value
-                    val totalForYear = dates.sumOf { groupedByDate[it]?.size ?: 0 }
+                    val totalForYear = monthToDateList.values.flatten()
+                        .sumOf { groupedByDate[it]?.size ?: 0 }
 
                     item(key = "year_$year") {
                         YearHeader(
@@ -138,30 +149,53 @@ fun MushroomLedgerScreen(
                     }
 
                     if (isYearExpanded) {
-                        dates.forEach { date ->
-                            val txList = groupedByDate[date] ?: emptyList()
-                            val dateKey = date.toString()
-                            val isDateExpanded = dateKey in expandedDates.value
+                        monthToDateList.forEach { (month, dates) ->
+                            val monthKey = year * 100 + month
+                            val isMonthExpanded = monthKey in expandedMonths.value
+                            val totalForMonth = dates.sumOf { groupedByDate[it]?.size ?: 0 }
+                            val sampleDate = dates.first()
 
-                            item(key = "date_$dateKey") {
-                                DateHeader(
-                                    date = date,
-                                    today = today,
-                                    count = txList.size,
-                                    isExpanded = isDateExpanded,
+                            item(key = "month_${year}_$month") {
+                                MonthHeader(
+                                    date = sampleDate,
+                                    totalCount = totalForMonth,
+                                    isExpanded = isMonthExpanded,
                                     onToggle = {
-                                        expandedDates.value = if (isDateExpanded)
-                                            expandedDates.value - dateKey
+                                        expandedMonths.value = if (isMonthExpanded)
+                                            expandedMonths.value - monthKey
                                         else
-                                            expandedDates.value + dateKey
+                                            expandedMonths.value + monthKey
                                     }
                                 )
                             }
 
-                            if (isDateExpanded) {
-                                txList.forEach { tx ->
-                                    item(key = "tx_${tx.id}") {
-                                        TransactionCard(tx = tx)
+                            if (isMonthExpanded) {
+                                dates.forEach { date ->
+                                    val txList = groupedByDate[date] ?: emptyList()
+                                    val dateKey = date.toString()
+                                    val isDateExpanded = dateKey in expandedDates.value
+
+                                    item(key = "date_$dateKey") {
+                                        DateHeader(
+                                            date = date,
+                                            today = today,
+                                            count = txList.size,
+                                            isExpanded = isDateExpanded,
+                                            onToggle = {
+                                                expandedDates.value = if (isDateExpanded)
+                                                    expandedDates.value - dateKey
+                                                else
+                                                    expandedDates.value + dateKey
+                                            }
+                                        )
+                                    }
+
+                                    if (isDateExpanded) {
+                                        txList.forEach { tx ->
+                                            item(key = "tx_${tx.id}") {
+                                                TransactionCard(tx = tx)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -207,6 +241,42 @@ private fun YearHeader(
         )
     }
     HorizontalDivider()
+}
+
+@Composable
+private fun MonthHeader(
+    date: LocalDate,
+    totalCount: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 0.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = if (isExpanded) "收起" else "展开",
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = date.format(MONTH_LABEL_FMT),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f).padding(start = 4.dp)
+        )
+        Text(
+            text = "$totalCount 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+    }
 }
 
 @Composable

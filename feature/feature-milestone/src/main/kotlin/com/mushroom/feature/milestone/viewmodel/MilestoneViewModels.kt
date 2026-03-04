@@ -131,6 +131,20 @@ class MilestoneEditViewModel @Inject constructor(
         }
     }
 
+    /** 修改某档分数段的奖励数量（index 对应 scoringRules 列表下标） */
+    fun updateRuleAmount(index: Int, amountText: String) {
+        val amount = amountText.toIntOrNull()?.coerceAtLeast(0) ?: return
+        _uiState.update { state ->
+            val updated = state.scoringRules.toMutableList()
+            if (index in updated.indices) {
+                updated[index] = updated[index].copy(
+                    rewardConfig = updated[index].rewardConfig.copy(amount = amount)
+                )
+            }
+            state.copy(scoringRules = updated, isUsingDefaultRules = false)
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.name.isBlank()) {
