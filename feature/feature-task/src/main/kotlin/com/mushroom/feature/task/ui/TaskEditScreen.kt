@@ -64,6 +64,7 @@ import com.mushroom.core.domain.entity.TaskTemplate
 import java.time.DayOfWeek
 import com.mushroom.feature.task.viewmodel.TaskEditViewEvent
 import com.mushroom.feature.task.viewmodel.TaskEditViewModel
+import com.mushroom.feature.task.viewmodel.TaskEditUiState
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -95,18 +96,7 @@ fun TaskEditScreen(
     val taskId = uiState.taskId
     val isSaving = uiState.isSaving
     val isReadOnly = uiState.isReadOnly
-    val titleError = uiState.validationErrors["title"]
-    val minutesError = uiState.validationErrors["estimatedMinutes"]
-    val title = uiState.title
-    val subject = uiState.subject
-    val estimatedMinutes = uiState.estimatedMinutes
-    val deadline = uiState.deadline
-    val repeatRule = uiState.repeatRule
-    val description = uiState.description
-    val builtInTemplates = uiState.builtInTemplates
-    val customTemplates = uiState.customTemplates
 
-    // 新建任务时允许修改日期；编辑/只读时固定
     var selectedDate by remember { mutableStateOf(date) }
     var showDatePicker by remember { mutableStateOf(false) }
     val today = LocalDate.now()
@@ -145,7 +135,6 @@ fun TaskEditScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        // 日期选择器对话框（仅新建任务时可用）
         if (showDatePicker) {
             val datePickerState = rememberDatePickerState(
                 initialSelectedDateMillis = selectedDate
@@ -183,13 +172,12 @@ fun TaskEditScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // 任务日期（仅新建时可修改）
             if (taskId == null) {
                 OutlinedTextField(
                     value = selectedDate.format(dateFmt),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("任务日期") },
+                    label = { Text("日期") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showDatePicker = true },
@@ -200,28 +188,30 @@ fun TaskEditScreen(
                     enabled = false
                 )
 
-                if (builtInTemplates.isNotEmpty() || customTemplates.isNotEmpty()) {
+                val builtIn = uiState.builtInTemplates
+                val custom = uiState.customTemplates
+                if (builtIn.isNotEmpty() || custom.isNotEmpty()) {
                     TemplateDropdown(
-                        builtInTemplates = builtInTemplates,
-                        customTemplates = customTemplates,
+                        builtInTemplates = builtIn,
+                        customTemplates = custom,
                         onSelect = { template -> viewModel.applyTemplate(template, selectedDate) }
                     )
                 }
             }
 
             OutlinedTextField(
-                value = title,
+                value = uiState.title,
                 onValueChange = viewModel::updateTitle,
                 label = { Text("任务名称 *") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isReadOnly,
-                isError = titleError != null,
-                supportingText = if (titleError != null) ({ Text(titleError) }) else null,
+                isError = uiState.validationErrors["title"] != null,
+                supportingText = uiState.validationErrors["title"]?.let { { Text(it) } },
                 singleLine = true
             )
 
             OutlinedTextField(
-                value = description,
+                value = uiState.description,
                 onValueChange = viewModel::updateDescription,
                 label = { Text("任务说明（选填）") },
                 modifier = Modifier.fillMaxWidth(),
@@ -230,37 +220,36 @@ fun TaskEditScreen(
                 maxLines = 4
             )
 
-            SubjectDropdown(selected = subject, onSelect = viewModel::updateSubject, enabled = !isReadOnly)
+            SubjectDropdown(selected = uiState.subject, onSelect = viewModel::updateSubject, enabled = !isReadOnly)
 
             OutlinedTextField(
-                value = estimatedMinutes.toString(),
+                value = uiState.estimatedMinutes.toString(),
                 onValueChange = { it.toIntOrNull()?.let(viewModel::updateEstimatedMinutes) },
                 label = { Text("预计时长（分钟）") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isReadOnly,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = minutesError != null,
-                supportingText = if (minutesError != null) ({ Text(minutesError) }) else null,
+                isError = uiState.validationErrors["estimatedMinutes"] != null,
+                supportingText = uiState.validationErrors["estimatedMinutes"]?.let { { Text(it) } },
                 singleLine = true
             )
 
             DeadlineSection(
-                deadline = deadline,
+                deadline = uiState.deadline,
                 date = selectedDate,
                 onDeadlineChange = viewModel::updateDeadline,
                 enabled = !isReadOnly
             )
 
-            RepeatRuleSection(selected = repeatRule, onSelect = viewModel::updateRepeatRule, enabled = !isReadOnly)
+            RepeatRuleSection(selected = uiState.repeatRule, onSelect = viewModel::updateRepeatRule, enabled = !isReadOnly)
 
             HorizontalDivider()
 
-            // 奖励设置区块
             RewardSection(
                 useCustomReward = uiState.useCustomReward,
                 baseRewardLevel = uiState.baseRewardLevel,
                 baseRewardAmount = uiState.baseRewardAmount,
-                hasDeadline = deadline != null,
+                hasDeadline = uiState.deadline != null,
                 useCustomEarlyReward = uiState.useCustomEarlyReward,
                 earlyRewardLevel = uiState.earlyRewardLevel,
                 earlyRewardAmount = uiState.earlyRewardAmount,
@@ -275,23 +264,99 @@ fun TaskEditScreen(
 
             if (!isReadOnly) {
                 HorizontalDivider()
-
-                // 另存为模板按钮
                 OutlinedButton(
                     onClick = { viewModel.saveAsTemplate() },
                     modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("另存为自定义模板")
+                ) {
+                    Text("另存为自定义模板")
+                }
             }
-            } // end if (!isReadOnly)
 
             Spacer(Modifier.height(16.dp))
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RewardSection(
+fun TemplateDropdown(
+    builtInTemplates: List<TaskTemplate>,
+    customTemplates: List<TaskTemplate>,
+    onSelect: (TaskTemplate) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedLabel by remember { mutableStateOf("（不使用模板）") }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("任务模板") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            singleLine = true
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("（不使用模板）") },
+                onClick = { selectedLabel = "（不使用模板）"; expanded = false }
+            )
+            if (builtInTemplates.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "── 系统内置 ──",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
+                )
+                builtInTemplates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.name) },
+                        onClick = {
+                            selectedLabel = template.name
+                            expanded = false
+                            onSelect(template)
+                        }
+                    )
+                }
+            }
+            if (customTemplates.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "── 自定义 ──",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
+                )
+                customTemplates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.name) },
+                        onClick = {
+                            selectedLabel = template.name
+                            expanded = false
+                            onSelect(template)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RewardSection(
     useCustomReward: Boolean,
     baseRewardLevel: MushroomLevel,
     baseRewardAmount: Int,
@@ -317,13 +382,8 @@ private fun RewardSection(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                "奖励设置",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Text("奖励设置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
-            // 完成奖励
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -362,7 +422,6 @@ private fun RewardSection(
                 )
             }
 
-            // 提前完成奖励（仅设置了截止时间才显示）
             if (hasDeadline) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Row(
@@ -409,91 +468,7 @@ private fun RewardSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TemplateDropdown(
-    builtInTemplates: List<TaskTemplate>,
-    customTemplates: List<TaskTemplate>,
-    onSelect: (TaskTemplate) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var selectedLabel by remember { mutableStateOf("（不使用模板）") }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it }
-    ) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("任务模板") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
-            singleLine = true
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            // 默认选项
-            DropdownMenuItem(
-                text = { Text("（不使用模板）") },
-                onClick = {
-                    selectedLabel = "（不使用模板）"
-                    expanded = false
-                }
-            )
-            // 内置模板组
-            if (builtInTemplates.isNotEmpty()) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            "── 系统内置 ──",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    onClick = {},
-                    enabled = false
-                )
-                builtInTemplates.forEach { template ->
-                    DropdownMenuItem(
-                        text = { Text(template.name) },
-                        onClick = {
-                            selectedLabel = template.name
-                            expanded = false
-                            onSelect(template)
-                        }
-                    )
-                }
-            }
-            // 自定义模板组
-            if (customTemplates.isNotEmpty()) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            "── 自定义 ──",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    onClick = {},
-                    enabled = false
-                )
-                customTemplates.forEach { template ->
-                    DropdownMenuItem(
-                        text = { Text(template.name) },
-                        onClick = {
-                            selectedLabel = template.name
-                            expanded = false
-                            onSelect(template)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MushroomLevelDropdown(
+fun MushroomLevelDropdown(
     selected: MushroomLevel,
     onSelect: (MushroomLevel) -> Unit,
     modifier: Modifier = Modifier,
@@ -517,17 +492,13 @@ private fun MushroomLevelDropdown(
         )
         if (enabled) {
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                listOf(
-                    MushroomLevel.SMALL,
-                    MushroomLevel.MEDIUM,
-                    MushroomLevel.LARGE,
-                    MushroomLevel.GOLD
-                ).forEach { level ->
-                    DropdownMenuItem(
-                        text = { Text(level.displayName) },
-                        onClick = { onSelect(level); expanded = false }
-                    )
-                }
+                listOf(MushroomLevel.SMALL, MushroomLevel.MEDIUM, MushroomLevel.LARGE, MushroomLevel.GOLD)
+                    .forEach { level ->
+                        DropdownMenuItem(
+                            text = { Text(level.displayName) },
+                            onClick = { onSelect(level); expanded = false }
+                        )
+                    }
             }
         }
     }
@@ -535,7 +506,11 @@ private fun MushroomLevelDropdown(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit, enabled: Boolean = true) {
+fun SubjectDropdown(
+    selected: Subject,
+    onSelect: (Subject) -> Unit,
+    enabled: Boolean = true
+) {
     var expanded by remember { mutableStateOf(false) }
     val subjectNames = mapOf(
         Subject.MATH to "数学", Subject.CHINESE to "语文", Subject.ENGLISH to "英语",
@@ -567,7 +542,7 @@ private fun SubjectDropdown(selected: Subject, onSelect: (Subject) -> Unit, enab
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DeadlineSection(
+fun DeadlineSection(
     deadline: LocalDateTime?,
     date: LocalDate,
     onDeadlineChange: (LocalDateTime?) -> Unit,
@@ -640,14 +615,15 @@ private fun DeadlineSection(
 }
 
 @Composable
-private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Unit, enabled: Boolean = true) {
+fun RepeatRuleSection(
+    selected: RepeatRule,
+    onSelect: (RepeatRule) -> Unit,
+    enabled: Boolean = true
+) {
     val dayLabels = mapOf(
-        DayOfWeek.MONDAY to "周一",
-        DayOfWeek.TUESDAY to "周二",
-        DayOfWeek.WEDNESDAY to "周三",
-        DayOfWeek.THURSDAY to "周四",
-        DayOfWeek.FRIDAY to "周五",
-        DayOfWeek.SATURDAY to "周六",
+        DayOfWeek.MONDAY to "周一", DayOfWeek.TUESDAY to "周二",
+        DayOfWeek.WEDNESDAY to "周三", DayOfWeek.THURSDAY to "周四",
+        DayOfWeek.FRIDAY to "周五", DayOfWeek.SATURDAY to "周六",
         DayOfWeek.SUNDAY to "周日"
     )
     val isCustom = selected is RepeatRule.Custom
@@ -687,11 +663,7 @@ private fun RepeatRuleSection(selected: RepeatRule, onSelect: (RepeatRule) -> Un
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1
-                        )
+                        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         Checkbox(
                             checked = day in selectedDays,
                             onCheckedChange = { checked ->
