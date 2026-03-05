@@ -209,7 +209,7 @@ fun AppNavGraph(
                     navController.safeNavigate(AppDestination.MilestoneEdit.route(milestoneId))
                 },
                 onNavigateToCreate = {
-                    navController.safeNavigate(AppDestination.MilestoneEdit.route())
+                    navController.safeNavigate(AppDestination.Create.route(initialTab = 1))
                 }
             )
         }
