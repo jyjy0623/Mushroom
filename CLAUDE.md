@@ -4,20 +4,40 @@
 
 以下工具已预先授权，无需每次确认：
 
-- **Read**：读取项目内任意文件
+- **Read**：读取项目内任意文件，包括 cd 进入项目目录后的所有子目录
 - **Bash**：执行 shell 命令（含 Gradle 构建、测试运行等）
 - **Bash export**：导出环境变量（如 JAVA_HOME、ANDROID_HOME 等）
 - **Bash scripts/**：执行 `scripts/` 目录下所有脚本，无需逐次确认
+- **Bash cd**：`cd /d/workspace/Mushroom` 及项目内任意子目录，无需确认
+
+## 固定环境变量
+
+所有 Gradle 命令统一使用以下前缀，无需每次申请权限：
+
+```bash
+JAVA_HOME="D:/tools/Android/Android Studio/jbr" ./gradlew <task>
+```
 
 ## 标准化脚本（scripts/）
 
 | 脚本 | 用法 | 说明 |
 |---|---|---|
+| `build.sh` | `bash scripts/build.sh compile [:module]` | 编译指定模块或全量编译，自动注入 JAVA_HOME |
+| `build.sh` | `bash scripts/build.sh release` | 构建 release APK |
+| `build.sh` | `bash scripts/build.sh debug` | 构建 debug APK |
+| `build.sh` | `bash scripts/build.sh test [:module]` | 运行单元测试 |
+| `gradlew.sh` | `bash scripts/gradlew.sh <task>` | 自动注入 JAVA_HOME 的 Gradle 通用入口 |
 | `commit.sh` | `bash scripts/commit.sh "message" [files...]` | 暂存指定文件并 commit（自动附加 Co-Authored-By） |
 | `tag-release.sh` | `bash scripts/tag-release.sh <version> "<notes>"` | 推 master → 建 tag → force push 触发 CI |
 | `new-fix-branch.sh` | `bash scripts/new-fix-branch.sh <issue-N> <desc>` | 基于 master 创建 `fix/issue-N-desc` 分支 |
 | `finish-fix.sh` | `bash scripts/finish-fix.sh <issue-N> "<根因>" "<方案>"` | merge fix 分支到 master + push + Issue comment |
 | `sync-tc-pass.sh` | `bash scripts/sync-tc-pass.sh` | 读取所有已关闭 Issue，批量把对应 TC 标记为通过并 commit |
+
+## 编译 & 构建规则
+
+- **所有编译/构建/测试操作**统一使用 `bash scripts/build.sh`，禁止直接裸调 `./gradlew`
+- 修改代码后，提交前必须执行 `bash scripts/build.sh compile :修改的模块` 验证通过
+- JAVA_HOME 已固化在脚本内，无需手动 export
 
 ## 脚本沉淀规则
 

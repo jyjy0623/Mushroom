@@ -24,7 +24,30 @@
 
 ## 现有脚本
 
-### `commit.sh` — 暂存并提交
+### `build.sh` — 编译 & 构建 & 测试
+
+```bash
+bash scripts/build.sh compile :feature:feature-task   # 编译单模块
+bash scripts/build.sh compile                          # 全量编译
+bash scripts/build.sh release                          # 构建 release APK
+bash scripts/build.sh debug                            # 构建 debug APK
+bash scripts/build.sh test :feature:feature-task       # 运行单元测试
+```
+
+- 自动注入 `JAVA_HOME`，无需手动 export
+- 所有编译/构建/测试操作统一走此脚本
+
+---
+
+### `gradlew.sh` — Gradle 通用入口（备用）
+
+```bash
+bash scripts/gradlew.sh <任意 Gradle task>
+```
+
+---
+
+
 
 ```bash
 bash scripts/commit.sh "fix: 修复XX问题 refs #N" file1.kt file2.kt
