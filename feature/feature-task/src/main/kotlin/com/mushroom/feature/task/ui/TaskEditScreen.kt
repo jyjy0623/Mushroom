@@ -119,17 +119,7 @@ fun TaskEditScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                actions = {
-                    if (!isReadOnly) {
-                        TextButton(
-                            onClick = { viewModel.save(selectedDate) },
-                            enabled = !isSaving
-                        ) {
-                            if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
-                            else Text("保存")
-                        }
-                    }
-                }
+                actions = {}
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -234,14 +224,14 @@ fun TaskEditScreen(
                 singleLine = true
             )
 
+            RepeatRuleSection(selected = uiState.repeatRule, onSelect = viewModel::updateRepeatRule, enabled = !isReadOnly)
+
             DeadlineSection(
                 deadline = uiState.deadline,
                 date = selectedDate,
                 onDeadlineChange = viewModel::updateDeadline,
                 enabled = !isReadOnly
             )
-
-            RepeatRuleSection(selected = uiState.repeatRule, onSelect = viewModel::updateRepeatRule, enabled = !isReadOnly)
 
             HorizontalDivider()
 
@@ -264,11 +254,24 @@ fun TaskEditScreen(
 
             if (!isReadOnly) {
                 HorizontalDivider()
-                OutlinedButton(
-                    onClick = { viewModel.saveAsTemplate() },
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("另存为自定义模板")
+                    OutlinedButton(
+                        onClick = { viewModel.saveAsTemplate() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("另存为自定义模板")
+                    }
+                    Button(
+                        onClick = { viewModel.save(selectedDate) },
+                        enabled = !isSaving,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
+                        else Text("保存")
+                    }
                 }
             }
 

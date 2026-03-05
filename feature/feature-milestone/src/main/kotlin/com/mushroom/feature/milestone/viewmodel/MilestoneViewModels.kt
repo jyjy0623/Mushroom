@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 // -----------------------------------------------------------------------
@@ -94,7 +95,9 @@ data class MilestoneEditUiState(
     val ruleAmountTexts: List<String> = DefaultScoringRules.forType(MilestoneType.MINI_TEST).map { it.rewardConfig.amount.toString() },
     val isUsingDefaultRules: Boolean = true,
     val isSaving: Boolean = false,
-    val saveSuccess: Boolean = false
+    val saveSuccess: Boolean = false,
+    // 用户是否已手动编辑过名称，true 时不再自动覆盖
+    val nameManuallyEdited: Boolean = false
 )
 
 sealed class MilestoneEditViewEvent {
@@ -107,13 +110,19 @@ class MilestoneEditViewModel @Inject constructor(
     private val createMilestoneUseCase: CreateMilestoneUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MilestoneEditUiState())
+    private val _uiState = MutableStateFlow(
+        MilestoneEditUiState().let { initial ->
+            initial.copy(name = autoName(initial.subject, initial.type, initial.scheduledDate))
+        }
+    )
     val uiState: StateFlow<MilestoneEditUiState> = _uiState
 
     private val _viewEvent = MutableSharedFlow<MilestoneEditViewEvent>()
     val viewEvent: SharedFlow<MilestoneEditViewEvent> = _viewEvent.asSharedFlow()
 
-    fun updateName(name: String) { _uiState.update { it.copy(name = name) } }
+    fun updateName(name: String) {
+        _uiState.update { it.copy(name = name, nameManuallyEdited = true) }
+    }
     fun updateType(type: MilestoneType) {
         _uiState.update { state ->
             val rules = if (state.isUsingDefaultRules) DefaultScoringRules.forType(type)
@@ -121,12 +130,30 @@ class MilestoneEditViewModel @Inject constructor(
             state.copy(
                 type = type,
                 scoringRules = rules,
-                ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() }
+                ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() },
+                name = if (state.nameManuallyEdited) state.name
+                       else autoName(state.subject, type, state.scheduledDate)
             )
         }
     }
-    fun updateSubject(subject: Subject) { _uiState.update { it.copy(subject = subject) } }
-    fun updateScheduledDate(date: LocalDate) { _uiState.update { it.copy(scheduledDate = date) } }
+    fun updateSubject(subject: Subject) {
+        _uiState.update { state ->
+            state.copy(
+                subject = subject,
+                name = if (state.nameManuallyEdited) state.name
+                       else autoName(subject, state.type, state.scheduledDate)
+            )
+        }
+    }
+    fun updateScheduledDate(date: LocalDate) {
+        _uiState.update { state ->
+            state.copy(
+                scheduledDate = date,
+                name = if (state.nameManuallyEdited) state.name
+                       else autoName(state.subject, state.type, date)
+            )
+        }
+    }
     fun applyDefaultRules() {
         _uiState.update { state ->
             val rules = DefaultScoringRules.forType(state.type)
@@ -197,4 +224,28 @@ class MilestoneEditViewModel @Inject constructor(
                 }
         }
     }
+}
+
+private val DATE_LABEL_FMT = DateTimeFormatter.ofPattern("M月d日")
+
+private fun autoName(subject: Subject, type: MilestoneType, date: LocalDate): String {
+    val subjectStr = when (subject) {
+        Subject.MATH      -> "数学"
+        Subject.CHINESE   -> "语文"
+        Subject.ENGLISH   -> "英语"
+        Subject.PHYSICS   -> "物理"
+        Subject.CHEMISTRY -> "化学"
+        Subject.BIOLOGY   -> "生物"
+        Subject.HISTORY   -> "历史"
+        Subject.GEOGRAPHY -> "地理"
+        Subject.OTHER     -> "其他"
+    }
+    val typeStr = when (type) {
+        MilestoneType.MINI_TEST   -> "小测"
+        MilestoneType.WEEKLY_TEST -> "周测"
+        MilestoneType.SCHOOL_EXAM -> "校测"
+        MilestoneType.MIDTERM     -> "期中"
+        MilestoneType.FINAL       -> "期末"
+    }
+    return "$subjectStr$typeStr ${date.format(DATE_LABEL_FMT)}"
 }

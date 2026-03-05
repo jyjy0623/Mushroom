@@ -469,7 +469,7 @@ fun CreateScreen(
                         ) {
                             Text(
                                 if (milestoneUiState.isSaving) "保存中…"
-                                else "保存里程碑（需家长确认）"
+                                else "保存"
                             )
                         }
 
