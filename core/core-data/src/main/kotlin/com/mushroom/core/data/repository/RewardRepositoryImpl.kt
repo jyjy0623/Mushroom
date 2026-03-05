@@ -29,6 +29,9 @@ class RewardRepositoryImpl @Inject constructor(
     override fun getActiveRewards(): Flow<List<Reward>> =
         rewardDao.getActiveRewards().map { list -> list.map(RewardMapper::toDomain) }
 
+    override fun getAllNonArchived(): Flow<List<Reward>> =
+        rewardDao.getAllNonArchived().map { list -> list.map(RewardMapper::toDomain) }
+
     override suspend fun getRewardById(id: Long): Reward? =
         rewardDao.getRewardById(id)?.let(RewardMapper::toDomain)
 

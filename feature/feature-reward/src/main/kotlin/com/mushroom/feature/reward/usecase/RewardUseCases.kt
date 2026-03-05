@@ -27,6 +27,13 @@ import javax.inject.Inject
 private const val TAG = "RewardUseCases"
 
 // -----------------------------------------------------------------------
+// GetAllNonArchivedRewardsUseCase
+class GetAllNonArchivedRewardsUseCase @Inject constructor(
+    private val repo: RewardRepository
+) {
+    operator fun invoke(): Flow<List<Reward>> = repo.getAllNonArchived()
+}
+
 // GetActiveRewardsUseCase
 // -----------------------------------------------------------------------
 class GetActiveRewardsUseCase @Inject constructor(

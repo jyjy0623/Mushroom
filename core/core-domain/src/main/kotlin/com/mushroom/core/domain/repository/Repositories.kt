@@ -51,6 +51,7 @@ interface DeductionRepository {
 
 interface RewardRepository {
     fun getActiveRewards(): Flow<List<Reward>>
+    fun getAllNonArchived(): Flow<List<Reward>>
     suspend fun getRewardById(id: Long): Reward?
     suspend fun insertReward(reward: Reward): Long
     suspend fun updateReward(reward: Reward)
