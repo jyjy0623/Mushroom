@@ -74,7 +74,7 @@ import java.time.format.DateTimeFormatter
 
 /**
  * 新建任务/里程碑合并入口页。
- * 顶部共享日期字段，TabRow 切换「任务」/「里程碑」两个表单。
+ * TabRow 切换「任务」/「里程碑」两个表单，各自维护独立日期。
  * 编辑/只读模式（taskId != null）由 TaskEditScreen 单独处理，不经过此页面。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,17 +90,18 @@ fun CreateScreen(
     val milestoneUiState by milestoneViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var selectedDate by remember { mutableStateOf(date) }
-    var showDatePicker by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日 EEEE")
 
-    var selectedTab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
+    // 任务日期（不早于今天）
+    var taskDate by remember { mutableStateOf(date) }
+    var showTaskDatePicker by remember { mutableStateOf(false) }
 
-    // 日期变化时同步到里程碑 ViewModel
-    LaunchedEffect(selectedDate) {
-        milestoneViewModel.updateScheduledDate(selectedDate)
-    }
+    // 里程碑日期（无限制）
+    var milestoneDate by remember { mutableStateOf(date) }
+    var showMilestoneDatePicker by remember { mutableStateOf(false) }
+
+    var selectedTab by remember { mutableIntStateOf(initialTab.coerceIn(0, 1)) }
 
     LaunchedEffect(Unit) {
         taskViewModel.viewEvent.collectLatest { event ->
@@ -123,6 +124,65 @@ fun CreateScreen(
         }
     }
 
+    // 任务日期选择器
+    if (showTaskDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = taskDate
+                .atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                .toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showTaskDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.of("Asia/Shanghai"))
+                            .toLocalDate()
+                        if (!picked.isBefore(today)) taskDate = picked
+                    }
+                    showTaskDatePicker = false
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTaskDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // 里程碑日期选择器
+    if (showMilestoneDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = milestoneDate
+                .atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                .toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showMilestoneDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.of("Asia/Shanghai"))
+                            .toLocalDate()
+                        if (!picked.isBefore(today)) {
+                            milestoneDate = picked
+                            milestoneViewModel.updateScheduledDate(picked)
+                        }
+                    }
+                    showMilestoneDatePicker = false
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMilestoneDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,58 +198,11 @@ fun CreateScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        if (showDatePicker) {
-            val datePickerState = rememberDatePickerState(
-                initialSelectedDateMillis = selectedDate
-                    .atStartOfDay(ZoneId.of("Asia/Shanghai"))
-                    .toInstant().toEpochMilli()
-            )
-            DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val picked = Instant.ofEpochMilli(millis)
-                                .atZone(ZoneId.of("Asia/Shanghai"))
-                                .toLocalDate()
-                            if (!picked.isBefore(today)) selectedDate = picked
-                        }
-                        showDatePicker = false
-                    }) { Text("确定") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) { Text("取消") }
-                }
-            ) {
-                DatePicker(state = datePickerState)
-            }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── 共享日期字段 ──
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = selectedDate.format(dateFmt),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("日期") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker = true },
-                    trailingIcon = {
-                        TextButton(onClick = { showDatePicker = true }) { Text("修改") }
-                    },
-                    singleLine = true,
-                    enabled = false
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
             // ── Tab 栏 ──
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
@@ -217,6 +230,21 @@ fun CreateScreen(
                     ) {
                         Spacer(Modifier.height(4.dp))
 
+                        OutlinedTextField(
+                            value = taskDate.format(dateFmt),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("日期") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showTaskDatePicker = true },
+                            trailingIcon = {
+                                TextButton(onClick = { showTaskDatePicker = true }) { Text("修改") }
+                            },
+                            singleLine = true,
+                            enabled = false
+                        )
+
                         val builtIn = taskUiState.builtInTemplates
                         val custom = taskUiState.customTemplates
                         if (builtIn.isNotEmpty() || custom.isNotEmpty()) {
@@ -224,7 +252,7 @@ fun CreateScreen(
                                 builtInTemplates = builtIn,
                                 customTemplates = custom,
                                 onSelect = { template ->
-                                    taskViewModel.applyTemplate(template, selectedDate)
+                                    taskViewModel.applyTemplate(template, taskDate)
                                 }
                             )
                         }
@@ -272,7 +300,7 @@ fun CreateScreen(
 
                         DeadlineSection(
                             deadline = taskUiState.deadline,
-                            date = selectedDate,
+                            date = taskDate,
                             onDeadlineChange = taskViewModel::updateDeadline
                         )
 
@@ -307,7 +335,7 @@ fun CreateScreen(
                                 Text("另存为自定义模板")
                             }
                             Button(
-                                onClick = { taskViewModel.save(selectedDate) },
+                                onClick = { taskViewModel.save(taskDate) },
                                 enabled = !taskUiState.isSaving,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -330,6 +358,21 @@ fun CreateScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Spacer(Modifier.height(4.dp))
+
+                        OutlinedTextField(
+                            value = milestoneDate.format(dateFmt),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("日期") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showMilestoneDatePicker = true },
+                            trailingIcon = {
+                                TextButton(onClick = { showMilestoneDatePicker = true }) { Text("修改") }
+                            },
+                            singleLine = true,
+                            enabled = false
+                        )
 
                         OutlinedTextField(
                             value = milestoneUiState.name,
