@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -49,18 +50,19 @@ class MilestoneListViewModel @Inject constructor(
 
     private val _selectedSubject = MutableStateFlow<Subject?>(null)
 
-    val uiState: StateFlow<MilestoneListUiState> = getMilestonesUseCase.all()
-        .map { milestones ->
-            val filtered = _selectedSubject.value?.let { subject ->
-                milestones.filter { it.subject == subject }
-            } ?: milestones
-            MilestoneListUiState(
-                upcomingMilestones = filtered.filter { it.status == MilestoneStatus.PENDING },
-                completedMilestones = filtered.filter { it.status != MilestoneStatus.PENDING },
-                selectedSubject = _selectedSubject.value
-            )
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MilestoneListUiState(isLoading = true))
+    val uiState: StateFlow<MilestoneListUiState> = combine(
+        getMilestonesUseCase.all(),
+        _selectedSubject
+    ) { milestones, selectedSubject ->
+        val filtered = selectedSubject?.let { subject ->
+            milestones.filter { it.subject == subject }
+        } ?: milestones
+        MilestoneListUiState(
+            upcomingMilestones = filtered.filter { it.status == MilestoneStatus.PENDING },
+            completedMilestones = filtered.filter { it.status != MilestoneStatus.PENDING },
+            selectedSubject = selectedSubject
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MilestoneListUiState(isLoading = true))
 
     private val _viewEvent = MutableSharedFlow<MilestoneListViewEvent>()
     val viewEvent: SharedFlow<MilestoneListViewEvent> = _viewEvent.asSharedFlow()
