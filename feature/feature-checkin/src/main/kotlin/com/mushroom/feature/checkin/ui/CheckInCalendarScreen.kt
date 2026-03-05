@@ -119,16 +119,36 @@ fun CheckInCalendarScreen(
 
 @Composable
 private fun StreakCard(currentStreak: Int, longestStreak: Int) {
+    val nextMilestone = listOf(7, 30, 100).firstOrNull { it > currentStreak }
+    val milestoneText = when {
+        nextMilestone != null ->
+            "🎯 距 ${nextMilestone} 天全勤里程碑还差 ${nextMilestone - currentStreak} 天"
+        currentStreak > 0 ->
+            "🏆 已达成全部里程碑！"
+        else -> null
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StreakItem(label = "当前连续", value = currentStreak, suffix = "天")
-            StreakItem(label = "最长连续", value = longestStreak, suffix = "天")
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StreakItem(label = "当前连续", value = currentStreak, suffix = "天")
+                StreakItem(label = "最长连续", value = longestStreak, suffix = "天")
+            }
+            if (milestoneText != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = milestoneText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
