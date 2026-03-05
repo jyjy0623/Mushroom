@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -120,8 +121,13 @@ private fun RewardCard(model: RewardUiModel, onClick: () -> Unit) {
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    val (icon, iconSize) = if (reward.type == RewardType.PHYSICAL) "🎁" to 44.sp else "⏰" to 44.sp
-                    Text(icon, fontSize = iconSize)
+                    val icon = if (reward.type == RewardType.PHYSICAL) "🎁" else "⏰"
+                    Box(
+                        modifier = Modifier.size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(icon, fontSize = 36.sp)
+                    }
                 }
             }
 
