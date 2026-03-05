@@ -66,12 +66,14 @@ import com.mushroom.feature.task.model.TaskUiModel
 import com.mushroom.feature.task.usecase.DeleteMode
 import com.mushroom.feature.task.viewmodel.DailyTaskViewEvent
 import com.mushroom.feature.task.viewmodel.DailyTaskViewModel
+import com.mushroom.core.domain.entity.Milestone
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
 
@@ -83,6 +85,7 @@ fun DailyTaskListScreen(
     onNavigateToTemplates: () -> Unit,
     onNavigateToAddMilestone: () -> Unit = {},
     onNavigateToCheckInHistory: () -> Unit = {},
+    onNavigateToMilestoneList: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -207,6 +210,16 @@ fun DailyTaskListScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
+                if (state.upcomingMilestones.isNotEmpty()) {
+                    item {
+                        UpcomingMilestonesCard(
+                            milestones = state.upcomingMilestones,
+                            onNavigateToMilestoneList = onNavigateToMilestoneList,
+                            modifier = Modifier.padding(horizontal = 0.dp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
                 item {
                     if (state.totalCount > 0) {
                         TaskProgressCard(state.completedCount, state.totalCount, state.currentStreak, state.memoStreak)
@@ -323,6 +336,65 @@ fun DailyTaskListScreen(
             }
         ) {
             DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+private fun UpcomingMilestonesCard(
+    milestones: List<Milestone>,
+    onNavigateToMilestoneList: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val today = LocalDate.now()
+    Card(
+        onClick = onNavigateToMilestoneList,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "近期里程碑",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "查看全部里程碑",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            milestones.forEach { milestone ->
+                val daysLeft = ChronoUnit.DAYS.between(today, milestone.scheduledDate).toInt()
+                val daysText = when (daysLeft) {
+                    0 -> "今天"
+                    1 -> "明天"
+                    else -> "还有 $daysLeft 天"
+                }
+                val subjectName = when (milestone.subject) {
+                    com.mushroom.core.domain.entity.Subject.MATH -> "数学"
+                    com.mushroom.core.domain.entity.Subject.CHINESE -> "语文"
+                    com.mushroom.core.domain.entity.Subject.ENGLISH -> "英语"
+                    com.mushroom.core.domain.entity.Subject.PHYSICS -> "物理"
+                    com.mushroom.core.domain.entity.Subject.CHEMISTRY -> "化学"
+                    com.mushroom.core.domain.entity.Subject.BIOLOGY -> "生物"
+                    com.mushroom.core.domain.entity.Subject.HISTORY -> "历史"
+                    com.mushroom.core.domain.entity.Subject.GEOGRAPHY -> "地理"
+                    com.mushroom.core.domain.entity.Subject.OTHER -> "其他"
+                }
+                Text(
+                    text = "${milestone.name} · $subjectName · $daysText",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
     }
 }

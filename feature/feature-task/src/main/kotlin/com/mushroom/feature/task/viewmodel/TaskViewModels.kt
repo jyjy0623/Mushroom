@@ -3,6 +3,8 @@ package com.mushroom.feature.task.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.core.domain.entity.Milestone
+import com.mushroom.core.domain.entity.MilestoneStatus
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.entity.Task
@@ -27,6 +29,7 @@ import com.mushroom.feature.task.usecase.GetTaskTemplatesUseCase
 import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
 import com.mushroom.core.domain.repository.CheckInRepository
+import com.mushroom.core.domain.repository.MilestoneRepository
 import com.mushroom.core.domain.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -62,7 +65,8 @@ data class DailyTaskUiState(
     // 连续打卡天数（用于今日进度卡展示里程碑提示）
     val currentStreak: Int = 0,
     // 连续完成备忘录任务天数（用于今日进度卡提示）
-    val memoStreak: Int = 0
+    val memoStreak: Int = 0,
+    val upcomingMilestones: List<Milestone> = emptyList()
 )
 
 sealed class DailyTaskViewEvent {
@@ -79,7 +83,8 @@ class DailyTaskViewModel @Inject constructor(
     private val applyTemplateUseCase: ApplyTaskTemplateUseCase,
     private val checkInTaskUseCase: CheckInTaskUseCase,
     private val checkInRepo: CheckInRepository,
-    private val taskRepo: TaskRepository
+    private val taskRepo: TaskRepository,
+    private val milestoneRepository: MilestoneRepository
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -125,8 +130,16 @@ class DailyTaskViewModel @Inject constructor(
             }
         },
         _currentStreak,
-        _memoStreak
-    ) { (date, tasks, uiModels), streak, memoStreak ->
+        _memoStreak,
+        milestoneRepository.getAllMilestones().map { milestones ->
+            val today = LocalDate.now()
+            val cutoff = today.plusDays(30)
+            milestones
+                .filter { it.status == MilestoneStatus.PENDING && !it.scheduledDate.isBefore(today) && !it.scheduledDate.isAfter(cutoff) }
+                .sortedBy { it.scheduledDate }
+                .take(3)
+        }
+    ) { (date, tasks, uiModels), streak, memoStreak, upcomingMilestones ->
         DailyTaskUiState(
             date = date,
             tasks = uiModels,
@@ -135,7 +148,8 @@ class DailyTaskViewModel @Inject constructor(
             totalCount = uiModels.size,
             celebrationShown = celebrationShownDates.contains(date),
             currentStreak = streak,
-            memoStreak = memoStreak
+            memoStreak = memoStreak,
+            upcomingMilestones = upcomingMilestones
         )
     }.stateIn(
         scope = viewModelScope,

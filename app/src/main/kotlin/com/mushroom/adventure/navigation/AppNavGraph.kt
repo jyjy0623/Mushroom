@@ -81,6 +81,9 @@ fun AppNavGraph(
                 },
                 onNavigateToCheckInHistory = {
                     navController.safeNavigate(AppDestination.CheckInHistory.route)
+                },
+                onNavigateToMilestoneList = {
+                    navController.safeNavigate(AppDestination.MilestoneList.route)
                 }
             )
         }
