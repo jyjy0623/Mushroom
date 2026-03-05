@@ -1,6 +1,5 @@
 package com.mushroom.adventure.ui.settings
 
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.mushroom.adventure.BuildConfig
@@ -19,8 +18,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +48,9 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun SettingsScreen(
     onCheckUpdate: () -> Unit = {},
+    onNavigateToDeductionConfig: () -> Unit = {},
+    onNavigateToDeductionRecord: () -> Unit = {},
+    onNavigateToKeyDateList: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,6 +80,42 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            // -------------------------------------------------------
+            // 家长管理
+            // -------------------------------------------------------
+            Text(
+                "家长管理",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                SettingsItem(
+                    icon = Icons.Default.Delete,
+                    title = "扣除规则配置",
+                    subtitle = "启用或关闭扣分规则，设置每日上限",
+                    onClick = onNavigateToDeductionConfig
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.Star,
+                    title = "执行扣除",
+                    subtitle = "对已启用的扣分规则执行扣分操作",
+                    onClick = onNavigateToDeductionRecord
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.DateRange,
+                    title = "关键奖励时间",
+                    subtitle = "配置特殊日期里程碑奖励（如生日、假期结束）",
+                    onClick = onNavigateToKeyDateList
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
             // -------------------------------------------------------
             // 数据管理
             // -------------------------------------------------------

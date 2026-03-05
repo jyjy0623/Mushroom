@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,6 +64,7 @@ private val DT_FMT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeductionRecordScreen(
+    onNavigateBack: () -> Unit = {},
     viewModel: DeductionViewModel = hiltViewModel()
 ) {
     val configs by viewModel.configs.collectAsStateWithLifecycle()
@@ -124,7 +129,16 @@ fun DeductionRecordScreen(
     }
 
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text("执行扣除") }) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("执行扣除") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(
@@ -319,6 +333,7 @@ private fun DeductionRecordCard(record: DeductionRecord, onAppeal: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeductionConfigScreen(
+    onNavigateBack: () -> Unit = {},
     viewModel: DeductionViewModel = hiltViewModel()
 ) {
     val configs by viewModel.configs.collectAsStateWithLifecycle()
@@ -334,7 +349,16 @@ fun DeductionConfigScreen(
     }
 
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text("扣除规则配置") }) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("扣除规则配置") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LazyColumn(
