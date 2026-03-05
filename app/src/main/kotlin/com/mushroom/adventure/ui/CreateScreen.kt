@@ -70,6 +70,7 @@ import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /**
@@ -128,7 +129,7 @@ fun CreateScreen(
     if (showTaskDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = taskDate
-                .atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                .atStartOfDay(ZoneOffset.UTC)
                 .toInstant().toEpochMilli()
         )
         DatePickerDialog(
@@ -156,7 +157,7 @@ fun CreateScreen(
     if (showMilestoneDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = milestoneDate
-                .atStartOfDay(ZoneId.of("Asia/Shanghai"))
+                .atStartOfDay(ZoneOffset.UTC)
                 .toInstant().toEpochMilli()
         )
         DatePickerDialog(

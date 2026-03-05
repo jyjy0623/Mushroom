@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -97,9 +96,6 @@ fun DailyTaskListScreen(
     // 复制任务日期选择器
     var showCopyDatePicker by remember { mutableStateOf(false) }
 
-    // FAB 展开状态
-    var fabExpanded by remember { mutableStateOf(false) }
-
     // 打卡奖励弹窗
     var rewardDialogText by remember { mutableStateOf<String?>(null) }
 
@@ -159,39 +155,9 @@ fun DailyTaskListScreen(
         },
         floatingActionButton = {
             val isPastDate = uiState.date.isBefore(LocalDate.now())
-            Column(horizontalAlignment = Alignment.End) {
-                // 展开后显示的次级按钮（仅保留添加里程碑）
-                if (fabExpanded) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            fabExpanded = false
-                            onNavigateToAddMilestone()
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Icon(Icons.Filled.Star, contentDescription = "添加里程碑")
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "添加里程碑",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-                // 历史日期（过去）隐藏新建按钮
-                if (!isPastDate) {
-                    FloatingActionButton(onClick = {
-                        if (fabExpanded) {
-                            fabExpanded = false
-                            onNavigateToAddTask(uiState.date.toString())
-                        } else {
-                            fabExpanded = true
-                        }
-                    }) {
-                        Icon(Icons.Filled.Add, contentDescription = "新建")
-                    }
+            if (!isPastDate) {
+                FloatingActionButton(onClick = { onNavigateToAddTask(uiState.date.toString()) }) {
+                    Icon(Icons.Filled.Add, contentDescription = "新建")
                 }
             }
         },
