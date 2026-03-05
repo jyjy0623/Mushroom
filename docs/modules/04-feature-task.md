@@ -154,11 +154,25 @@ data class TaskTemplateUiState(
   - 未完成任务显示"打卡"按钮（触发 feature-checkin 的 CheckIn 流程）
 - 底部：FAB 按钮（新建任务 / 从模板添加）
 
-### 5.2 TaskEditScreen
+### 5.2 TaskEditScreen（新建/编辑/只读统一入口）
 
-- 表单字段：任务名称（必填）、学科分类（下拉）、预计时长（滑动条）、截止时间（可选，时间选择器）、重复规则（单选）、备注
-- 截止时间字段：开关控制显示，设定后显示具体时间，并说明"设置后可获得提前完成额外蘑菇奖励"
-- 家长权限：需通过 ParentGateway 验证
+**新建模式（taskId == null）**
+
+标题「新建任务或里程碑」，页面分三层：
+
+1. **共享日期区**（TabRow 上方）：「日期」只读框 + 修改按钮，修改后同步到任务 ViewModel 和里程碑 ViewModel
+2. **TabRow**：Tab[0]「任务」/ Tab[1]「里程碑」（禁用滑动手势，仅点击切换）
+3. **HorizontalPager**：
+   - Page[0]「任务」：任务模板选择器、任务名称、说明、学科、预计时长、截止时间、重复规则、奖励设置、另存为自定义模板；顶部栏右侧「保存」按钮
+   - Page[1]「里程碑」：名称、类型、学科、分数段奖励配置、全宽「保存里程碑（需家长确认）」按钮；顶部栏右侧无按钮
+
+两个 Tab 各自持有独立 ViewModel（`TaskEditViewModel` / `MilestoneEditViewModel`），通过 `LaunchedEffect(selectedDate)` 将日期变化同步写入 `MilestoneEditViewModel.updateScheduledDate()`。
+
+**编辑/只读模式（taskId != null）**
+
+标题「编辑任务」或「查看任务（已完成）」，无 Tab，直接显示任务表单（与原行为一致）。
+
+**导航参数**：`task_edit/{taskId}/{date}/{initialTab}`，`initialTab` 默认 0，传 1 时进入页面直接停在里程碑 Tab。
 
 ### 5.3 TaskTemplateScreen
 

@@ -1,16 +1,13 @@
 package com.mushroom.adventure.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.mushroom.adventure.ui.CreateScreen
 import com.mushroom.adventure.ui.settings.SettingsScreen
 import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
@@ -45,22 +42,53 @@ fun AppNavGraph(
         composable(AppDestination.DailyTaskList.route) {
             DailyTaskListScreen(
                 onNavigateToAddTask = { dateIso ->
-                    navController.navigate(AppDestination.TaskEdit.route(date = dateIso))
+                    // 新建任务 → 合并页 Tab[0]
+                    navController.navigate(AppDestination.Create.route(date = dateIso, initialTab = 0))
                 },
                 onNavigateToEditTask = { taskId ->
+                    // 编辑任务 → 原 TaskEdit 页
                     navController.navigate(AppDestination.TaskEdit.route(taskId))
                 },
                 onNavigateToTemplates = {
                     navController.navigate(AppDestination.TaskTemplate.route)
                 },
                 onNavigateToAddMilestone = {
-                    navController.navigate(AppDestination.MilestoneList.route)
+                    // 新建里程碑 → 合并页 Tab[1]
+                    navController.navigate(AppDestination.Create.route(initialTab = 1))
                 },
                 onNavigateToCheckInHistory = {
                     navController.navigate(AppDestination.CheckInHistory.route)
                 }
             )
         }
+
+        // 合并新建页（新建任务 + 新建里程碑）
+        composable(
+            route = AppDestination.Create.route,
+            arguments = listOf(
+                navArgument(AppDestination.Create.ARG_DATE) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument(AppDestination.Create.ARG_INITIAL_TAB) {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            )
+        ) { backStackEntry ->
+            val dateStr = backStackEntry.arguments?.getString(AppDestination.Create.ARG_DATE)
+            val date = dateStr?.takeIf { it.isNotEmpty() }?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            } ?: LocalDate.now()
+            val initialTab = backStackEntry.arguments?.getInt(AppDestination.Create.ARG_INITIAL_TAB) ?: 0
+            CreateScreen(
+                date = date,
+                initialTab = initialTab,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // 编辑/只读任务页（taskId 必须 > 0）
         composable(
             route = AppDestination.TaskEdit.route,
             arguments = listOf(
@@ -83,6 +111,7 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
         composable(AppDestination.TaskTemplate.route) {
             TaskTemplateScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -113,9 +142,7 @@ fun AppNavGraph(
             )
         }
         composable(AppDestination.RewardCreate.route) {
-            RewardCreateScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            RewardCreateScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(
             route = AppDestination.RewardDetail.route,
@@ -138,9 +165,7 @@ fun AppNavGraph(
 
         // ---- 打卡历史 ----
         composable(AppDestination.CheckInHistory.route) {
-            CheckInCalendarScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            CheckInCalendarScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // ---- 里程碑 ----
@@ -160,9 +185,7 @@ fun AppNavGraph(
                 type = NavType.LongType
             })
         ) {
-            MilestoneEditScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            MilestoneEditScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // ---- 扣分 ----
@@ -199,7 +222,7 @@ fun AppNavGraph(
             )
         }
 
-        // ---- 设置（Sprint 5 实装）----
+        // ---- 设置 ----
         composable(AppDestination.Settings.route) {
             SettingsScreen(
                 onCheckUpdate = {

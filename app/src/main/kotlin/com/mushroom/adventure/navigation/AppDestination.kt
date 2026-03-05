@@ -8,6 +8,11 @@ sealed class AppDestination(val route: String) {
     object Statistics : AppDestination("statistics")
 
     // 任务相关
+    object Create : AppDestination("create/{date}/{initialTab}") {
+        const val ARG_DATE = "date"
+        const val ARG_INITIAL_TAB = "initialTab"
+        fun route(date: String = "", initialTab: Int = 0) = "create/$date/$initialTab"
+    }
     object TaskEdit : AppDestination("task_edit/{taskId}/{date}") {
         const val ARG_TASK_ID = "taskId"
         const val ARG_DATE = "date"
