@@ -157,7 +157,7 @@ fun DailyTaskListScreen(
         floatingActionButton = {
             val isPastDate = uiState.date.isBefore(LocalDate.now())
             Column(horizontalAlignment = Alignment.End) {
-                // 展开后显示的次级按钮
+                // 展开后显示的次级按钮（仅保留添加里程碑）
                 if (fabExpanded) {
                     SmallFloatingActionButton(
                         onClick = {
@@ -175,23 +175,6 @@ fun DailyTaskListScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(end = 4.dp)
                     )
-                    Spacer(Modifier.height(8.dp))
-                    SmallFloatingActionButton(
-                        onClick = onNavigateToTemplates,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text("模板", style = MaterialTheme.typography.labelSmall)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    SmallFloatingActionButton(
-                        onClick = {
-                            fabExpanded = false
-                            showCopyDatePicker = true
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text("复制", style = MaterialTheme.typography.labelSmall)
-                    }
                     Spacer(Modifier.height(8.dp))
                 }
                 // 历史日期（过去）隐藏新建按钮
@@ -247,6 +230,17 @@ fun DailyTaskListScreen(
                         )
                     }
                 }
+            }
+
+            // 左下角：复制任务按钮
+            SmallFloatingActionButton(
+                onClick = { showCopyDatePicker = true },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text("复制", style = MaterialTheme.typography.labelSmall)
             }
 
             // 庆祝横幅（全部完成动画，3s）
