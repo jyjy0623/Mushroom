@@ -23,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -166,7 +165,6 @@ private fun ActiveRewardRow(model: RewardUiModel, onClick: () -> Unit) {
             RewardType.PHYSICAL -> {
                 val unlocked = model.puzzleProgress?.unlockedPieces ?: 0
                 val total = model.puzzleProgress?.totalPieces ?: 0
-                val pct = if (total > 0) unlocked.toFloat() / total else 0f
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -186,13 +184,6 @@ private fun ActiveRewardRow(model: RewardUiModel, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = { pct },
-                    modifier = Modifier.fillMaxWidth().height(4.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
             }
             RewardType.TIME_BASED -> {
                 val used = model.timeBalance?.usedMinutes ?: 0
