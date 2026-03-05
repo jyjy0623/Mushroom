@@ -12,6 +12,7 @@ import com.mushroom.core.domain.entity.TimeLimitConfig
 import com.mushroom.core.domain.entity.TimeRewardBalance
 import com.mushroom.feature.reward.usecase.ClaimRewardUseCase
 import com.mushroom.feature.reward.usecase.CreateRewardUseCase
+import com.mushroom.feature.reward.usecase.DeleteRewardUseCase
 import com.mushroom.feature.reward.usecase.ExchangeMushroomsUseCase
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.feature.reward.usecase.GetActiveRewardsUseCase
@@ -49,50 +50,87 @@ data class RewardUiModel(
 data class RewardListUiState(
     val activeRewards: List<RewardUiModel> = emptyList(),
     val completedRewards: List<RewardUiModel> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val pendingDeleteRewardId: Long? = null
 )
+
+sealed class RewardListViewEvent {
+    data class ShowSnackbar(val message: String) : RewardListViewEvent()
+}
 
 @HiltViewModel
 class RewardListViewModel @Inject constructor(
     getAllNonArchived: GetAllNonArchivedRewardsUseCase,
     private val getPuzzleProgressUseCase: GetPuzzleProgressUseCase,
-    private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase
+    private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase,
+    private val deleteRewardUseCase: DeleteRewardUseCase
 ) : ViewModel() {
 
-    val uiState: StateFlow<RewardListUiState> = getAllNonArchived()
-        .flatMapLatest { rewards ->
-            if (rewards.isEmpty()) return@flatMapLatest flowOf(RewardListUiState())
+    private val _viewEvent = MutableSharedFlow<RewardListViewEvent>()
+    val viewEvent: SharedFlow<RewardListViewEvent> = _viewEvent.asSharedFlow()
 
-            val perRewardFlows = rewards.map { reward ->
-                when (reward.type) {
-                    RewardType.PHYSICAL ->
-                        getPuzzleProgressUseCase(reward.id).map { progress ->
-                            RewardUiModel(reward = reward, puzzleProgress = progress)
-                        }
-                    RewardType.TIME_BASED ->
-                        flow {
-                            val balance = getTimeRewardBalanceUseCase(reward.id)
-                                ?: reward.timeLimitConfig?.let { cfg ->
-                                    TimeRewardBalance(
-                                        rewardId = reward.id,
-                                        periodStart = java.time.LocalDate.now(),
-                                        maxMinutes = cfg.maxMinutesPerPeriod,
-                                        usedMinutes = 0
-                                    )
-                                }
-                            emit(RewardUiModel(reward = reward, timeBalance = balance))
-                        }
+    private val _pendingDeleteRewardId = MutableStateFlow<Long?>(null)
+
+    val uiState: StateFlow<RewardListUiState> = combine(
+        getAllNonArchived()
+            .flatMapLatest { rewards ->
+                if (rewards.isEmpty()) return@flatMapLatest flowOf(RewardListUiState())
+
+                val perRewardFlows = rewards.map { reward ->
+                    when (reward.type) {
+                        RewardType.PHYSICAL ->
+                            getPuzzleProgressUseCase(reward.id).map { progress ->
+                                RewardUiModel(reward = reward, puzzleProgress = progress)
+                            }
+                        RewardType.TIME_BASED ->
+                            flow {
+                                val balance = getTimeRewardBalanceUseCase(reward.id)
+                                    ?: reward.timeLimitConfig?.let { cfg ->
+                                        TimeRewardBalance(
+                                            rewardId = reward.id,
+                                            periodStart = java.time.LocalDate.now(),
+                                            maxMinutes = cfg.maxMinutesPerPeriod,
+                                            usedMinutes = 0
+                                        )
+                                    }
+                                emit(RewardUiModel(reward = reward, timeBalance = balance))
+                            }
+                    }
                 }
-            }
-            combine(perRewardFlows) { models ->
-                val active = models.filter { it.reward.status == RewardStatus.ACTIVE }
-                val completed = models.filter {
-                    it.reward.status == RewardStatus.COMPLETED || it.reward.status == RewardStatus.CLAIMED
+                combine(perRewardFlows) { models ->
+                    val active = models.filter { it.reward.status == RewardStatus.ACTIVE }
+                    val completed = models.filter {
+                        it.reward.status == RewardStatus.COMPLETED || it.reward.status == RewardStatus.CLAIMED
+                    }
+                    RewardListUiState(activeRewards = active, completedRewards = completed)
                 }
-                RewardListUiState(activeRewards = active, completedRewards = completed)
-            }
+            },
+        _pendingDeleteRewardId
+    ) { state, pendingId ->
+        state.copy(pendingDeleteRewardId = pendingId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RewardListUiState(isLoading = true))
+
+    fun showDeleteConfirmation(rewardId: Long) {
+        _pendingDeleteRewardId.value = rewardId
+    }
+
+    fun dismissDeleteConfirmation() {
+        _pendingDeleteRewardId.value = null
+    }
+
+    fun confirmDelete() {
+        val rewardId = _pendingDeleteRewardId.value ?: return
+        _pendingDeleteRewardId.value = null
+        viewModelScope.launch {
+            deleteRewardUseCase(rewardId)
+                .onSuccess {
+                    _viewEvent.emit(RewardListViewEvent.ShowSnackbar("奖品已删除，蘑菇已退还"))
+                }
+                .onFailure { e ->
+                    _viewEvent.emit(RewardListViewEvent.ShowSnackbar(e.message ?: "删除失败"))
+                }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RewardListUiState(isLoading = true))
+    }
 }
 
 // -----------------------------------------------------------------------

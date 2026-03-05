@@ -104,4 +104,19 @@ class RewardRepositoryImpl @Inject constructor(
                 createdAt = exchange.createdAt.toString()
             )
         )
+
+    override suspend fun deleteActiveReward(id: Long): Map<MushroomLevel, Int> {
+        // 汇总该奖品所有兑换记录中消耗的蘑菇，按等级求和
+        val exchanges = rewardExchangeDao.getExchangesByRewardId(id)
+        val refundMap = mutableMapOf<MushroomLevel, Int>()
+        for (ex in exchanges) {
+            val level = runCatching { MushroomLevel.valueOf(ex.mushroomLevel) }
+                .getOrDefault(MushroomLevel.SMALL)
+            refundMap[level] = (refundMap[level] ?: 0) + ex.mushroomCount
+        }
+        // 删除兑换记录和奖品本体
+        rewardExchangeDao.deleteByRewardId(id)
+        rewardDao.deleteById(id)
+        return refundMap
+    }
 }

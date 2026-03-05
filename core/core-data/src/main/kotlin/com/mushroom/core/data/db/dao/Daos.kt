@@ -147,6 +147,9 @@ interface RewardDao {
 
     @Update
     suspend fun update(reward: RewardEntity)
+
+    @Query("DELETE FROM rewards WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }
 
 @Dao
@@ -159,6 +162,12 @@ interface RewardExchangeDao {
 
     @Query("SELECT * FROM reward_exchanges WHERE reward_id = :rewardId AND puzzle_pieces_unlocked > 0 ORDER BY created_at ASC")
     fun getPhysicalExchanges(rewardId: Long): Flow<List<RewardExchangeEntity>>
+
+    @Query("SELECT * FROM reward_exchanges WHERE reward_id = :rewardId")
+    suspend fun getExchangesByRewardId(rewardId: Long): List<RewardExchangeEntity>
+
+    @Query("DELETE FROM reward_exchanges WHERE reward_id = :rewardId")
+    suspend fun deleteByRewardId(rewardId: Long)
 }
 
 @Dao

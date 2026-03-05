@@ -265,3 +265,38 @@ class ClaimRewardUseCase @Inject constructor(
         }.onFailure { MushroomLogger.e(TAG, "ClaimRewardUseCase failed", it) }
     }
 }
+
+// -----------------------------------------------------------------------
+// DeleteRewardUseCase
+// -----------------------------------------------------------------------
+class DeleteRewardUseCase @Inject constructor(
+    private val rewardRepo: RewardRepository,
+    private val mushroomRepo: MushroomRepository
+) {
+    suspend operator fun invoke(rewardId: Long): Result<Unit> {
+        MushroomLogger.i(TAG, "DeleteRewardUseCase: rewardId=$rewardId")
+        return runCatching {
+            val reward = rewardRepo.getRewardById(rewardId) ?: error("奖品不存在")
+            check(reward.status == RewardStatus.ACTIVE) { "只能删除尚未完成的奖品" }
+
+            // 删除奖品并获取需要退还的蘑菇
+            val refundMap = rewardRepo.deleteActiveReward(rewardId)
+
+            // 退还蘑菇到账本
+            val transactions = refundMap.map { (level, count) ->
+                MushroomTransaction(
+                    level = level,
+                    action = MushroomAction.EARN,
+                    amount = count,
+                    sourceType = MushroomSource.APPEAL_REFUND,
+                    sourceId = rewardId,
+                    note = "删除奖品「${reward.name}」退还 ${level.displayName}×$count",
+                    createdAt = LocalDateTime.now()
+                )
+            }
+            mushroomRepo.recordTransactions(transactions)
+
+            MushroomLogger.i(TAG, "DeleteRewardUseCase: 已删除奖品 ${reward.name}，退还蘑菇 $refundMap")
+        }.onFailure { MushroomLogger.e(TAG, "DeleteRewardUseCase failed", it) }
+    }
+}
