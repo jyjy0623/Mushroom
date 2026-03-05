@@ -7,6 +7,17 @@
 - **Read**：读取项目内任意文件
 - **Bash**：执行 shell 命令（含 Gradle 构建、测试运行等）
 - **Bash export**：导出环境变量（如 JAVA_HOME、ANDROID_HOME 等）
+- **Bash scripts/**：执行 `scripts/` 目录下所有脚本，无需逐次确认
+
+## 标准化脚本（scripts/）
+
+| 脚本 | 用法 | 说明 |
+|---|---|---|
+| `commit.sh` | `bash scripts/commit.sh "message" [files...]` | 暂存指定文件并 commit（自动附加 Co-Authored-By） |
+| `tag-release.sh` | `bash scripts/tag-release.sh <version> "<notes>"` | 推 master → 建 tag → force push 触发 CI |
+| `new-fix-branch.sh` | `bash scripts/new-fix-branch.sh <issue-N> <desc>` | 基于 master 创建 `fix/issue-N-desc` 分支 |
+| `finish-fix.sh` | `bash scripts/finish-fix.sh <issue-N> "<根因>" "<方案>"` | merge fix 分支到 master + push + Issue comment |
+| `sync-tc-pass.sh` | `bash scripts/sync-tc-pass.sh` | 读取所有已关闭 Issue，批量把对应 TC 标记为通过并 commit |
 
 ## 项目信息
 
