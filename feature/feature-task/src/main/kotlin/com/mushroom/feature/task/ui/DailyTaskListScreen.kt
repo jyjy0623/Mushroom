@@ -233,7 +233,7 @@ fun DailyTaskListScreen(
             }
 
             // 左下角：复制任务按钮
-            SmallFloatingActionButton(
+            FloatingActionButton(
                 onClick = { showCopyDatePicker = true },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
