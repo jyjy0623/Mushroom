@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash scripts/*)",
+      "Bash(cd /d/workspace/Mushroom*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git checkout*)",
+      "Bash(git merge*)",
+      "Bash(git tag*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git status*)",
+      "Bash(git show*)",
+      "Bash(gh issue*)",
+      "Bash(gh run*)",
+      "Bash(chmod +x*)",
+      "Bash(mkdir -p*)"
+    ]
+  }
+}
