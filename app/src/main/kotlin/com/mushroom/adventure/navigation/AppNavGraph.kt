@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.mushroom.adventure.ui.CreateScreen
 import com.mushroom.adventure.ui.settings.SettingsScreen
 import com.mushroom.adventure.update.UpdateViewModel
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
 import com.mushroom.feature.milestone.ui.MilestoneEditScreen
 import com.mushroom.feature.milestone.ui.MilestoneListScreen
@@ -27,6 +28,28 @@ import com.mushroom.feature.task.ui.TaskEditScreen
 import com.mushroom.feature.task.ui.TaskTemplateScreen
 import java.time.LocalDate
 
+private const val NAV_TAG = "AppNavGraph"
+
+/**
+ * 安全导航封装：捕获 IllegalArgumentException（目标路由不存在）并记录详细错误日志，
+ * 避免因路由拼写或参数格式错误直接导致崩溃。
+ */
+private fun NavHostController.safeNavigate(route: String) {
+    MushroomLogger.d(NAV_TAG, "navigate → $route")
+    try {
+        navigate(route)
+    } catch (e: IllegalArgumentException) {
+        MushroomLogger.e(
+            NAV_TAG,
+            "导航失败：目标路由 \"$route\" 不存在于导航图中。" +
+                "当前路由栈：${currentBackStack.value.map { it.destination.route }}",
+            e
+        )
+    } catch (e: Exception) {
+        MushroomLogger.e(NAV_TAG, "导航异常：route=\"$route\"", e)
+    }
+}
+
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -43,21 +66,21 @@ fun AppNavGraph(
             DailyTaskListScreen(
                 onNavigateToAddTask = { dateIso ->
                     // 新建任务 → 合并页 Tab[0]
-                    navController.navigate(AppDestination.Create.route(date = dateIso, initialTab = 0))
+                    navController.safeNavigate(AppDestination.Create.route(date = dateIso, initialTab = 0))
                 },
                 onNavigateToEditTask = { taskId ->
                     // 编辑任务 → 原 TaskEdit 页
-                    navController.navigate(AppDestination.TaskEdit.route(taskId))
+                    navController.safeNavigate(AppDestination.TaskEdit.route(taskId))
                 },
                 onNavigateToTemplates = {
-                    navController.navigate(AppDestination.TaskTemplate.route)
+                    navController.safeNavigate(AppDestination.TaskTemplate.route)
                 },
                 onNavigateToAddMilestone = {
                     // 新建里程碑 → 合并页 Tab[1]
-                    navController.navigate(AppDestination.Create.route(initialTab = 1))
+                    navController.safeNavigate(AppDestination.Create.route(initialTab = 1))
                 },
                 onNavigateToCheckInHistory = {
-                    navController.navigate(AppDestination.CheckInHistory.route)
+                    navController.safeNavigate(AppDestination.CheckInHistory.route)
                 }
             )
         }
@@ -78,7 +101,10 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val dateStr = backStackEntry.arguments?.getString(AppDestination.Create.ARG_DATE)
             val date = dateStr?.takeIf { it.isNotEmpty() }?.let {
-                runCatching { LocalDate.parse(it) }.getOrNull()
+                runCatching { LocalDate.parse(it) }.getOrElse { t ->
+                    MushroomLogger.w(NAV_TAG, "Create 页日期参数解析失败：\"$it\"", t)
+                    null
+                }
             } ?: LocalDate.now()
             val initialTab = backStackEntry.arguments?.getInt(AppDestination.Create.ARG_INITIAL_TAB) ?: 0
             CreateScreen(
@@ -102,10 +128,15 @@ fun AppNavGraph(
                 }
             )
         ) { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getLong(AppDestination.TaskEdit.ARG_TASK_ID) ?: -1L
             val dateStr = backStackEntry.arguments?.getString(AppDestination.TaskEdit.ARG_DATE)
             val date = dateStr?.takeIf { it.isNotEmpty() }?.let {
-                runCatching { LocalDate.parse(it) }.getOrNull()
+                runCatching { LocalDate.parse(it) }.getOrElse { t ->
+                    MushroomLogger.w(NAV_TAG, "TaskEdit 页日期参数解析失败：\"$it\"", t)
+                    null
+                }
             } ?: LocalDate.now()
+            MushroomLogger.d(NAV_TAG, "TaskEdit：taskId=$taskId, date=$date")
             TaskEditScreen(
                 date = date,
                 onNavigateBack = { navController.popBackStack() }
@@ -117,10 +148,10 @@ fun AppNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onTemplateApplied = { navController.popBackStack() },
                 onNavigateToMilestoneList = {
-                    navController.navigate(AppDestination.MilestoneList.route)
+                    navController.safeNavigate(AppDestination.MilestoneList.route)
                 },
                 onNavigateToMilestoneCreate = {
-                    navController.navigate(AppDestination.MilestoneEdit.route())
+                    navController.safeNavigate(AppDestination.MilestoneEdit.route())
                 }
             )
         }
@@ -134,10 +165,10 @@ fun AppNavGraph(
         composable(AppDestination.RewardList.route) {
             RewardListScreen(
                 onNavigateToDetail = { rewardId ->
-                    navController.navigate(AppDestination.RewardDetail.route(rewardId))
+                    navController.safeNavigate(AppDestination.RewardDetail.route(rewardId))
                 },
                 onNavigateToCreate = {
-                    navController.navigate(AppDestination.RewardCreate.route)
+                    navController.safeNavigate(AppDestination.RewardCreate.route)
                 }
             )
         }
@@ -172,10 +203,10 @@ fun AppNavGraph(
         composable(AppDestination.MilestoneList.route) {
             MilestoneListScreen(
                 onNavigateToEdit = { milestoneId ->
-                    navController.navigate(AppDestination.MilestoneEdit.route(milestoneId))
+                    navController.safeNavigate(AppDestination.MilestoneEdit.route(milestoneId))
                 },
                 onNavigateToCreate = {
-                    navController.navigate(AppDestination.MilestoneEdit.route())
+                    navController.safeNavigate(AppDestination.MilestoneEdit.route())
                 }
             )
         }
@@ -201,10 +232,10 @@ fun AppNavGraph(
             KeyDateListScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEdit = { id ->
-                    navController.navigate(AppDestination.KeyDateEdit.route(id))
+                    navController.safeNavigate(AppDestination.KeyDateEdit.route(id))
                 },
                 onNavigateToCreate = {
-                    navController.navigate(AppDestination.KeyDateEdit.route())
+                    navController.safeNavigate(AppDestination.KeyDateEdit.route())
                 }
             )
         }
@@ -229,13 +260,13 @@ fun AppNavGraph(
                     updateViewModel.checkForUpdate(forceShow = true)
                 },
                 onNavigateToDeductionConfig = {
-                    navController.navigate(AppDestination.DeductionConfig.route)
+                    navController.safeNavigate(AppDestination.DeductionConfig.route)
                 },
                 onNavigateToDeductionRecord = {
-                    navController.navigate(AppDestination.DeductionRecord.route)
+                    navController.safeNavigate(AppDestination.DeductionRecord.route)
                 },
                 onNavigateToKeyDateList = {
-                    navController.navigate(AppDestination.KeyDateList.route)
+                    navController.safeNavigate(AppDestination.KeyDateList.route)
                 }
             )
         }
