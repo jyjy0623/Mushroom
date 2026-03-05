@@ -19,6 +19,20 @@
 | `finish-fix.sh` | `bash scripts/finish-fix.sh <issue-N> "<根因>" "<方案>"` | merge fix 分支到 master + push + Issue comment |
 | `sync-tc-pass.sh` | `bash scripts/sync-tc-pass.sh` | 读取所有已关闭 Issue，批量把对应 TC 标记为通过并 commit |
 
+## 脚本沉淀规则
+
+完成某个操作后，**满足以下任意两条**时，我会主动提示用户是否将其沉淀为脚本：
+
+1. **重复性**：同一操作在不同 Issue/Sprint 中出现 2 次以上
+2. **步骤多**：操作本身需要 3 步以上 bash 调用
+3. **格式固定**：输出有规范要求（如 commit message、Issue comment 格式）
+4. **权限敏感**：涉及 push、gh 写操作，需要反复确认
+
+提示语格式：
+> 💡 这个操作满足沉淀条件，是否要生成脚本写入 `scripts/` 以节省后续 token？
+
+详细说明见 `scripts/README.md`。
+
 ## 项目信息
 
 - Android 多模块项目，14个模块
