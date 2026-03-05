@@ -12,7 +12,8 @@ import com.mushroom.adventure.ui.settings.SettingsScreen
 import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
-import com.mushroom.feature.milestone.ui.MilestoneEditScreen
+// MilestoneEditScreen 已由 CreateScreen(Tab[1]) 取代，暂保留文件备用
+// import com.mushroom.feature.milestone.ui.MilestoneEditScreen
 import com.mushroom.feature.milestone.ui.MilestoneListScreen
 import com.mushroom.feature.mushroom.ui.DeductionConfigScreen
 import com.mushroom.feature.mushroom.ui.DeductionRecordScreen
@@ -154,7 +155,7 @@ fun AppNavGraph(
                     navController.safeNavigate(AppDestination.MilestoneList.route)
                 },
                 onNavigateToMilestoneCreate = {
-                    navController.safeNavigate(AppDestination.MilestoneEdit.route())
+                    navController.safeNavigate(AppDestination.Create.route(initialTab = 1))
                 }
             )
         }
@@ -213,14 +214,15 @@ fun AppNavGraph(
                 }
             )
         }
-        composable(
-            route = AppDestination.MilestoneEdit.route,
-            arguments = listOf(navArgument(AppDestination.MilestoneEdit.ARG_MILESTONE_ID) {
-                type = NavType.LongType
-            })
-        ) {
-            MilestoneEditScreen(onNavigateBack = { navController.popBackStack() })
-        }
+        // MilestoneEditScreen 已由 CreateScreen(Tab[1]) 取代，路由暂保留注释备用
+        // composable(
+        //     route = AppDestination.MilestoneEdit.route,
+        //     arguments = listOf(navArgument(AppDestination.MilestoneEdit.ARG_MILESTONE_ID) {
+        //         type = NavType.LongType
+        //     })
+        // ) {
+        //     MilestoneEditScreen(onNavigateBack = { navController.popBackStack() })
+        // }
 
         // ---- 扣分 ----
         composable(AppDestination.DeductionRecord.route) {
