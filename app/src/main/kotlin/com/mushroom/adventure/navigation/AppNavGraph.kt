@@ -18,6 +18,8 @@ import com.mushroom.feature.milestone.ui.MilestoneEditScreen
 import com.mushroom.feature.milestone.ui.MilestoneListScreen
 import com.mushroom.feature.mushroom.ui.DeductionConfigScreen
 import com.mushroom.feature.mushroom.ui.DeductionRecordScreen
+import com.mushroom.feature.mushroom.ui.KeyDateEditScreen
+import com.mushroom.feature.mushroom.ui.KeyDateListScreen
 import com.mushroom.feature.mushroom.ui.MushroomLedgerScreen
 import com.mushroom.feature.reward.ui.RewardCreateScreen
 import com.mushroom.feature.reward.ui.RewardDetailScreen
@@ -165,10 +167,36 @@ fun AppNavGraph(
 
         // ---- 扣分 ----
         composable(AppDestination.DeductionRecord.route) {
-            DeductionRecordScreen()
+            DeductionRecordScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(AppDestination.DeductionConfig.route) {
-            DeductionConfigScreen()
+            DeductionConfigScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
+        // ---- 关键奖励时间 ----
+        composable(AppDestination.KeyDateList.route) {
+            KeyDateListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEdit = { id ->
+                    navController.navigate(AppDestination.KeyDateEdit.route(id))
+                },
+                onNavigateToCreate = {
+                    navController.navigate(AppDestination.KeyDateEdit.route())
+                }
+            )
+        }
+        composable(
+            route = AppDestination.KeyDateEdit.route,
+            arguments = listOf(navArgument(AppDestination.KeyDateEdit.ARG_KEY_DATE_ID) {
+                type = NavType.LongType
+                defaultValue = -1L
+            })
+        ) { backStackEntry ->
+            val keyDateId = backStackEntry.arguments?.getLong(AppDestination.KeyDateEdit.ARG_KEY_DATE_ID) ?: -1L
+            KeyDateEditScreen(
+                keyDateId = keyDateId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         // ---- 设置（Sprint 5 实装）----
@@ -176,6 +204,15 @@ fun AppNavGraph(
             SettingsScreen(
                 onCheckUpdate = {
                     updateViewModel.checkForUpdate(forceShow = true)
+                },
+                onNavigateToDeductionConfig = {
+                    navController.navigate(AppDestination.DeductionConfig.route)
+                },
+                onNavigateToDeductionRecord = {
+                    navController.navigate(AppDestination.DeductionRecord.route)
+                },
+                onNavigateToKeyDateList = {
+                    navController.navigate(AppDestination.KeyDateList.route)
                 }
             )
         }

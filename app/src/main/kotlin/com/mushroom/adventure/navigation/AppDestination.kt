@@ -36,6 +36,13 @@ sealed class AppDestination(val route: String) {
     object DeductionRecord : AppDestination("deduction_record")
     object DeductionConfig : AppDestination("deduction_config")
 
+    // 关键奖励时间
+    object KeyDateList : AppDestination("key_date_list")
+    object KeyDateEdit : AppDestination("key_date_edit/{keyDateId}") {
+        const val ARG_KEY_DATE_ID = "keyDateId"
+        fun route(keyDateId: Long = -1L) = "key_date_edit/$keyDateId"
+    }
+
     // 设置
     object Settings : AppDestination("settings")
 }
