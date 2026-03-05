@@ -132,20 +132,7 @@ fun CreateScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                actions = {
-                    // 任务 Tab：顶部保存按钮
-                    if (selectedTab == 0) {
-                        val isSaving = taskUiState.isSaving
-                        TextButton(
-                            onClick = { taskViewModel.save(selectedDate) },
-                            enabled = !isSaving
-                        ) {
-                            if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
-                            else Text("保存")
-                        }
-                    }
-                    // 里程碑 Tab：无顶部按钮（页内全宽按钮）
-                }
+                actions = {}
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -278,15 +265,15 @@ fun CreateScreen(
                             singleLine = true
                         )
 
+                        RepeatRuleSection(
+                            selected = taskUiState.repeatRule,
+                            onSelect = taskViewModel::updateRepeatRule
+                        )
+
                         DeadlineSection(
                             deadline = taskUiState.deadline,
                             date = selectedDate,
                             onDeadlineChange = taskViewModel::updateDeadline
-                        )
-
-                        RepeatRuleSection(
-                            selected = taskUiState.repeatRule,
-                            onSelect = taskViewModel::updateRepeatRule
                         )
 
                         HorizontalDivider()
@@ -309,11 +296,24 @@ fun CreateScreen(
 
                         HorizontalDivider()
 
-                        OutlinedButton(
-                            onClick = { taskViewModel.saveAsTemplate() },
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("另存为自定义模板")
+                            OutlinedButton(
+                                onClick = { taskViewModel.saveAsTemplate() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("另存为自定义模板")
+                            }
+                            Button(
+                                onClick = { taskViewModel.save(selectedDate) },
+                                enabled = !taskUiState.isSaving,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (taskUiState.isSaving) CircularProgressIndicator(Modifier.size(16.dp))
+                                else Text("保存")
+                            }
                         }
 
                         Spacer(Modifier.height(16.dp))
