@@ -136,6 +136,9 @@ interface RewardDao {
     @Query("SELECT * FROM rewards WHERE status = 'ACTIVE'")
     fun getActiveRewards(): Flow<List<RewardEntity>>
 
+    @Query("SELECT * FROM rewards WHERE status != 'ARCHIVED' ORDER BY status ASC, id DESC")
+    fun getAllNonArchived(): Flow<List<RewardEntity>>
+
     @Query("SELECT * FROM rewards WHERE id = :id")
     suspend fun getRewardById(id: Long): RewardEntity?
 

@@ -13,7 +13,9 @@ import com.mushroom.core.domain.entity.TimeRewardBalance
 import com.mushroom.feature.reward.usecase.ClaimRewardUseCase
 import com.mushroom.feature.reward.usecase.CreateRewardUseCase
 import com.mushroom.feature.reward.usecase.ExchangeMushroomsUseCase
+import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.feature.reward.usecase.GetActiveRewardsUseCase
+import com.mushroom.feature.reward.usecase.GetAllNonArchivedRewardsUseCase
 import com.mushroom.feature.reward.usecase.GetPuzzleProgressUseCase
 import com.mushroom.feature.reward.usecase.GetTimeRewardBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,22 +47,22 @@ data class RewardUiModel(
 )
 
 data class RewardListUiState(
-    val rewards: List<RewardUiModel> = emptyList(),
+    val activeRewards: List<RewardUiModel> = emptyList(),
+    val completedRewards: List<RewardUiModel> = emptyList(),
     val isLoading: Boolean = false
 )
 
 @HiltViewModel
 class RewardListViewModel @Inject constructor(
-    getActiveRewards: GetActiveRewardsUseCase,
+    getAllNonArchived: GetAllNonArchivedRewardsUseCase,
     private val getPuzzleProgressUseCase: GetPuzzleProgressUseCase,
     private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase
 ) : ViewModel() {
 
-    val uiState: StateFlow<RewardListUiState> = getActiveRewards()
+    val uiState: StateFlow<RewardListUiState> = getAllNonArchived()
         .flatMapLatest { rewards ->
             if (rewards.isEmpty()) return@flatMapLatest flowOf(RewardListUiState())
 
-            // 对每个奖品构建一个携带进度的 Flow
             val perRewardFlows = rewards.map { reward ->
                 when (reward.type) {
                     RewardType.PHYSICAL ->
@@ -68,11 +70,9 @@ class RewardListViewModel @Inject constructor(
                             RewardUiModel(reward = reward, puzzleProgress = progress)
                         }
                     RewardType.TIME_BASED ->
-                        // suspend → 包成只 emit 一次的 Flow
-                        kotlinx.coroutines.flow.flow {
+                        flow {
                             val balance = getTimeRewardBalanceUseCase(reward.id)
                                 ?: reward.timeLimitConfig?.let { cfg ->
-                                    // 从未兑换时 DB 无记录，构造默认 balance 用于卡片显示
                                     TimeRewardBalance(
                                         rewardId = reward.id,
                                         periodStart = java.time.LocalDate.now(),
@@ -84,7 +84,13 @@ class RewardListViewModel @Inject constructor(
                         }
                 }
             }
-            combine(perRewardFlows) { models -> RewardListUiState(rewards = models.toList()) }
+            combine(perRewardFlows) { models ->
+                val active = models.filter { it.reward.status == RewardStatus.ACTIVE }
+                val completed = models.filter {
+                    it.reward.status == RewardStatus.COMPLETED || it.reward.status == RewardStatus.CLAIMED
+                }
+                RewardListUiState(activeRewards = active, completedRewards = completed)
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RewardListUiState(isLoading = true))
 }
