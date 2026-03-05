@@ -60,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
+import com.mushroom.core.domain.entity.TaskTemplate
 import java.time.DayOfWeek
 import com.mushroom.feature.task.viewmodel.TaskEditViewEvent
 import com.mushroom.feature.task.viewmodel.TaskEditViewModel
@@ -102,6 +103,8 @@ fun TaskEditScreen(
     val deadline = uiState.deadline
     val repeatRule = uiState.repeatRule
     val description = uiState.description
+    val builtInTemplates = uiState.builtInTemplates
+    val customTemplates = uiState.customTemplates
 
     // 新建任务时允许修改日期；编辑/只读时固定
     var selectedDate by remember { mutableStateOf(date) }
@@ -196,6 +199,14 @@ fun TaskEditScreen(
                     singleLine = true,
                     enabled = false
                 )
+
+                if (builtInTemplates.isNotEmpty() || customTemplates.isNotEmpty()) {
+                    TemplateDropdown(
+                        builtInTemplates = builtInTemplates,
+                        customTemplates = customTemplates,
+                        onSelect = { template -> viewModel.applyTemplate(template, selectedDate) }
+                    )
+                }
             }
 
             OutlinedTextField(
@@ -389,6 +400,90 @@ private fun RewardSection(
                         "默认：截止前完成得小蘑菇×1",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TemplateDropdown(
+    builtInTemplates: List<TaskTemplate>,
+    customTemplates: List<TaskTemplate>,
+    onSelect: (TaskTemplate) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedLabel by remember { mutableStateOf("（不使用模板）") }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("任务模板") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            singleLine = true
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            // 默认选项
+            DropdownMenuItem(
+                text = { Text("（不使用模板）") },
+                onClick = {
+                    selectedLabel = "（不使用模板）"
+                    expanded = false
+                }
+            )
+            // 内置模板组
+            if (builtInTemplates.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "── 系统内置 ──",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
+                )
+                builtInTemplates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.name) },
+                        onClick = {
+                            selectedLabel = template.name
+                            expanded = false
+                            onSelect(template)
+                        }
+                    )
+                }
+            }
+            // 自定义模板组
+            if (customTemplates.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "── 自定义 ──",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
+                )
+                customTemplates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.name) },
+                        onClick = {
+                            selectedLabel = template.name
+                            expanded = false
+                            onSelect(template)
+                        }
                     )
                 }
             }

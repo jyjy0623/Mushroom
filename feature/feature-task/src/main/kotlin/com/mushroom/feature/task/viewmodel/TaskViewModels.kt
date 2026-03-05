@@ -226,7 +226,10 @@ data class TaskEditUiState(
     val useCustomReward: Boolean = false,
     val useCustomEarlyReward: Boolean = false,
     // 已完成任务只读，禁止编辑保存
-    val isReadOnly: Boolean = false
+    val isReadOnly: Boolean = false,
+    // 任务模板列表（新建时使用）
+    val builtInTemplates: List<TaskTemplate> = emptyList(),
+    val customTemplates: List<TaskTemplate> = emptyList()
 )
 
 sealed class TaskEditViewEvent {
@@ -241,6 +244,7 @@ class TaskEditViewModel @Inject constructor(
     private val updateTaskUseCase: UpdateTaskUseCase,
     private val getTaskByIdUseCase: GetTaskByIdUseCase,
     private val saveCustomTemplateUseCase: SaveCustomTemplateUseCase,
+    private val getTaskTemplatesUseCase: GetTaskTemplatesUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -253,6 +257,16 @@ class TaskEditViewModel @Inject constructor(
             viewModelScope.launch {
                 val task = getTaskByIdUseCase(taskId)
                 if (task != null) loadTask(task)
+            }
+        } else {
+            // 新建任务时加载模板列表
+            viewModelScope.launch {
+                getTaskTemplatesUseCase.invoke().collect { all ->
+                    _uiState.value = _uiState.value.copy(
+                        builtInTemplates = all.filter { it.isBuiltIn },
+                        customTemplates = all.filter { !it.isBuiltIn }
+                    )
+                }
             }
         }
     }
@@ -272,6 +286,28 @@ class TaskEditViewModel @Inject constructor(
     fun updateBaseRewardAmount(amount: Int) { _uiState.value = _uiState.value.copy(baseRewardAmount = amount.coerceAtLeast(1)) }
     fun updateEarlyRewardLevel(level: MushroomLevel) { _uiState.value = _uiState.value.copy(earlyRewardLevel = level) }
     fun updateEarlyRewardAmount(amount: Int) { _uiState.value = _uiState.value.copy(earlyRewardAmount = amount.coerceAtLeast(1)) }
+
+    fun applyTemplate(template: TaskTemplate?, date: LocalDate) {
+        if (template == null) return
+        val deadline = template.defaultDeadlineOffset?.let {
+            date.atStartOfDay().plusMinutes(it.toLong())
+        }
+        val baseReward = template.rewardConfig.baseReward
+        val bonusReward = template.rewardConfig.bonusReward
+        _uiState.value = _uiState.value.copy(
+            title = template.name,
+            subject = template.subject,
+            estimatedMinutes = template.estimatedMinutes,
+            description = template.description,
+            deadline = deadline,
+            useCustomReward = baseReward != null,
+            baseRewardLevel = baseReward?.level ?: MushroomLevel.SMALL,
+            baseRewardAmount = baseReward?.amount ?: 1,
+            useCustomEarlyReward = bonusReward != null,
+            earlyRewardLevel = bonusReward?.level ?: MushroomLevel.SMALL,
+            earlyRewardAmount = bonusReward?.amount ?: 1
+        )
+    }
 
     fun loadTask(task: Task) {
         val isDone = task.status == TaskStatus.EARLY_DONE || task.status == TaskStatus.ON_TIME_DONE
