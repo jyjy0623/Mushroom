@@ -1,5 +1,6 @@
 package com.mushroom.feature.milestone.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -31,6 +34,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +54,9 @@ import com.mushroom.core.domain.entity.Subject
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewEvent
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewModel
 import kotlinx.coroutines.flow.collectLatest
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +74,34 @@ fun MilestoneEditScreen(
                 is MilestoneEditViewEvent.ShowError ->
                     snackbarHostState.showSnackbar(event.message)
             }
+        }
+    }
+
+    val dateFmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日 EEEE")
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = uiState.scheduledDate
+                .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val picked = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneOffset.UTC).toLocalDate()
+                        viewModel.updateScheduledDate(picked)
+                    }
+                    showDatePicker = false
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -90,6 +126,22 @@ fun MilestoneEditScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 到期日期
+            OutlinedTextField(
+                value = uiState.scheduledDate.format(dateFmt),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("到期日期") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
+                trailingIcon = {
+                    TextButton(onClick = { showDatePicker = true }) { Text("修改") }
+                },
+                singleLine = true,
+                enabled = false
+            )
+
             // 名称
             OutlinedTextField(
                 value = uiState.name,
