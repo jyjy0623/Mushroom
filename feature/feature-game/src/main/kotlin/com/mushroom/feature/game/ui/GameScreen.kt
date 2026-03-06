@@ -71,7 +71,7 @@ fun GameScreen(
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val orig = activity?.requestedOrientation
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         onDispose { if (orig != null) activity.requestedOrientation = orig }
     }
 

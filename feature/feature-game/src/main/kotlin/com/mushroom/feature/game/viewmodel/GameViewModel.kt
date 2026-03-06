@@ -91,8 +91,8 @@ class GameViewModel @Inject constructor(
     // 障碍物生成参数
     private val obstacleSpeedBase = 0.0018f  // 每毫秒移动距离（归一化）
     private val groundY = 0.75f
-    private val jumpVelocity = -0.022f
-    private val gravity = 0.0014f
+    private val jumpVelocity = -0.0012f   // 跳跃初速度（归一化/ms，向上为负）
+    private val gravity = 0.000004f        // 重力加速度（归一化/ms²）
 
     fun startGame() {
         if (_uiState.value.state == GameState.RUNNING) return
