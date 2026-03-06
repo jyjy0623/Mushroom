@@ -31,6 +31,7 @@ import com.mushroom.feature.task.usecase.UpdateTaskUseCase
 import com.mushroom.core.domain.repository.CheckInRepository
 import com.mushroom.core.domain.repository.MilestoneRepository
 import com.mushroom.core.domain.repository.TaskRepository
+import com.mushroom.feature.game.repository.GameRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,8 @@ class DailyTaskViewModel @Inject constructor(
     private val checkInTaskUseCase: CheckInTaskUseCase,
     private val checkInRepo: CheckInRepository,
     private val taskRepo: TaskRepository,
-    private val milestoneRepository: MilestoneRepository
+    private val milestoneRepository: MilestoneRepository,
+    private val gameRepo: GameRepository
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -94,6 +96,9 @@ class DailyTaskViewModel @Inject constructor(
     private val _currentStreak = MutableStateFlow(0)
     // 连续备忘录任务完成天数
     private val _memoStreak = MutableStateFlow(0)
+    // 是否可以触发游戏（全勤 AND 今日未玩过）
+    private val _canTriggerGame = MutableStateFlow(false)
+    val canTriggerGame: StateFlow<Boolean> = _canTriggerGame
 
     init {
         // 初始化时加载连续打卡天数和备忘录连续天数
@@ -191,6 +196,20 @@ class DailyTaskViewModel @Inject constructor(
     /** UI 调用：标记今天的"全部完成"横幅已展示，避免重入重复显示 */
     fun markCelebrationShown() {
         celebrationShownDates.add(_date.value)
+    }
+
+    /** 检查今日全勤后是否可以触发游戏（异步，完成后更新 _canTriggerGame） */
+    fun checkGameTrigger() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val playedToday = gameRepo.hasPlayedToday(today)
+            _canTriggerGame.value = !playedToday
+        }
+    }
+
+    /** UI 确认进入游戏后调用，防止重复触发 */
+    fun markGameTriggered() {
+        _canTriggerGame.value = false
     }
 
     fun copyTasksToDate(targetDate: LocalDate) {

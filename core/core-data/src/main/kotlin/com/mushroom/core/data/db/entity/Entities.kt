@@ -203,3 +203,16 @@ data class KeyDateEntity(
     @ColumnInfo(name = "reward_level") val rewardLevel: String,
     @ColumnInfo(name = "reward_amount") val rewardAmount: Int
 )
+
+@Entity(tableName = "game_scores")
+data class GameScoreEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val score: Int,
+    @ColumnInfo(name = "played_at") val playedAt: String
+)
+
+@Entity(tableName = "game_play_state")
+data class GamePlayStateEntity(
+    @PrimaryKey val key: String,
+    val value: String
+)

@@ -4,11 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    id("jacoco")
 }
 
 android {
-    namespace = "com.mushroom.feature.task"
+    namespace = "com.mushroom.feature.game"
     compileSdk = 34
 
     defaultConfig {
@@ -35,7 +34,6 @@ dependencies {
     implementation(project(":core:core-domain"))
     implementation(project(":core:core-data"))
     implementation(project(":core:core-ui"))
-    implementation(project(":feature:feature-game"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -52,21 +50,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     ksp(libs.hilt.android.compiler)
 
-    testImplementation(libs.junit5.api)
-    testImplementation(libs.junit5.params)
-    testRuntimeOnly(libs.junit5.engine)
-    testImplementation(libs.mockk)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.turbine)
-
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-    configure<JacocoTaskExtension> {
-        isIncludeNoLocationClasses = true
-        excludes = mutableListOf("jdk.internal.*")
-    }
 }

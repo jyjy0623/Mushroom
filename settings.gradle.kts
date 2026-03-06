@@ -39,6 +39,7 @@ include(":feature:feature-mushroom")
 include(":feature:feature-reward")
 include(":feature:feature-milestone")
 include(":feature:feature-statistics")
+include(":feature:feature-game")
 
 // service modules
 include(":service:service-task-generator")

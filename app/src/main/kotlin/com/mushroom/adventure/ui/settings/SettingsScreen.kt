@@ -35,7 +35,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,6 +55,7 @@ fun SettingsScreen(
     onNavigateToDeductionConfig: () -> Unit = {},
     onNavigateToDeductionRecord: () -> Unit = {},
     onNavigateToKeyDateList: () -> Unit = {},
+    onNavigateToGame: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -158,7 +163,27 @@ fun SettingsScreen(
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("蘑菇大冒险", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    // 连续点击3次"蘑菇大冒险"触发游戏调试入口
+                    var tapCount by remember { mutableIntStateOf(0) }
+                    var lastTapMs by remember { mutableLongStateOf(0L) }
+                    Text(
+                        "蘑菇大冒险",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            val now = System.currentTimeMillis()
+                            if (now - lastTapMs < 600) {
+                                tapCount++
+                            } else {
+                                tapCount = 1
+                            }
+                            lastTapMs = now
+                            if (tapCount >= 3) {
+                                tapCount = 0
+                                onNavigateToGame()
+                            }
+                        }
+                    )
                     Text("版本 ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -85,9 +86,12 @@ fun DailyTaskListScreen(
     onNavigateToAddMilestone: () -> Unit = {},
     onNavigateToCheckInHistory: () -> Unit = {},
     onNavigateToMilestoneList: () -> Unit = {},
+    onNavigateToGame: () -> Unit = {},
+    onNavigateToLeaderboard: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val canTriggerGame by viewModel.canTriggerGame.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // 待确认删除的任务
@@ -101,6 +105,8 @@ fun DailyTaskListScreen(
 
     // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
+    // 游戏解锁弹窗
+    var showGameUnlockDialog by remember { mutableStateOf(false) }
     // 本地标记：当前日期是否已触发过横幅（立即置位，防止 uiState 异步更新前重复触发）
     var celebrationFiredDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
@@ -110,8 +116,16 @@ fun DailyTaskListScreen(
             celebrationFiredDate = uiState.date
             viewModel.markCelebrationShown()
             showCelebration = true
+            // 检查是否可以触发游戏（今日未玩过 AND 是今天）
+            if (uiState.date == LocalDate.now()) {
+                viewModel.checkGameTrigger()
+            }
             delay(3_000)
             showCelebration = false
+            // 3秒横幅后弹出游戏解锁提示
+            if (canTriggerGame) {
+                showGameUnlockDialog = true
+            }
         } else if (!isAllDone) {
             showCelebration = false
         }
@@ -147,6 +161,9 @@ fun DailyTaskListScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToLeaderboard) {
+                        Icon(Icons.Filled.Star, contentDescription = "排行榜")
+                    }
                     IconButton(onClick = onNavigateToCheckInHistory) {
                         Icon(Icons.Filled.DateRange, contentDescription = "打卡历史")
                     }
@@ -274,6 +291,30 @@ fun DailyTaskListScreen(
             },
             confirmButton = {
                 TextButton(onClick = { rewardDialogText = null }) { Text("太棒了！") }
+            }
+        )
+    }
+
+    // 游戏解锁弹窗
+    if (showGameUnlockDialog) {
+        AlertDialog(
+            onDismissRequest = { showGameUnlockDialog = false },
+            title = { Text("🎮 解锁游戏！") },
+            text = {
+                Text(
+                    "恭喜完成今日全勤！蘑菇大冒险 Run 已解锁，现在去挑战高分吧！",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showGameUnlockDialog = false
+                    viewModel.markGameTriggered()
+                    onNavigateToGame()
+                }) { Text("去玩！") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGameUnlockDialog = false }) { Text("稍后再说") }
             }
         )
     }

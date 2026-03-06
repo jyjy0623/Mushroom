@@ -22,7 +22,7 @@ object DatabaseModule {
             MushroomDatabase::class.java,
             "mushroom_adventure.db"
         )
-            .addMigrations(MushroomDatabase.MIGRATION_1_2, MushroomDatabase.MIGRATION_2_3, MushroomDatabase.MIGRATION_3_4)
+            .addMigrations(MushroomDatabase.MIGRATION_1_2, MushroomDatabase.MIGRATION_2_3, MushroomDatabase.MIGRATION_3_4, MushroomDatabase.MIGRATION_4_5)
             .build()
 
     @Provides fun provideTaskDao(db: MushroomDatabase) = db.taskDao()
@@ -39,4 +39,5 @@ object DatabaseModule {
     @Provides fun provideScoringRuleDao(db: MushroomDatabase) = db.scoringRuleDao()
     @Provides fun provideKeyDateDao(db: MushroomDatabase) = db.keyDateDao()
     @Provides fun provideBackupDao(db: MushroomDatabase) = db.backupDao()
+    @Provides fun provideGameScoreDao(db: MushroomDatabase) = db.gameScoreDao()
 }

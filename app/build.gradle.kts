@@ -94,6 +94,7 @@ dependencies {
     implementation(project(":feature:feature-reward"))
     implementation(project(":feature:feature-milestone"))
     implementation(project(":feature:feature-statistics"))
+    implementation(project(":feature:feature-game"))
     implementation(project(":service:service-task-generator"))
     implementation(project(":service:service-notification"))
 

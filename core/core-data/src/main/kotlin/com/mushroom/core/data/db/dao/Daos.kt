@@ -325,3 +325,21 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertKeyDates(keyDates: List<KeyDateEntity>)
 }
+
+@Dao
+interface GameScoreDao {
+    @Query("SELECT * FROM game_scores ORDER BY score DESC LIMIT :limit")
+    fun getTopScores(limit: Int): Flow<List<com.mushroom.core.data.db.entity.GameScoreEntity>>
+
+    @Query("SELECT MAX(score) FROM game_scores")
+    suspend fun getHighScore(): Int?
+
+    @Insert
+    suspend fun insert(entity: com.mushroom.core.data.db.entity.GameScoreEntity): Long
+
+    @Query("SELECT value FROM game_play_state WHERE key = :key")
+    suspend fun getState(key: String): String?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun setState(entity: com.mushroom.core.data.db.entity.GamePlayStateEntity)
+}

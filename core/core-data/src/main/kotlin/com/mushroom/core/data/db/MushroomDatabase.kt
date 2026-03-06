@@ -21,9 +21,11 @@ import com.mushroom.core.data.db.entity.*
         TimeRewardUsageEntity::class,
         MilestoneEntity::class,
         ScoringRuleEntity::class,
-        KeyDateEntity::class
+        KeyDateEntity::class,
+        GameScoreEntity::class,
+        GamePlayStateEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -41,6 +43,7 @@ abstract class MushroomDatabase : RoomDatabase() {
     abstract fun scoringRuleDao(): ScoringRuleDao
     abstract fun keyDateDao(): KeyDateDao
     abstract fun backupDao(): BackupDao
+    abstract fun gameScoreDao(): GameScoreDao
 
     companion object {
         /**
@@ -76,6 +79,27 @@ abstract class MushroomDatabase : RoomDatabase() {
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * v4 → v5：新增 game_scores 和 game_play_state 表。
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS game_scores (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        score INTEGER NOT NULL,
+                        played_at TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS game_play_state (
+                        key TEXT PRIMARY KEY NOT NULL,
+                        value TEXT NOT NULL
+                    )
+                """.trimIndent())
             }
         }
     }
