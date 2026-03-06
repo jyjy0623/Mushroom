@@ -114,8 +114,9 @@ class RewardRepositoryImpl @Inject constructor(
                 .getOrDefault(MushroomLevel.SMALL)
             refundMap[level] = (refundMap[level] ?: 0) + ex.mushroomCount
         }
-        // 删除兑换记录和奖品本体
+        // 删除兑换记录、时长使用记录和奖品本体
         rewardExchangeDao.deleteByRewardId(id)
+        timeRewardUsageDao.deleteByRewardId(id)
         rewardDao.deleteById(id)
         return refundMap
     }

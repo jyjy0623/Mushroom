@@ -180,6 +180,9 @@ interface TimeRewardUsageDao {
 
     @Query("UPDATE time_reward_usage SET used_minutes = :usedMinutes WHERE reward_id = :rewardId AND period_start = :periodStart")
     suspend fun updateUsedMinutes(rewardId: Long, periodStart: String, usedMinutes: Int)
+
+    @Query("DELETE FROM time_reward_usage WHERE reward_id = :rewardId")
+    suspend fun deleteByRewardId(rewardId: Long)
 }
 
 @Dao
