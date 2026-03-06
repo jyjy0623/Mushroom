@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.game.viewmodel.Cloud
 import com.mushroom.feature.game.viewmodel.GamePhysics
 import com.mushroom.feature.game.viewmodel.GameState
@@ -56,6 +57,8 @@ private object DinoColors {
     val cloudNight  = Color(0xFF444444)
 }
 
+private const val TAG = "GameScreen"
+
 @Composable
 fun GameScreen(
     onExit: () -> Unit,
@@ -64,25 +67,45 @@ fun GameScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    // 版本 + 进入日志（用于确认测试版本）
+    LaunchedEffect(Unit) {
+        val pm = context.packageManager
+        val pi = pm.getPackageInfo(context.packageName, 0)
+        MushroomLogger.w(TAG, "GameScreen entered. pkg=${context.packageName} versionName=${pi.versionName} versionCode=${pi.longVersionCode}")
+    }
+
     // 进入横屏并锁定方向，离开时恢复原方向
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val orig = activity?.requestedOrientation
+        MushroomLogger.w(TAG, "orientation lock: orig=$orig → SENSOR_LANDSCAPE, activity=${activity?.javaClass?.simpleName}")
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        onDispose { if (orig != null) activity.requestedOrientation = orig }
+        onDispose {
+            MushroomLogger.w(TAG, "GameScreen disposed, restoring orientation to $orig")
+            if (orig != null) activity.requestedOrientation = orig
+        }
     }
 
     LaunchedEffect(Unit) { viewModel.exitEvent.collectLatest { onExit() } }
     LaunchedEffect(Unit) { viewModel.awardDailyPlayReward() }
 
-    // 游戏帧循环（仅 RUNNING）
+    // 帧循环状态追踪
     LaunchedEffect(uiState.state) {
+        MushroomLogger.w(TAG, "LaunchedEffect(state): state changed to ${uiState.state}")
         if (uiState.state == GameState.RUNNING) {
+            MushroomLogger.w(TAG, "frame loop starting")
             var last = withFrameMillis { it }
+            var frameCount = 0
             while (true) {
                 val now = withFrameMillis { it }
-                viewModel.tick((now - last).coerceIn(1, 50))
+                val dt = (now - last).coerceIn(1, 50)
+                viewModel.tick(dt)
                 last = now
+                frameCount++
+                // 每100帧记录一次确认帧循环在运行
+                if (frameCount == 100) {
+                    MushroomLogger.w(TAG, "frame loop alive: 100 frames processed, score=${uiState.score}")
+                }
             }
         }
     }
