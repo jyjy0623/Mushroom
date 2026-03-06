@@ -193,8 +193,14 @@ interface MilestoneDao {
     @Query("SELECT * FROM milestones WHERE subject = :subject ORDER BY scheduled_date DESC")
     fun getMilestonesBySubject(subject: String): Flow<List<MilestoneEntity>>
 
+    @Query("SELECT * FROM milestones WHERE id = :id")
+    suspend fun getById(id: Long): MilestoneEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(milestone: MilestoneEntity): Long
+
+    @Update
+    suspend fun update(milestone: MilestoneEntity)
 
     @Query("UPDATE milestones SET actual_score = :score, status = :status WHERE id = :id")
     suspend fun updateScore(id: Long, score: Int, status: String)
@@ -207,6 +213,9 @@ interface ScoringRuleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(rules: List<ScoringRuleEntity>)
+
+    @Query("DELETE FROM scoring_rules WHERE milestone_id = :milestoneId")
+    suspend fun deleteByMilestoneId(milestoneId: Long)
 }
 
 @Dao

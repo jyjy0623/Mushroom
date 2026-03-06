@@ -1,5 +1,6 @@
 package com.mushroom.feature.milestone.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mushroom.core.domain.entity.Milestone
@@ -90,6 +91,7 @@ class MilestoneListViewModel @Inject constructor(
 // -----------------------------------------------------------------------
 
 data class MilestoneEditUiState(
+    val milestoneId: Long? = null,          // null = 新建，非null = 编辑
     val name: String = "",
     val type: MilestoneType = MilestoneType.MINI_TEST,
     val subject: Subject = Subject.MATH,
@@ -110,7 +112,9 @@ sealed class MilestoneEditViewEvent {
 
 @HiltViewModel
 class MilestoneEditViewModel @Inject constructor(
-    private val createMilestoneUseCase: CreateMilestoneUseCase
+    private val createMilestoneUseCase: CreateMilestoneUseCase,
+    private val milestoneRepository: com.mushroom.core.domain.repository.MilestoneRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -119,6 +123,29 @@ class MilestoneEditViewModel @Inject constructor(
         }
     )
     val uiState: StateFlow<MilestoneEditUiState> = _uiState
+
+    init {
+        val milestoneId = savedStateHandle.get<Long>("milestoneId") ?: -1L
+        if (milestoneId > 0L) {
+            viewModelScope.launch {
+                val milestone = milestoneRepository.getMilestoneById(milestoneId)
+                if (milestone != null) {
+                    _uiState.update { _ ->
+                        MilestoneEditUiState(
+                            milestoneId = milestone.id,
+                            name = milestone.name,
+                            type = milestone.type,
+                            subject = milestone.subject,
+                            scheduledDate = milestone.scheduledDate,
+                            scoringRules = milestone.scoringRules,
+                            ruleAmountTexts = milestone.scoringRules.map { it.rewardConfig.amount.toString() },
+                            nameManuallyEdited = true  // 编辑模式不自动覆盖名称
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     private val _viewEvent = MutableSharedFlow<MilestoneEditViewEvent>()
     val viewEvent: SharedFlow<MilestoneEditViewEvent> = _viewEvent.asSharedFlow()
@@ -208,6 +235,7 @@ class MilestoneEditViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             val milestone = Milestone(
+                id = state.milestoneId ?: 0L,
                 name = state.name.trim(),
                 type = state.type,
                 subject = state.subject,
@@ -216,15 +244,18 @@ class MilestoneEditViewModel @Inject constructor(
                 actualScore = null,
                 status = MilestoneStatus.PENDING
             )
-            createMilestoneUseCase(milestone)
-                .onSuccess {
-                    _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
-                    _viewEvent.emit(MilestoneEditViewEvent.SaveSuccess)
-                }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false) }
-                    _viewEvent.emit(MilestoneEditViewEvent.ShowError(e.message ?: "保存失败"))
-                }
+            val result = if (state.milestoneId == null) {
+                createMilestoneUseCase(milestone).map { }
+            } else {
+                runCatching { milestoneRepository.updateMilestone(milestone) }
+            }
+            result.onSuccess {
+                _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
+                _viewEvent.emit(MilestoneEditViewEvent.SaveSuccess)
+            }.onFailure { e ->
+                _uiState.update { it.copy(isSaving = false) }
+                _viewEvent.emit(MilestoneEditViewEvent.ShowError(e.message ?: "保存失败"))
+            }
         }
     }
 }

@@ -13,7 +13,7 @@ import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
 // MilestoneEditScreen 已由 CreateScreen(Tab[1]) 取代，暂保留文件备用
-// import com.mushroom.feature.milestone.ui.MilestoneEditScreen
+import com.mushroom.feature.milestone.ui.MilestoneEditScreen
 import com.mushroom.feature.milestone.ui.MilestoneListScreen
 import com.mushroom.feature.mushroom.ui.DeductionConfigScreen
 import com.mushroom.feature.mushroom.ui.DeductionRecordScreen
@@ -214,15 +214,16 @@ fun AppNavGraph(
                 }
             )
         }
-        // MilestoneEditScreen 已由 CreateScreen(Tab[1]) 取代，路由暂保留注释备用
-        // composable(
-        //     route = AppDestination.MilestoneEdit.route,
-        //     arguments = listOf(navArgument(AppDestination.MilestoneEdit.ARG_MILESTONE_ID) {
-        //         type = NavType.LongType
-        //     })
-        // ) {
-        //     MilestoneEditScreen(onNavigateBack = { navController.popBackStack() })
-        // }
+        // MilestoneEditScreen 用于编辑已有里程碑（milestoneId > 0）
+        composable(
+            route = AppDestination.MilestoneEdit.route,
+            arguments = listOf(navArgument(AppDestination.MilestoneEdit.ARG_MILESTONE_ID) {
+                type = NavType.LongType
+                defaultValue = -1L
+            })
+        ) {
+            MilestoneEditScreen(onNavigateBack = { navController.popBackStack() })
+        }
 
         // ---- 扣分 ----
         composable(AppDestination.DeductionRecord.route) {

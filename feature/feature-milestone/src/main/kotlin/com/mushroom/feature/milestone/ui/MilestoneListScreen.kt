@@ -123,9 +123,13 @@ fun MilestoneListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(currentList, key = { it.id }) { milestone ->
+                        // 未过期且 PENDING 才可点击进入编辑
+                        val today = LocalDate.now()
+                        val isEditable = milestone.status == com.mushroom.core.domain.entity.MilestoneStatus.PENDING &&
+                                !milestone.scheduledDate.isBefore(today)
                         MilestoneCard(
                             milestone = milestone,
-                            onClick = { onNavigateToEdit(milestone.id) }
+                            onClick = if (isEditable) { { onNavigateToEdit(milestone.id) } } else null
                         )
                     }
                 }
@@ -135,58 +139,66 @@ fun MilestoneListScreen(
 }
 
 @Composable
-private fun MilestoneCard(milestone: Milestone, onClick: () -> Unit) {
+private fun MilestoneCard(milestone: Milestone, onClick: (() -> Unit)?) {
     val today = LocalDate.now()
     val daysLeft = ChronoUnit.DAYS.between(today, milestone.scheduledDate)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        milestone.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "${subjectLabel(milestone.subject)} · ${milestoneTypeLabel(milestone.type)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        milestone.scheduledDate.format(DATE_FMT),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    if (milestone.status == MilestoneStatus.PENDING) {
-                        Text(
-                            if (daysLeft >= 0) "还有${daysLeft}天" else "已过期",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (daysLeft < 3) MaterialTheme.colorScheme.error
-                                    else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
+    if (onClick != null) {
+        Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
+            MilestoneCardContent(milestone, daysLeft)
+        }
+    } else {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            MilestoneCardContent(milestone, daysLeft)
+        }
+    }
+}
 
-            if (milestone.actualScore != null) {
-                Spacer(Modifier.height(8.dp))
+@Composable
+private fun MilestoneCardContent(milestone: Milestone, daysLeft: Long) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "成绩：${milestone.actualScore} 分",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    milestone.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${subjectLabel(milestone.subject)} · ${milestoneTypeLabel(milestone.type)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    milestone.scheduledDate.format(DATE_FMT),
+                    style = MaterialTheme.typography.labelSmall
+                )
+                if (milestone.status == MilestoneStatus.PENDING) {
+                    Text(
+                        if (daysLeft >= 0) "还有${daysLeft}天" else "已过期",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (daysLeft < 3) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        if (milestone.actualScore != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "成绩：${milestone.actualScore} 分",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

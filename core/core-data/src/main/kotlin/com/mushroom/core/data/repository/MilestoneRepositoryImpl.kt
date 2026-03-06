@@ -43,6 +43,21 @@ class MilestoneRepositoryImpl @Inject constructor(
         return id
     }
 
+    override suspend fun getMilestoneById(id: Long): Milestone? {
+        val entity = milestoneDao.getById(id) ?: return null
+        val rules = scoringRuleDao.getRulesForMilestone(id)
+        return MilestoneMapper.toDomain(entity, rules)
+    }
+
+    override suspend fun updateMilestone(milestone: Milestone) {
+        milestoneDao.update(MilestoneMapper.toDb(milestone))
+        scoringRuleDao.deleteByMilestoneId(milestone.id)
+        val ruleEntities = MilestoneMapper.rulesToDb(milestone.id, milestone.scoringRules)
+        if (ruleEntities.isNotEmpty()) {
+            scoringRuleDao.insertAll(ruleEntities)
+        }
+    }
+
     override suspend fun updateScore(id: Long, score: Int, status: MilestoneStatus) {
         milestoneDao.updateScore(id, score, status.name)
     }

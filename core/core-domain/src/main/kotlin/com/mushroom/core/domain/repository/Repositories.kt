@@ -66,7 +66,9 @@ interface RewardRepository {
 interface MilestoneRepository {
     fun getAllMilestones(): Flow<List<Milestone>>
     fun getMilestonesBySubject(subject: Subject): Flow<List<Milestone>>
+    suspend fun getMilestoneById(id: Long): Milestone?
     suspend fun insertMilestone(milestone: Milestone): Long
+    suspend fun updateMilestone(milestone: Milestone)
     suspend fun updateScore(id: Long, score: Int, status: MilestoneStatus)
 }
 

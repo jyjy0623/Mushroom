@@ -72,7 +72,7 @@ fun MilestoneEditScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("新建里程碑") },
+                title = { Text(if (uiState.milestoneId != null) "编辑里程碑" else "新建里程碑") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -213,7 +213,7 @@ fun MilestoneEditScreen(
                 enabled = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (uiState.isSaving) "保存中…" else "保存里程碑（需家长确认）")
+                Text(if (uiState.isSaving) "保存中…" else "保存")
             }
         }
     }
