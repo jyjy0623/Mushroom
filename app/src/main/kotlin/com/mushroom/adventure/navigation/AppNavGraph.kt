@@ -70,8 +70,8 @@ fun AppNavGraph(
                     navController.safeNavigate(AppDestination.Create.route(date = dateIso, initialTab = 0))
                 },
                 onNavigateToEditTask = { taskId ->
-                    // 编辑任务 → 原 TaskEdit 页
-                    navController.safeNavigate(AppDestination.TaskEdit.route(taskId))
+                    // 编辑任务 → 原 TaskEdit 页（date 传今日，用于截止时间选择基准）
+                    navController.safeNavigate(AppDestination.TaskEdit.route(taskId, LocalDate.now().toString()))
                 },
                 onNavigateToTemplates = {
                     navController.safeNavigate(AppDestination.TaskTemplate.route)
