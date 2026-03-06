@@ -7,6 +7,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +28,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -499,7 +500,7 @@ private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int, mem
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun TaskCard(
     task: TaskUiModel,
@@ -512,27 +513,22 @@ private fun TaskCard(
         task.isDone -> MaterialTheme.colorScheme.surfaceVariant
         else -> MaterialTheme.colorScheme.surface
     }
-    if (onEdit != null) {
-        Card(
-            onClick = onEdit,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = containerColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) { TaskCardContent(task, onCheckIn, onDelete) }
-    } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = containerColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) { TaskCardContent(task, onCheckIn, onDelete) }
-    }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { onEdit?.invoke() },
+                onDoubleClick = onDelete
+            ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) { TaskCardContent(task, onCheckIn) }
 }
 
 @Composable
 private fun TaskCardContent(
     task: TaskUiModel,
-    onCheckIn: () -> Unit,
-    onDelete: () -> Unit
+    onCheckIn: () -> Unit
 ) {
     // 完成时图标做一个缩放弹跳动画
     val iconScale by animateFloatAsState(
@@ -577,10 +573,6 @@ private fun TaskCardContent(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error)
             }
         }
         // 奖励预览（始终显示；未完成时为预估，完成后为实际获得）
