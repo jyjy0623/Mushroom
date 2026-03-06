@@ -105,7 +105,7 @@ fun MilestoneListScreen(
             // Tabs
             TabRow(selectedTabIndex = tabIndex) {
                 Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("即将到来") })
-                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("已完成") })
+                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("已到期") })
             }
 
             val currentList = if (tabIndex == 0) uiState.upcomingMilestones else uiState.completedMilestones
@@ -113,7 +113,7 @@ fun MilestoneListScreen(
             if (currentList.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (tabIndex == 0) "暂无待完成的里程碑" else "暂无已完成的里程碑",
+                        if (tabIndex == 0) "暂无待完成的里程碑" else "暂无已到期的里程碑",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
