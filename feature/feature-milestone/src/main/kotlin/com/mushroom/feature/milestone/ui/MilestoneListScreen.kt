@@ -73,11 +73,7 @@ fun MilestoneListScreen(
 
     Scaffold(
         topBar = { CenterAlignedTopAppBar(title = { Text("里程碑") }) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToCreate) {
-                Icon(Icons.Default.Add, contentDescription = "新建里程碑")
-            }
-        },
+        floatingActionButton = {},
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
