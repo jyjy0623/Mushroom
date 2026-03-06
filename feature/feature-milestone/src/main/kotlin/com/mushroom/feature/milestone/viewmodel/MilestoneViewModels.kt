@@ -54,12 +54,13 @@ class MilestoneListViewModel @Inject constructor(
         getMilestonesUseCase.all(),
         _selectedSubject
     ) { milestones, selectedSubject ->
+        val today = LocalDate.now()
         val filtered = selectedSubject?.let { subject ->
             milestones.filter { it.subject == subject }
         } ?: milestones
         MilestoneListUiState(
-            upcomingMilestones = filtered.filter { it.status == MilestoneStatus.PENDING },
-            completedMilestones = filtered.filter { it.status != MilestoneStatus.PENDING },
+            upcomingMilestones = filtered.filter { it.status == MilestoneStatus.PENDING && !it.scheduledDate.isBefore(today) },
+            completedMilestones = filtered.filter { it.status != MilestoneStatus.PENDING || it.scheduledDate.isBefore(today) },
             selectedSubject = selectedSubject
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MilestoneListUiState(isLoading = true))
