@@ -13,10 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -95,15 +91,21 @@ fun GameScreen(
     val fg   = if (isNight) DinoColors.fgNight  else DinoColors.fgDay
     val text = if (isNight) DinoColors.textNight else DinoColors.textDay
 
+    // 用 state 作为 key，确保每次状态变化都重新绑定点击处理
+    val gameState = uiState.state
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bg)
-            .then(
-                if (uiState.state == GameState.RUNNING)
-                    Modifier.pointerInput(Unit) { detectTapGestures { viewModel.jump() } }
-                else Modifier
-            )
+            .pointerInput(gameState) {
+                detectTapGestures {
+                    when (gameState) {
+                        GameState.IDLE     -> viewModel.startGame()
+                        GameState.RUNNING  -> viewModel.jump()
+                        GameState.GAME_OVER -> { /* 等待自动返回 */ }
+                    }
+                }
+            }
     ) {
         // ── Canvas 游戏场景 ────────────────────────────────────
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -138,7 +140,7 @@ fun GameScreen(
 
         // ── 状态 Overlay ───────────────────────────────────────
         when (uiState.state) {
-            GameState.IDLE     -> IdleOverlay(fg, bg, onStart = { viewModel.startGame() })
+            GameState.IDLE     -> IdleOverlay(fg)
             GameState.GAME_OVER -> GameOverOverlay(
                 score = uiState.score,
                 isNewRecord = uiState.isNewRecord,
@@ -151,7 +153,7 @@ fun GameScreen(
 
 // ── IDLE 开始界面 ──────────────────────────────────────────────
 @Composable
-private fun IdleOverlay(fg: Color, bg: Color, onStart: () -> Unit) {
+private fun IdleOverlay(fg: Color) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -168,25 +170,14 @@ private fun IdleOverlay(fg: Color, bg: Color, onStart: () -> Unit) {
                 fontFamily = FontFamily.Monospace,
                 color = fg.copy(alpha = 0.55f)
             )
-            Spacer(Modifier.height(28.dp))
-            Button(
-                onClick = onStart,
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = fg,
-                    contentColor = bg
-                ),
-                modifier = Modifier
-                    .widthIn(min = 140.dp)
-                    .height(46.dp)
-            ) {
-                Text(
-                    "START",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "[ tap anywhere to start ]",
+                fontSize = 15.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                color = fg.copy(alpha = 0.75f)
+            )
         }
     }
 }
