@@ -4,7 +4,8 @@ import android.app.Activity
 import android.content.pm.ActivityInfo
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -91,13 +92,16 @@ fun GameScreen(
     val fg   = if (isNight) DinoColors.fgNight  else DinoColors.fgDay
     val text = if (isNight) DinoColors.textNight else DinoColors.textDay
 
-    // pointerInput 用固定 key=Unit，始终挂载；状态判断交给 ViewModel.onTap()
+    // pointerInput 用固定 key=Unit，始终挂载；按下即响应（awaitFirstDown），无需等待抬起
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bg)
             .pointerInput(Unit) {
-                detectTapGestures { viewModel.onTap() }
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    viewModel.onTap()
+                }
             }
     ) {
         // ── Canvas 游戏场景 ────────────────────────────────────
