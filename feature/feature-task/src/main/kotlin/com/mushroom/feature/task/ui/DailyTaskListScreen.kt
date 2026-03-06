@@ -69,6 +69,7 @@ import com.mushroom.feature.task.viewmodel.DailyTaskViewModel
 import com.mushroom.core.domain.entity.Milestone
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.LocalDate
@@ -92,6 +93,7 @@ fun DailyTaskListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val canTriggerGame by viewModel.canTriggerGame.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // 待确认删除的任务
     var pendingDelete by remember { mutableStateOf<TaskUiModel?>(null) }
@@ -101,6 +103,10 @@ fun DailyTaskListScreen(
 
     // 打卡奖励弹窗
     var rewardDialogText by remember { mutableStateOf<String?>(null) }
+
+    // 删除已完成任务确认框（含扣回奖励提示）
+    var pendingDeleteCompleted by remember { mutableStateOf<TaskUiModel?>(null) }
+    var pendingDeleteCompletedReward by remember { mutableStateOf("") }
 
     // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
@@ -213,7 +219,14 @@ fun DailyTaskListScreen(
                             onEdit = if (task.isDone) null else { { onNavigateToEditTask(task.id) } },
                             onCheckIn = { viewModel.checkIn(task.id) },
                             onDelete = {
-                                if (task.hasRepeat) {
+                                if (task.isDone) {
+                                    // 已完成任务：弹确认框并预加载扣回奖励描述
+                                    pendingDeleteCompleted = task
+                                    scope.launch {
+                                        pendingDeleteCompletedReward =
+                                            viewModel.getCompletedTaskRewardSummary(task.id)
+                                    }
+                                } else if (task.hasRepeat) {
                                     pendingDelete = task
                                 } else {
                                     viewModel.deleteTask(task.id, DeleteMode.SINGLE)
@@ -264,6 +277,37 @@ fun DailyTaskListScreen(
                     viewModel.deleteTask(task.id, DeleteMode.SINGLE)
                     pendingDelete = null
                 }) { Text("只删今天") }
+            }
+        )
+    }
+
+    // 已完成任务删除确认弹窗（含扣回奖励提示）
+    pendingDeleteCompleted?.let { task ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteCompleted = null },
+            title = { Text("删除已完成任务") },
+            text = {
+                Column {
+                    Text("确认删除「${task.title}」？")
+                    if (pendingDeleteCompletedReward.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "将同时扣回奖励：$pendingDeleteCompletedReward",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val mode = if (task.hasRepeat) DeleteMode.SINGLE else DeleteMode.SINGLE
+                    viewModel.deleteCompletedTask(task.id, mode)
+                    pendingDeleteCompleted = null
+                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteCompleted = null }) { Text("取消") }
             }
         )
     }

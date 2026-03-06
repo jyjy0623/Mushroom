@@ -30,7 +30,11 @@ import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
 import com.mushroom.core.domain.repository.CheckInRepository
 import com.mushroom.core.domain.repository.MilestoneRepository
+import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.TaskRepository
+import com.mushroom.core.domain.entity.MushroomAction
+import com.mushroom.core.domain.entity.MushroomSource
+import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.feature.game.repository.GameRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -86,7 +90,8 @@ class DailyTaskViewModel @Inject constructor(
     private val checkInRepo: CheckInRepository,
     private val taskRepo: TaskRepository,
     private val milestoneRepository: MilestoneRepository,
-    private val gameRepo: GameRepository
+    private val gameRepo: GameRepository,
+    private val mushroomRepo: MushroomRepository
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -178,6 +183,83 @@ class DailyTaskViewModel @Inject constructor(
                 _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
             }
         }
+    }
+
+    /**
+     * 删除已完成任务，并扣回当时发放的蘑菇奖励。
+     * 奖励计算与 CheckInTaskUseCase.buildRewardSummary 逻辑保持一致。
+     */
+    fun deleteCompletedTask(taskId: Long, mode: DeleteMode) {
+        viewModelScope.launch {
+            val task = taskRepo.getTaskById(taskId) ?: run {
+                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+                return@launch
+            }
+            val checkIn = checkInRepo.getLatestCheckInForTask(taskId)
+            val rewards = calcTaskRewards(task, checkIn?.isEarly == true)
+
+            deleteTaskUseCase(taskId, mode).onFailure {
+                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+                return@launch
+            }
+
+            if (rewards.isNotEmpty()) {
+                val now = LocalDateTime.now()
+                mushroomRepo.recordTransactions(rewards.map { (level, amount) ->
+                    MushroomTransaction(
+                        level = level,
+                        action = MushroomAction.DEDUCT,
+                        amount = amount,
+                        sourceType = MushroomSource.TASK,
+                        sourceId = null,
+                        note = "删除已完成任务「${task.title}」扣回",
+                        createdAt = now
+                    )
+                })
+                val summary = rewards.joinToString("、") { (level, amount) -> "${level.displayName}×$amount" }
+                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除并扣回奖励：$summary"))
+            } else {
+                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除"))
+            }
+        }
+    }
+
+    /** 计算已完成任务将扣回的奖励描述（供确认框展示，逻辑与发放时一致） */
+    suspend fun getCompletedTaskRewardSummary(taskId: Long): String {
+        val task = taskRepo.getTaskById(taskId) ?: return ""
+        val checkIn = checkInRepo.getLatestCheckInForTask(taskId)
+        val rewards = calcTaskRewards(task, checkIn?.isEarly == true)
+        return rewards.joinToString("、") { (level, amount) -> "${level.displayName}×$amount" }
+    }
+
+    /**
+     * 计算任务奖励列表（level, amount），与 RewardRules 中规则保持一致：
+     * - 基础奖励（按模板类型或自定义配置）
+     * - 提前完成奖励（isEarly=true 时追加）
+     */
+    private fun calcTaskRewards(task: Task, isEarly: Boolean): List<Pair<MushroomLevel, Int>> {
+        val rewards = mutableListOf<Pair<MushroomLevel, Int>>()
+        val baseConfig = task.customRewardConfig
+        if (baseConfig != null) {
+            rewards += baseConfig.level to baseConfig.amount
+        } else {
+            when (task.templateType) {
+                TaskTemplateType.MORNING_READING    -> rewards += MushroomLevel.SMALL to 1
+                TaskTemplateType.HOMEWORK_MEMO      -> rewards += MushroomLevel.SMALL to 1
+                TaskTemplateType.HOMEWORK_AT_SCHOOL -> rewards += MushroomLevel.MEDIUM to 1
+                null                               -> rewards += MushroomLevel.SMALL to 1
+                else                               -> rewards += MushroomLevel.SMALL to 1
+            }
+        }
+        if (isEarly) {
+            val earlyConfig = task.customEarlyRewardConfig
+            if (earlyConfig != null) {
+                rewards += earlyConfig.level to earlyConfig.amount
+            } else {
+                rewards += MushroomLevel.SMALL to 1
+            }
+        }
+        return rewards
     }
 
     fun checkIn(taskId: Long) {
