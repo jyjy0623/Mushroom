@@ -2,7 +2,9 @@ package com.mushroom.feature.mushroom.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +29,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -43,12 +53,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.AppealStatus
 import com.mushroom.core.domain.entity.DeductionConfig
 import com.mushroom.core.domain.entity.DeductionRecord
+import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.feature.mushroom.viewmodel.DeductionViewEvent
 import com.mushroom.feature.mushroom.viewmodel.DeductionViewModel
 import kotlinx.coroutines.delay
@@ -330,7 +342,7 @@ private fun DeductionRecordCard(record: DeductionRecord, onAppeal: () -> Unit) {
 // DeductionConfigScreen — 配置扣除规则
 // ---------------------------------------------------------------------------
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DeductionConfigScreen(
     onNavigateBack: () -> Unit = {},
@@ -339,6 +351,12 @@ fun DeductionConfigScreen(
     val configs by viewModel.configs.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 新建/编辑对话框状态
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingConfig by remember { mutableStateOf<DeductionConfig?>(null) }  // null = 新建
+    // 删除确认对话框
+    var pendingDeleteConfig by remember { mutableStateOf<DeductionConfig?>(null) }
+
     LaunchedEffect(Unit) {
         viewModel.viewEvent.collectLatest { event ->
             when (event) {
@@ -346,6 +364,48 @@ fun DeductionConfigScreen(
                 else -> Unit
             }
         }
+    }
+
+    // 删除确认对话框
+    pendingDeleteConfig?.let { config ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteConfig = null },
+            title = { Text("删除规则") },
+            text = { Text("确定删除自定义规则「${config.name}」？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteConfig(config)
+                    pendingDeleteConfig = null
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteConfig = null }) { Text("取消") }
+            }
+        )
+    }
+
+    // 新建/编辑对话框
+    if (showEditDialog) {
+        ConfigEditDialog(
+            initial = editingConfig,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { name, level, amount, maxPerDay ->
+                val existing = editingConfig
+                if (existing == null) {
+                    viewModel.createConfig(name, level, amount, maxPerDay)
+                } else {
+                    viewModel.updateCustomConfig(
+                        existing.copy(
+                            name = name,
+                            mushroomLevel = level,
+                            defaultAmount = amount,
+                            maxPerDay = maxPerDay
+                        )
+                    )
+                }
+                showEditDialog = false
+            }
+        )
     }
 
     Scaffold(
@@ -359,8 +419,19 @@ fun DeductionConfigScreen(
                 }
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                editingConfig = null
+                showEditDialog = true
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "新建规则")
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        val builtIn = configs.filter { it.isBuiltIn }
+        val custom = configs.filter { !it.isBuiltIn }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -369,18 +440,76 @@ fun DeductionConfigScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {
-            items(configs, key = { it.id }) { config ->
-                ConfigCard(config = config, onToggle = { viewModel.toggleConfig(config) })
+            // 内置规则分组
+            item {
+                Text("内置规则", style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
+            items(builtIn, key = { it.id }) { config ->
+                ConfigCard(
+                    config = config,
+                    onToggle = { viewModel.toggleConfig(config) },
+                    onEdit = null,
+                    onDelete = null
+                )
+            }
+
+            // 自定义规则分组
+            item {
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(4.dp))
+                Text("自定义规则（长按编辑，双击删除）",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            if (custom.isEmpty()) {
+                item {
+                    Text("暂无自定义规则，点击右下角 + 新建",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp))
+                }
+            } else {
+                items(custom, key = { it.id }) { config ->
+                    ConfigCard(
+                        config = config,
+                        onToggle = { viewModel.toggleConfig(config) },
+                        onEdit = {
+                            editingConfig = config
+                            showEditDialog = true
+                        },
+                        onDelete = { pendingDeleteConfig = config }
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(72.dp)) }  // FAB 留白
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConfigCard(config: DeductionConfig, onToggle: () -> Unit) {
+private fun ConfigCard(
+    config: DeductionConfig,
+    onToggle: () -> Unit,
+    onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?
+) {
     val amount = if (config.customAmount > 0) config.customAmount else config.defaultAmount
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onEdit != null && onDelete != null)
+                    Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = onEdit,
+                        onDoubleClick = onDelete
+                    )
+                else Modifier
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -388,11 +517,13 @@ private fun ConfigCard(config: DeductionConfig, onToggle: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row {
-                    Text(config.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                    if (config.isBuiltIn) {
-                        Text(" [内置]", style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(config.name, style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium)
+                    if (!config.isBuiltIn) {
+                        Spacer(Modifier.width(4.dp))
+                        Text("[自定义]", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -404,4 +535,103 @@ private fun ConfigCard(config: DeductionConfig, onToggle: () -> Unit) {
             Switch(checked = config.isEnabled, onCheckedChange = { onToggle() })
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConfigEditDialog(
+    initial: DeductionConfig?,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, level: MushroomLevel, amount: Int, maxPerDay: Int) -> Unit
+) {
+    val isEdit = initial != null
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var level by remember { mutableStateOf(initial?.mushroomLevel ?: MushroomLevel.SMALL) }
+    var amountText by remember { mutableStateOf((if (initial != null && initial.defaultAmount > 0) initial.defaultAmount else 1).toString()) }
+    var maxPerDayText by remember { mutableStateOf((initial?.maxPerDay ?: 1).toString()) }
+    var levelExpanded by remember { mutableStateOf(false) }
+    var nameError by remember { mutableStateOf(false) }
+
+    val levels = listOf(
+        MushroomLevel.SMALL to "小蘑菇",
+        MushroomLevel.MEDIUM to "中蘑菇",
+        MushroomLevel.LARGE to "大蘑菇",
+        MushroomLevel.GOLD to "金蘑菇",
+        MushroomLevel.LEGEND to "传说蘑菇"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isEdit) "编辑规则" else "新建规则") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 规则名称
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it; nameError = false },
+                    label = { Text("规则名称 *") },
+                    singleLine = true,
+                    isError = nameError,
+                    supportingText = if (nameError) ({ Text("名称不能为空") }) else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // 蘑菇等级
+                ExposedDropdownMenuBox(
+                    expanded = levelExpanded,
+                    onExpandedChange = { levelExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = levels.first { it.first == level }.second,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("蘑菇等级") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(levelExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        singleLine = true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = levelExpanded,
+                        onDismissRequest = { levelExpanded = false }
+                    ) {
+                        levels.forEach { (l, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = { level = l; levelExpanded = false }
+                            )
+                        }
+                    }
+                }
+                // 扣除数量 & 每日上限
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { amountText = it },
+                        label = { Text("扣除数量") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = maxPerDayText,
+                        onValueChange = { maxPerDayText = it },
+                        label = { Text("每日上限") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (name.isBlank()) { nameError = true; return@Button }
+                val amount = amountText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                val maxPerDay = maxPerDayText.toIntOrNull()?.coerceIn(1, 10) ?: 1
+                onConfirm(name.trim(), level, amount, maxPerDay)
+            }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }

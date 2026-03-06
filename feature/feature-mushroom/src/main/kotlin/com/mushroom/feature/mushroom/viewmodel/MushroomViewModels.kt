@@ -9,6 +9,8 @@ import com.mushroom.core.domain.entity.MushroomBalance
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.feature.mushroom.usecase.AppealDeductionUseCase
+import com.mushroom.feature.mushroom.usecase.CreateDeductionConfigUseCase
+import com.mushroom.feature.mushroom.usecase.DeleteDeductionConfigUseCase
 import com.mushroom.feature.mushroom.usecase.DeductMushroomUseCase
 import com.mushroom.feature.mushroom.usecase.GetDeductionConfigsUseCase
 import com.mushroom.feature.mushroom.usecase.GetDeductionHistoryUseCase
@@ -80,6 +82,8 @@ class DeductionViewModel @Inject constructor(
     private val appealUseCase: AppealDeductionUseCase,
     private val reviewUseCase: ReviewAppealUseCase,
     private val updateConfigUseCase: UpdateDeductionConfigUseCase,
+    private val createConfigUseCase: CreateDeductionConfigUseCase,
+    private val deleteConfigUseCase: DeleteDeductionConfigUseCase,
     getConfigs: GetDeductionConfigsUseCase,
     getHistory: GetDeductionHistoryUseCase
 ) : ViewModel() {
@@ -136,6 +140,48 @@ class DeductionViewModel @Inject constructor(
     fun toggleConfig(config: DeductionConfig) {
         viewModelScope.launch {
             updateConfigUseCase(config.copy(isEnabled = !config.isEnabled))
+        }
+    }
+
+    fun createConfig(
+        name: String,
+        level: MushroomLevel,
+        amount: Int,
+        maxPerDay: Int
+    ) {
+        viewModelScope.launch {
+            val config = DeductionConfig(
+                name = name.trim(),
+                mushroomLevel = level,
+                defaultAmount = amount,
+                customAmount = 0,
+                isEnabled = true,
+                isBuiltIn = false,
+                maxPerDay = maxPerDay
+            )
+            val result = createConfigUseCase(config)
+            if (result.isSuccess) {
+                _viewEvent.emit(DeductionViewEvent.ShowSnackbar("规则已创建"))
+            } else {
+                _viewEvent.emit(DeductionViewEvent.ShowSnackbar("创建失败"))
+            }
+        }
+    }
+
+    fun updateCustomConfig(config: DeductionConfig) {
+        viewModelScope.launch {
+            updateConfigUseCase(config)
+        }
+    }
+
+    fun deleteConfig(config: DeductionConfig) {
+        viewModelScope.launch {
+            val result = deleteConfigUseCase(config.id)
+            if (result.isSuccess) {
+                _viewEvent.emit(DeductionViewEvent.ShowSnackbar("规则已删除"))
+            } else {
+                _viewEvent.emit(DeductionViewEvent.ShowSnackbar("删除失败（内置规则不可删除）"))
+            }
         }
     }
 }

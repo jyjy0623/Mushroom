@@ -42,7 +42,9 @@ interface MushroomRepository {
 interface DeductionRepository {
     fun getAllConfigs(): Flow<List<DeductionConfig>>
     fun getEnabledConfigs(): Flow<List<DeductionConfig>>
+    suspend fun insertConfig(config: DeductionConfig): Long
     suspend fun updateConfig(config: DeductionConfig)
+    suspend fun deleteCustomConfig(id: Long)
     fun getAllRecords(): Flow<List<DeductionRecord>>
     suspend fun insertRecord(record: DeductionRecord): Long
     suspend fun updateAppealStatus(id: Long, status: AppealStatus, note: String?)

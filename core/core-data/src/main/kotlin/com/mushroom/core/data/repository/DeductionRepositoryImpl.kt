@@ -25,8 +25,14 @@ class DeductionRepositoryImpl @Inject constructor(
     override fun getEnabledConfigs(): Flow<List<DeductionConfig>> =
         configDao.getEnabledConfigs().map { list -> list.map(DeductionMapper::toConfigDomain) }
 
+    override suspend fun insertConfig(config: DeductionConfig): Long =
+        configDao.insert(DeductionMapper.toConfigDb(config))
+
     override suspend fun updateConfig(config: DeductionConfig) =
         configDao.update(DeductionMapper.toConfigDb(config))
+
+    override suspend fun deleteCustomConfig(id: Long) =
+        configDao.deleteCustomById(id)
 
     override fun getAllRecords(): Flow<List<DeductionRecord>> =
         recordDao.getAllRecords().map { list -> list.map(DeductionMapper::toRecordDomain) }

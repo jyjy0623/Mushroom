@@ -217,6 +217,36 @@ class GetDeductionConfigsUseCase @Inject constructor(
 }
 
 // ---------------------------------------------------------------------------
+// CreateDeductionConfigUseCase
+// ---------------------------------------------------------------------------
+
+class CreateDeductionConfigUseCase @Inject constructor(
+    private val deductionRepo: DeductionRepository
+) {
+    suspend operator fun invoke(config: DeductionConfig): Result<Long> {
+        MushroomLogger.i(TAG, "CreateDeductionConfigUseCase: name=${config.name}")
+        return runCatching {
+            deductionRepo.insertConfig(config.copy(isBuiltIn = false))
+        }.onFailure { MushroomLogger.e(TAG, "CreateDeductionConfigUseCase failed", it) }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DeleteDeductionConfigUseCase
+// ---------------------------------------------------------------------------
+
+class DeleteDeductionConfigUseCase @Inject constructor(
+    private val deductionRepo: DeductionRepository
+) {
+    suspend operator fun invoke(id: Long): Result<Unit> {
+        MushroomLogger.i(TAG, "DeleteDeductionConfigUseCase: id=$id")
+        return runCatching {
+            deductionRepo.deleteCustomConfig(id)
+        }.onFailure { MushroomLogger.e(TAG, "DeleteDeductionConfigUseCase failed", it) }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // UpdateDeductionConfigUseCase
 // ---------------------------------------------------------------------------
 

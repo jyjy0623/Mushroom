@@ -111,6 +111,9 @@ interface DeductionConfigDao {
 
     @Update
     suspend fun update(config: DeductionConfigEntity)
+
+    @Query("DELETE FROM deduction_config WHERE id = :id AND is_built_in = 0")
+    suspend fun deleteCustomById(id: Long)
 }
 
 @Dao
