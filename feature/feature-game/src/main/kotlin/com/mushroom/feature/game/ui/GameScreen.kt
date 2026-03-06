@@ -259,6 +259,9 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
     // 蘑菇（像素风）—— 使用 physics.mushroomY * h 渲染实际位置
     drawMushroomPixel(0.1f * w, physics.mushroomY * h, physics.frameIndex, physics.isOnGround, fg)
 
+    // ── 调试参考蘑菇（固定 u=15f 大像素，屏幕中央偏上，后续删除）──
+    drawMushroomDebug(0.5f * w, 0.5f * h, fg)
+
     // 仙人掌
     physics.obstacles.forEach { obs ->
         val oh = obs.height * h
@@ -268,8 +271,9 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
 
 // ── 蘑菇绘制（像素风，原点 (cx, baseY) 为脚底中心）──────────────
 // 参考马里奥像素蘑菇比例：大帽子（拱形）+ 细茎 + 短腿
+// u 随屏幕高度缩放：总高约12u，目标约占屏幕高9%，u = h*0.09/12 ≈ h*0.0075
 private fun DrawScope.drawMushroomPixel(cx: Float, baseY: Float, frame: Int, onGround: Boolean, fg: Color) {
-    val u = 5f  // 1 pixel unit
+    val u = size.height * 0.0075f  // 自适应像素单位，总高约 12u ≈ 9% 屏幕高
     val spotColor = if (fg == DinoColors.fgDay) DinoColors.bgDay else DinoColors.bgNight
 
     // ── 腿（跑步动画，高 2u）──────────────────────────────────
@@ -305,10 +309,9 @@ private fun DrawScope.drawMushroomPixel(cx: Float, baseY: Float, frame: Int, onG
     val brimTop = stemTop - brimH
     drawRect(fg, Offset(cx - brimW / 2f, brimTop), Size(brimW, brimH))
 
-    // ── 帽顶（像素拱形：从宽到窄再到窄，模拟圆弧）────────────
-    // 行宽序列（从下到上）：12u 12u 10u 8u 5u
-    // 整体呈半圆形，最宽行和帽沿等宽或略窄
-    val capRows = listOf(12 * u, 12 * u, 10 * u, 8 * u, 5 * u)
+    // ── 帽顶（像素拱形：从上到下由窄变宽，模拟圆弧穹顶）────────
+    // 行宽序列（从上到下）：5u 8u 10u 12u 12u
+    val capRows = listOf(5 * u, 8 * u, 10 * u, 12 * u, 12 * u)
     var rowTop = brimTop - capRows.size * u
     for (rowW in capRows) {
         drawRect(fg, Offset(cx - rowW / 2f, rowTop), Size(rowW, u))
@@ -347,4 +350,40 @@ private fun DrawScope.drawCloud(cx: Float, cy: Float, scale: Float, color: Color
     drawRoundRect(color, Offset(cx - bw / 2, cy - bh / 2), Size(bw, bh), CornerRadius(bh / 2))
     drawRoundRect(color, Offset(cx - bw * 0.25f, cy - bh * 1.4f), Size(bw * 0.45f, bh * 1.1f), CornerRadius(bh / 2))
     drawRoundRect(color, Offset(cx + bw * 0.05f, cy - bh),        Size(bw * 0.30f, bh * 0.9f), CornerRadius(bh / 2))
+}
+
+// ── 调试用大蘑菇（固定 u=15f，各部位用不同透明度区分，后续删除）──
+private fun DrawScope.drawMushroomDebug(cx: Float, baseY: Float, fg: Color) {
+    val u = 15f
+    val spotColor = Color.White
+
+    // 腿（深色）
+    val legH = 2 * u
+    val legTop = baseY - legH
+    drawRect(fg, Offset(cx - 3 * u, legTop), Size(u, legH))          // 左腿
+    drawRect(fg, Offset(cx + u,     legTop + u), Size(u, u))          // 右腿（后蹬）
+
+    // 茎（深色，标注边界）
+    val stemW = 4 * u; val stemH = 3 * u; val stemTop = legTop - stemH
+    drawRect(fg, Offset(cx - stemW / 2f, stemTop), Size(stemW, stemH))
+
+    // 帽沿（深色）
+    val brimW = 14 * u; val brimH = 2 * u; val brimTop = stemTop - brimH
+    drawRect(fg, Offset(cx - brimW / 2f, brimTop), Size(brimW, brimH))
+
+    // 帽顶：从上到下 5→8→10→12→12（顶窄底宽穹顶）
+    val capRows = listOf(5 * u, 8 * u, 10 * u, 12 * u, 12 * u)
+    var rowTop = brimTop - capRows.size * u
+    for (rowW in capRows) {
+        drawRect(fg, Offset(cx - rowW / 2f, rowTop), Size(rowW, u))
+        rowTop += u
+    }
+
+    // 斑点（白色）
+    val spotY = brimTop - 4 * u
+    drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
+
+    // 眼睛
+    drawRect(spotColor, Offset(cx + stemW / 2f - u, stemTop + u), Size(u, u))
 }

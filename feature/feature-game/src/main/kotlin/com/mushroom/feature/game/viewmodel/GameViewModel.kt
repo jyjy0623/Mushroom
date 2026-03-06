@@ -92,15 +92,15 @@ class GameViewModel @Inject constructor(
     private var gameLoopJob: Job? = null
     private var scoreJob: Job? = null
 
-    // 物理参数（对标 Chrome Dino 原版节奏）
-    // 原版初始速度约 6px/帧@60fps，归一化屏幕宽度约1000px → 0.006/帧 = 0.0004/ms
-    // 原版 ACCELERATION=0.001（非常缓慢），这里用 score/2000 模拟
+    // 物理参数
+    // obstacleSpeed: 归一化/ms，对标 Chrome Dino 初始节奏
+    // jumpVelocity/gravity: 顶点时间≈250ms，跳跃高度≈0.25（屏幕25%），蘑菇最高到y≈0.50，不出屏幕
     private val obstacleSpeedBase = 0.0004f  // 每毫秒移动距离（归一化），对标原版初始速度
     private val obstacleSpeedMax  = 0.0012f  // 最高速度上限（约原版3倍，保证有难度）
     private val groundY = 0.75f
-    private val jumpVelocity = -0.0085f      // 跳跃初速度（对应原版 INITIAL_JUMP_VELOCITY=12）
-    private val gravity = 0.000025f          // 重力（对标原版 GRAVITY=0.6，使跳跃弧度自然）
-    private val obstacleMinGap = 0.5f        // 障碍物最小间距（归一化），对标原版 GAP_COEFFICIENT
+    private val jumpVelocity = -0.0020f      // 跳跃初速度：顶点高度 0.25，不飞出屏幕
+    private val gravity = 0.000008f          // 重力：顶点时间 250ms，总跳跃约 500ms
+    private val obstacleMinGap = 0.5f        // 障碍物最小间距（归一化）
 
     fun startGame() {
         MushroomLogger.w(TAG, "startGame() called, current state=${_uiState.value.state}")
@@ -186,11 +186,13 @@ class GameViewModel @Inject constructor(
             }
         }
 
-        // 碰撞检测（新蘑菇：帽沿宽14u≈0.088，总高12u≈0.10，cx=0.1）
-        // 用帽沿宽度的70%作为碰撞宽度（去掉帽沿边缘），高度用茎+帽沿部分更精准
-        val mushroomLeft  = 0.068f   // cx(0.1) - 帽沿半宽*0.7
-        val mushroomRight = 0.132f   // cx(0.1) + 帽沿半宽*0.7
-        val mushroomTop   = newY - 0.10f  // 总高约0.10
+        // 碰撞检测（蘑菇 cx=0.1，u=h*0.0075，帽沿14u≈0.045w，总高12u≈0.09h）
+        // 用帽沿宽度的70%作为碰撞宽度（去掉帽沿边缘）
+        // 假设屏幕宽高比约2.3:1（横屏1080p），u/w ≈ 0.0075/2.3 ≈ 0.00326
+        val halfBrimNorm = 7f * 0.00326f * 0.7f  // 帽沿半宽 * 0.7 ≈ 0.016
+        val mushroomLeft  = 0.1f - halfBrimNorm   // ≈ 0.084
+        val mushroomRight = 0.1f + halfBrimNorm   // ≈ 0.116
+        val mushroomTop   = newY - 0.09f          // 总高约 9% 屏幕高
         val mushroomBottom = newY
 
         val collision = newObstacles.any { obs ->
