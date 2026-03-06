@@ -92,11 +92,15 @@ class GameViewModel @Inject constructor(
     private var gameLoopJob: Job? = null
     private var scoreJob: Job? = null
 
-    // 障碍物生成参数
-    private val obstacleSpeedBase = 0.0018f  // 每毫秒移动距离（归一化）
+    // 物理参数（对标 Chrome Dino 原版节奏）
+    // 原版初始速度约 6px/帧@60fps，归一化屏幕宽度约1000px → 0.006/帧 = 0.0004/ms
+    // 原版 ACCELERATION=0.001（非常缓慢），这里用 score/2000 模拟
+    private val obstacleSpeedBase = 0.0004f  // 每毫秒移动距离（归一化），对标原版初始速度
+    private val obstacleSpeedMax  = 0.0012f  // 最高速度上限（约原版3倍，保证有难度）
     private val groundY = 0.75f
-    private val jumpVelocity = -0.0012f   // 跳跃初速度（归一化/ms，向上为负）
-    private val gravity = 0.000004f        // 重力加速度（归一化/ms²）
+    private val jumpVelocity = -0.0085f      // 跳跃初速度（对应原版 INITIAL_JUMP_VELOCITY=12）
+    private val gravity = 0.000025f          // 重力（对标原版 GRAVITY=0.6，使跳跃弧度自然）
+    private val obstacleMinGap = 0.5f        // 障碍物最小间距（归一化），对标原版 GAP_COEFFICIENT
 
     fun startGame() {
         MushroomLogger.w(TAG, "startGame() called, current state=${_uiState.value.state}")
@@ -157,21 +161,20 @@ class GameViewModel @Inject constructor(
             onGround = false
         }
 
-        // 障碍物更新
-        val speed = obstacleSpeedBase * (1f + state.score / 500f)  // 随分数加速
+        // 障碍物更新（速度随分数缓慢增加，上限 obstacleSpeedMax）
+        val speed = (obstacleSpeedBase + obstacleSpeedBase * state.score / 2000f)
+            .coerceAtMost(obstacleSpeedMax)
         val newObstacles = physics.obstacles
             .map { it.copy(x = it.x - speed * dtMs) }
-            .filter { it.x + it.width > -0.05f }  // 移出屏幕左边后删除
+            .filter { it.x + it.width > -0.05f }
             .toMutableList()
 
-        // 热身期（前3000ms）不生成障碍物，给玩家反应时间；热身结束后第一个障碍物从更远处出现
+        // 热身期（前3000ms）不生成障碍物；热身结束后第一个障碍物从 x=1.5 更远处生成
         val newWarmupMs = state.warmupMs + dtMs
         if (newWarmupMs >= 3000L) {
-            // 随机生成新障碍物（取最右侧障碍物 x，确保间距判断正确）
             val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
-            if (newObstacles.isEmpty() || rightmostX < 0.7f) {
+            if (newObstacles.isEmpty() || rightmostX < obstacleMinGap) {
                 if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
-                    // 第一个障碍物（列表为空）从 x=1.5 生成，给玩家额外约1秒反应时间
                     val spawnX = if (newObstacles.isEmpty()) 1.5f else 1.05f
                     newObstacles.add(
                         Obstacle(
