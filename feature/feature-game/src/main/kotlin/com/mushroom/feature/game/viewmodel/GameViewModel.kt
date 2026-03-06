@@ -9,6 +9,7 @@ import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.feature.game.entity.GameScore
 import com.mushroom.feature.game.repository.GameRepository
+import com.mushroom.core.logging.MushroomLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,6 +28,8 @@ import java.time.LocalDateTime
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.random.Random
+
+private const val TAG = "GameViewModel"
 
 enum class GameState { IDLE, RUNNING, GAME_OVER }
 
@@ -95,6 +98,7 @@ class GameViewModel @Inject constructor(
     private val gravity = 0.000004f        // 重力加速度（归一化/ms²）
 
     fun startGame() {
+        MushroomLogger.d(TAG, "startGame() called, current state=${_uiState.value.state}")
         if (_uiState.value.state == GameState.RUNNING) return
         _uiState.update {
             it.copy(
@@ -113,17 +117,22 @@ class GameViewModel @Inject constructor(
     }
 
     fun onTap() {
-        when (_uiState.value.state) {
+        val s = _uiState.value.state
+        MushroomLogger.d(TAG, "onTap() state=$s")
+        when (s) {
             GameState.IDLE     -> startGame()
             GameState.RUNNING  -> jump()
-            GameState.GAME_OVER -> { /* 等待自动返回 */ }
+            GameState.GAME_OVER -> { }
         }
     }
 
     fun jump() {
         val physics = _uiState.value.physics
-        if (_uiState.value.state != GameState.RUNNING) return
+        val state = _uiState.value.state
+        MushroomLogger.d(TAG, "jump() state=$state isOnGround=${physics.isOnGround} mushroomY=${physics.mushroomY}")
+        if (state != GameState.RUNNING) return
         if (!physics.isOnGround) return
+        MushroomLogger.d(TAG, "jump() → applying velocity=$jumpVelocity")
         _uiState.update { it.copy(physics = it.physics.copy(velocityY = jumpVelocity, isOnGround = false)) }
     }
 
@@ -177,6 +186,12 @@ class GameViewModel @Inject constructor(
         }
 
         if (collision) {
+            val hit = newObstacles.first { obs ->
+                val obsTop = groundY - obs.height
+                mushroomRight > obs.x && mushroomLeft < obs.x + obs.width &&
+                    mushroomBottom > obsTop && mushroomTop < groundY
+            }
+            MushroomLogger.d(TAG, "collision! mushroomY=$newY obs.x=${hit.x} obs.w=${hit.width} obs.h=${hit.height}")
             endGame()
             return
         }
@@ -223,6 +238,7 @@ class GameViewModel @Inject constructor(
     }
 
     private fun endGame() {
+        MushroomLogger.d(TAG, "endGame() score=${_uiState.value.score}")
         gameLoopJob?.cancel()
         scoreJob?.cancel()
 
