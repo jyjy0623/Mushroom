@@ -67,11 +67,11 @@ fun GameScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // 进入横屏，离开时恢复原方向
+    // 进入横屏并锁定方向，离开时恢复原方向
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val orig = activity?.requestedOrientation
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose { if (orig != null) activity.requestedOrientation = orig }
     }
 
@@ -227,7 +227,7 @@ private fun GameOverOverlay(score: Int, isNewRecord: Boolean, fg: Color, bg: Col
 // ── Canvas 绘制 ────────────────────────────────────────────────
 
 private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg: Color) {
-    val groundPx = physics.mushroomY * h
+    val groundPx = 0.75f * h  // 固定地面高度，与 GameViewModel.groundY 保持一致
 
     // 云朵（浅灰，昼夜由调用方颜色区分）
     val cloudColor = fg.copy(alpha = 0.25f)

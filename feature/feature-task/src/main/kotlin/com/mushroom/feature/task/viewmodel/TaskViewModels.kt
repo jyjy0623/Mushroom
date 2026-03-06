@@ -198,13 +198,12 @@ class DailyTaskViewModel @Inject constructor(
         celebrationShownDates.add(_date.value)
     }
 
-    /** 检查今日全勤后是否可以触发游戏（异步，完成后更新 _canTriggerGame） */
-    fun checkGameTrigger() {
-        viewModelScope.launch {
-            val today = LocalDate.now()
-            val playedToday = gameRepo.hasPlayedToday(today)
-            _canTriggerGame.value = !playedToday
-        }
+    /** 检查今日全勤后是否可以触发游戏；同步返回结果并更新 StateFlow */
+    suspend fun checkGameTrigger(): Boolean {
+        val today = LocalDate.now()
+        val canTrigger = !gameRepo.hasPlayedToday(today)
+        _canTriggerGame.value = canTrigger
+        return canTrigger
     }
 
     /** UI 确认进入游戏后调用，防止重复触发 */

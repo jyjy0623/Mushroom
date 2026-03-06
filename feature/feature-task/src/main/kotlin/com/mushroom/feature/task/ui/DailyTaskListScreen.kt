@@ -114,15 +114,14 @@ fun DailyTaskListScreen(
             celebrationFiredDate = uiState.date
             viewModel.markCelebrationShown()
             showCelebration = true
-            // 检查是否可以触发游戏（今日未玩过 AND 是今天）
-            if (uiState.date == LocalDate.now()) {
+            // 并发检查是否可以触发游戏（今日未玩过 AND 是今天），等待挂起结果
+            val canTrigger = if (uiState.date == LocalDate.now()) {
                 viewModel.checkGameTrigger()
-            }
+            } else false
             delay(3_000)
             showCelebration = false
-            // 3秒横幅后弹出游戏解锁提示
-            // 注意：直接读 StateFlow.value，避免 Composable 快照竞态问题
-            if (viewModel.canTriggerGame.value) {
+            // 3秒横幅后弹出游戏解锁提示（结果已确定，无竞态问题）
+            if (canTrigger) {
                 showGameUnlockDialog = true
             }
         } else if (!isAllDone) {

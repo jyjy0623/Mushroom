@@ -172,7 +172,7 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
                             val now = System.currentTimeMillis()
-                            if (now - lastTapMs < 600) {
+                            if (now - lastTapMs < 1000) {
                                 tapCount++
                             } else {
                                 tapCount = 1
