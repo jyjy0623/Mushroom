@@ -186,10 +186,11 @@ class GameViewModel @Inject constructor(
             }
         }
 
-        // 碰撞检测（蘑菇宽0.07，高0.13，居中于0.1位置）
-        val mushroomLeft = 0.065f
-        val mushroomRight = 0.135f
-        val mushroomTop = newY - 0.13f
+        // 碰撞检测（新蘑菇：帽沿宽14u≈0.088，总高12u≈0.10，cx=0.1）
+        // 用帽沿宽度的70%作为碰撞宽度（去掉帽沿边缘），高度用茎+帽沿部分更精准
+        val mushroomLeft  = 0.068f   // cx(0.1) - 帽沿半宽*0.7
+        val mushroomRight = 0.132f   // cx(0.1) + 帽沿半宽*0.7
+        val mushroomTop   = newY - 0.10f  // 总高约0.10
         val mushroomBottom = newY
 
         val collision = newObstacles.any { obs ->

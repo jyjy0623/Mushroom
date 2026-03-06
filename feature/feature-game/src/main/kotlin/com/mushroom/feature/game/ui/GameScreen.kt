@@ -266,58 +266,63 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
     }
 }
 
-// ── 蘑菇绘制（像素风，原点 (cx, groundY)）──────────────────────
-// 帽子（圆弧用多个矩形叠拼）+ 帽沿 + 身体 + 腿
-private fun DrawScope.drawMushroomPixel(cx: Float, groundY: Float, frame: Int, onGround: Boolean, fg: Color) {
+// ── 蘑菇绘制（像素风，原点 (cx, baseY) 为脚底中心）──────────────
+// 参考马里奥像素蘑菇比例：大帽子（拱形）+ 细茎 + 短腿
+private fun DrawScope.drawMushroomPixel(cx: Float, baseY: Float, frame: Int, onGround: Boolean, fg: Color) {
     val u = 5f  // 1 pixel unit
+    val spotColor = if (fg == DinoColors.fgDay) DinoColors.bgDay else DinoColors.bgNight
 
-    // ── 腿（地面上 2u，跑步动画）──────────────────────────────
-    val legTop = groundY - 2 * u
+    // ── 腿（跑步动画，高 2u）──────────────────────────────────
+    val legH = 2 * u
+    val legTop = baseY - legH
     when {
         !onGround -> {
-            drawRect(fg, Offset(cx - 2 * u, legTop), Size(u + 1, 2 * u))
-            drawRect(fg, Offset(cx + u,     legTop), Size(u + 1, 2 * u))
+            // 空中：两腿并拢收起
+            drawRect(fg, Offset(cx - 2 * u, legTop), Size(u, legH))
+            drawRect(fg, Offset(cx + u,     legTop), Size(u, legH))
         }
         frame == 0 -> {
-            drawRect(fg, Offset(cx - 3 * u, legTop),     Size(u + 1, 2 * u))
-            drawRect(fg, Offset(cx + u,     legTop + u), Size(u + 1, u))
+            // 跑步帧A：左腿前伸、右腿后蹬
+            drawRect(fg, Offset(cx - 3 * u, legTop),         Size(u, legH))
+            drawRect(fg, Offset(cx + u,     legTop + u),     Size(u, u))
         }
         else -> {
-            drawRect(fg, Offset(cx - 3 * u, legTop + u), Size(u + 1, u))
-            drawRect(fg, Offset(cx + u,     legTop),     Size(u + 1, 2 * u))
+            // 跑步帧B：右腿前伸、左腿后蹬
+            drawRect(fg, Offset(cx - 3 * u, legTop + u),     Size(u, u))
+            drawRect(fg, Offset(cx + u,     legTop),         Size(u, legH))
         }
     }
 
-    // ── 身体（矩形躯干）────────────────────────────────────────
-    val bodyW = 6 * u; val bodyH = 4 * u
-    val bodyLeft = cx - bodyW / 2f
-    val bodyTop  = groundY - 2 * u - bodyH
-    drawRect(fg, Offset(bodyLeft, bodyTop), Size(bodyW, bodyH))
+    // ── 茎（细矩形，帽子宽度约40%）────────────────────────────
+    val stemW = 4 * u
+    val stemH = 3 * u
+    val stemTop = legTop - stemH
+    drawRect(fg, Offset(cx - stemW / 2f, stemTop), Size(stemW, stemH))
 
-    // ── 帽沿（比身体宽一圈）───────────────────────────────────
-    val brimW = bodyW + 4 * u
-    val brimH = u
-    val brimLeft = cx - brimW / 2f
-    val brimTop  = bodyTop - brimH
-    drawRect(fg, Offset(brimLeft, brimTop), Size(brimW, brimH))
+    // ── 帽沿（比茎宽很多，视觉上是伞边）──────────────────────
+    val brimW = 14 * u
+    val brimH = 2 * u
+    val brimTop = stemTop - brimH
+    drawRect(fg, Offset(cx - brimW / 2f, brimTop), Size(brimW, brimH))
 
-    // ── 帽顶（像素拱形：5 行矩形，从宽到窄）──────────────────
-    // 每层宽度：10u 8u 7u 6u 4u，高度各 1u
-    val capRowWidths = listOf(10 * u, 8 * u, 7 * u, 6 * u, 4 * u)
-    var capRowTop = brimTop - capRowWidths.size * u
-    for (rowW in capRowWidths) {
-        drawRect(fg, Offset(cx - rowW / 2f, capRowTop), Size(rowW, u))
-        capRowTop += u
+    // ── 帽顶（像素拱形：从宽到窄再到窄，模拟圆弧）────────────
+    // 行宽序列（从下到上）：12u 12u 10u 8u 5u
+    // 整体呈半圆形，最宽行和帽沿等宽或略窄
+    val capRows = listOf(12 * u, 12 * u, 10 * u, 8 * u, 5 * u)
+    var rowTop = brimTop - capRows.size * u
+    for (rowW in capRows) {
+        drawRect(fg, Offset(cx - rowW / 2f, rowTop), Size(rowW, u))
+        rowTop += u
     }
 
-    // ── 帽子白色斑点（两个小方块，画在帽中层）────────────────
-    val spotColor = if (fg == DinoColors.fgDay) DinoColors.bgDay else DinoColors.bgNight
-    val spotY = brimTop - 3 * u  // 帽中部
-    drawRect(spotColor, Offset(cx - 3 * u, spotY), Size(u, u))
-    drawRect(spotColor, Offset(cx + u,     spotY), Size(u, u))
+    // ── 帽子白色斑点（画在帽上半部，左右各一）────────────────
+    // 斑点位于帽顶第2、3行高度，左右对称
+    val spotY = brimTop - 4 * u
+    drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
 
-    // ── 眼睛（身体右侧小白块）────────────────────────────────
-    drawRect(spotColor, Offset(bodyLeft + bodyW - u, bodyTop + u), Size(u, u))
+    // ── 眼睛（茎右侧小白点）──────────────────────────────────
+    drawRect(spotColor, Offset(cx + stemW / 2f - u, stemTop + u), Size(u, u))
 }
 
 // ── 仙人掌绘制（Dino 风格：深灰矩形组合）──────────────────────
