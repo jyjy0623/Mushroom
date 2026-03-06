@@ -2,8 +2,10 @@ package com.mushroom.adventure.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -326,19 +328,21 @@ fun CreateScreen(
                         HorizontalDivider()
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             OutlinedButton(
                                 onClick = { taskViewModel.saveAsTemplate() },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f).fillMaxHeight()
                             ) {
-                                Text("另存为自定义模板")
+                                Text("另存为模板")
                             }
                             Button(
                                 onClick = { taskViewModel.save(taskDate) },
                                 enabled = !taskUiState.isSaving,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f).fillMaxHeight()
                             ) {
                                 if (taskUiState.isSaving) CircularProgressIndicator(Modifier.size(16.dp))
                                 else Text("保存")
