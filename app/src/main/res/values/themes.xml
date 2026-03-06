@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MushroomAdventure" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- 原生 Material Light 主题，透明状态栏 + 深色状态栏图标（适配白色 Compose 背景） -->
+    <style name="Theme.MushroomAdventure" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 </resources>

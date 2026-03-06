@@ -70,11 +70,14 @@ import com.mushroom.core.domain.entity.Milestone
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.mushroom.core.logging.MushroomLogger
 import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+
+private const val TAG = "DailyTaskListScreen"
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("MM月dd日 EEEE")
 
@@ -117,19 +120,26 @@ fun DailyTaskListScreen(
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
 
     LaunchedEffect(isAllDone, uiState.date) {
+        MushroomLogger.w(TAG, "isAllDone=$isAllDone date=${uiState.date} celebrationFiredDate=$celebrationFiredDate celebrationShown=${uiState.celebrationShown} total=${uiState.totalCount} completed=${uiState.completedCount}")
         if (isAllDone && celebrationFiredDate != uiState.date && !uiState.celebrationShown) {
             celebrationFiredDate = uiState.date
             viewModel.markCelebrationShown()
             showCelebration = true
             // 并发检查是否可以触发游戏（今日未玩过 AND 是今天），等待挂起结果
-            val canTrigger = if (uiState.date == LocalDate.now()) {
+            val isToday = uiState.date == LocalDate.now()
+            MushroomLogger.w(TAG, "all tasks done! isToday=$isToday, checking game trigger...")
+            val canTrigger = if (isToday) {
                 viewModel.checkGameTrigger()
             } else false
+            MushroomLogger.w(TAG, "checkGameTrigger result=$canTrigger")
             delay(3_000)
             showCelebration = false
             // 3秒横幅后弹出游戏解锁提示（结果已确定，无竞态问题）
             if (canTrigger) {
+                MushroomLogger.w(TAG, "showing game unlock dialog")
                 showGameUnlockDialog = true
+            } else {
+                MushroomLogger.w(TAG, "game trigger skipped: canTrigger=$canTrigger")
             }
         } else if (!isAllDone) {
             showCelebration = false

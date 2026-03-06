@@ -3,6 +3,7 @@ package com.mushroom.feature.task.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.core.domain.entity.Milestone
 import com.mushroom.core.domain.entity.MilestoneStatus
 import com.mushroom.core.domain.entity.RepeatRule
@@ -56,6 +57,8 @@ import javax.inject.Inject
 // ============================================================
 // DailyTaskViewModel
 // ============================================================
+
+private const val TAG = "DailyTaskViewModel"
 
 data class DailyTaskUiState(
     val date: LocalDate = LocalDate.now(),
@@ -283,7 +286,9 @@ class DailyTaskViewModel @Inject constructor(
     /** 检查今日全勤后是否可以触发游戏；同步返回结果并更新 StateFlow */
     suspend fun checkGameTrigger(): Boolean {
         val today = LocalDate.now()
-        val canTrigger = !gameRepo.hasPlayedToday(today)
+        val hasPlayed = gameRepo.hasPlayedToday(today)
+        val canTrigger = !hasPlayed
+        MushroomLogger.w(TAG, "checkGameTrigger: today=$today hasPlayedToday=$hasPlayed canTrigger=$canTrigger")
         _canTriggerGame.value = canTrigger
         return canTrigger
     }
