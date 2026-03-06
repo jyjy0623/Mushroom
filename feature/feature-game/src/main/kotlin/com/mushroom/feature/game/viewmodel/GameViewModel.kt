@@ -98,7 +98,7 @@ class GameViewModel @Inject constructor(
     private val gravity = 0.000004f        // 重力加速度（归一化/ms²）
 
     fun startGame() {
-        MushroomLogger.d(TAG, "startGame() called, current state=${_uiState.value.state}")
+        MushroomLogger.i(TAG, "startGame() called, current state=${_uiState.value.state}")
         if (_uiState.value.state == GameState.RUNNING) return
         _uiState.update {
             it.copy(
@@ -113,12 +113,13 @@ class GameViewModel @Inject constructor(
                 )
             )
         }
+        MushroomLogger.i(TAG, "startGame() → state updated to RUNNING")
         startGameLoop()
     }
 
     fun onTap() {
         val s = _uiState.value.state
-        MushroomLogger.d(TAG, "onTap() state=$s")
+        MushroomLogger.i(TAG, "onTap() state=$s")
         when (s) {
             GameState.IDLE     -> startGame()
             GameState.RUNNING  -> jump()
@@ -129,11 +130,12 @@ class GameViewModel @Inject constructor(
     fun jump() {
         val physics = _uiState.value.physics
         val state = _uiState.value.state
-        MushroomLogger.d(TAG, "jump() state=$state isOnGround=${physics.isOnGround} mushroomY=${physics.mushroomY}")
+        MushroomLogger.i(TAG, "jump() state=$state isOnGround=${physics.isOnGround} mushroomY=${physics.mushroomY} velocityY=${physics.velocityY}")
         if (state != GameState.RUNNING) return
         if (!physics.isOnGround) return
-        MushroomLogger.d(TAG, "jump() → applying velocity=$jumpVelocity")
+        MushroomLogger.i(TAG, "jump() → applying jumpVelocity=$jumpVelocity, setting isOnGround=false")
         _uiState.update { it.copy(physics = it.physics.copy(velocityY = jumpVelocity, isOnGround = false)) }
+        MushroomLogger.i(TAG, "jump() → after update: velocityY=${_uiState.value.physics.velocityY} isOnGround=${_uiState.value.physics.isOnGround}")
     }
 
     fun tick(dtMs: Long) {
@@ -191,9 +193,14 @@ class GameViewModel @Inject constructor(
                 mushroomRight > obs.x && mushroomLeft < obs.x + obs.width &&
                     mushroomBottom > obsTop && mushroomTop < groundY
             }
-            MushroomLogger.d(TAG, "collision! mushroomY=$newY obs.x=${hit.x} obs.w=${hit.width} obs.h=${hit.height}")
+            MushroomLogger.i(TAG, "collision! mushroomY=$newY obs.x=${hit.x} obs.w=${hit.width} obs.h=${hit.height}")
             endGame()
             return
+        }
+
+        // 跳跃首帧：velocityY < 0 时记录物理状态（确认跳跃已生效）
+        if (physics.velocityY < 0f) {
+            MushroomLogger.i(TAG, "tick() jump in progress: mushroomY=$newY velocityY=$newVY onGround=$onGround dtMs=$dtMs")
         }
 
         val newFrame = if (dtMs > 0) (physics.frameIndex + 1) % 2 else physics.frameIndex
@@ -238,7 +245,7 @@ class GameViewModel @Inject constructor(
     }
 
     private fun endGame() {
-        MushroomLogger.d(TAG, "endGame() score=${_uiState.value.score}")
+        MushroomLogger.i(TAG, "endGame() score=${_uiState.value.score}")
         gameLoopJob?.cancel()
         scoreJob?.cancel()
 
