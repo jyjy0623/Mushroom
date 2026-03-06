@@ -92,29 +92,22 @@ class GameViewModel @Inject constructor(
     private var gameLoopJob: Job? = null
     private var scoreJob: Job? = null
 
-    // ── 物理参数（精确对标 Chrome T-Rex 原版）──────────────────────────────────
+    // ── 物理参数（对标 Chrome T-Rex 原版，并针对手机触屏调整反应时间）────────────
     //
-    // 原版坐标系：canvas宽600px，FPS=60
-    //   SPEED=6px/frame, MAX_SPEED=12px/frame, ACCELERATION=0.001px/frame
-    //   CLEAR_TIME=3000ms（热身，不生成障碍物）
-    //   GAP_COEFFICIENT=0.6, GRAVITY=0.6px/frame², INITIAL_JUMP_VELOCITY=-10px/frame
+    // PC原版：键盘反应时间~150ms，障碍物警告时间~1.5s，体感合适
+    // 手机触屏：反应时间~300ms（约2倍），警告时间需相应延长到~2.5s
     //
-    // 归一化换算（÷600px）：
-    //   speedBase = 6px/frame × 60fps × (1/600) = 0.0006/ms  ← 之前漏乘60fps！
-    //   speedMax  = 12 × 60 / 600 = 0.0012/ms
-    //   加速度    = 0.001px/frame² × 60fps / 600 = 0.0001/ms（每ms速度增量）
-    //              原版从6→12约需 6000帧 / 60fps = 100s → accel=0.000006/ms
-    //   热身期    = CLEAR_TIME = 3000ms（保留不变）
-    //   第一障碍物从 x=1.2 生成（比1.5近），热身结束后约2s到达，接近原版节奏
+    // 归一化换算（canvas宽600px基准，×60fps）：
+    //   PC原版 speedBase = 6px/frame × 60fps ÷ 600px = 0.0006/ms
+    //   手机调整：警告距离≈0.96，目标警告时间2.5s → speed = 0.96/2500 ≈ 0.0004/ms
+    //   speedMax：原版0.0012/ms，手机调整为0.0009/ms（避免后期过快无法反应）
+    //   加速：100s从初速到最高速，accel=(0.0009-0.0004)/100000=0.000005/ms
     //
-    // 重力/跳跃（用屏幕高归一化，地面y=0.75）：
-    //   目标：跳跃高度≈0.25h，顶点时间≈250ms，落地≈500ms
-    //   gravity = 2×0.25 / 250² = 0.000008/ms²
-    //   jumpVelocity = -sqrt(2×0.000008×0.25) = -0.002/ms
+    // 跳跃：顶点高≈0.25h，落地≈500ms（不变）
 
-    private val speedBase      = 0.0006f       // 归一化初速（原版SPEED=6，正确换算）
-    private val speedMax       = 0.0012f       // 归一化最高速（原版MAX_SPEED=12）
-    private val speedAccel     = 0.000006f     // 归一化加速度/ms（原版100s从初速到最高速）
+    private val speedBase      = 0.0004f       // 手机初速（PC原版0.0006，降速留足2.5s反应时间）
+    private val speedMax       = 0.0009f       // 手机最高速（PC原版0.0012，降低避免后期过快）
+    private val speedAccel     = 0.000005f     // 加速度：100s从初速到最高速
     private val groundY        = 0.75f
     private val jumpVelocity   = -0.002f       // 跳跃初速，顶点高≈0.25h，不出屏幕
     private val gravity        = 0.000008f     // 重力，顶点时间≈250ms，落地≈500ms
@@ -196,7 +189,7 @@ class GameViewModel @Inject constructor(
             val minGap = 0.06f * speed / speedBase * gapCoefficient
             if (newObstacles.isEmpty() || rightmostX < minGap) {
                 if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
-                    val spawnX = if (newObstacles.isEmpty()) 1.2f else 1.05f
+                    val spawnX = if (newObstacles.isEmpty()) 1.4f else 1.05f
                     newObstacles.add(
                         Obstacle(
                             x = spawnX,
