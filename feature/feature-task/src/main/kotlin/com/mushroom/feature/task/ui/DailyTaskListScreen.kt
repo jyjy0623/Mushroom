@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -87,7 +86,6 @@ fun DailyTaskListScreen(
     onNavigateToCheckInHistory: () -> Unit = {},
     onNavigateToMilestoneList: () -> Unit = {},
     onNavigateToGame: () -> Unit = {},
-    onNavigateToLeaderboard: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -123,7 +121,8 @@ fun DailyTaskListScreen(
             delay(3_000)
             showCelebration = false
             // 3秒横幅后弹出游戏解锁提示
-            if (canTriggerGame) {
+            // 注意：直接读 StateFlow.value，避免 Composable 快照竞态问题
+            if (viewModel.canTriggerGame.value) {
                 showGameUnlockDialog = true
             }
         } else if (!isAllDone) {
@@ -161,9 +160,6 @@ fun DailyTaskListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToLeaderboard) {
-                        Icon(Icons.Filled.Star, contentDescription = "排行榜")
-                    }
                     IconButton(onClick = onNavigateToCheckInHistory) {
                         Icon(Icons.Filled.DateRange, contentDescription = "打卡历史")
                     }

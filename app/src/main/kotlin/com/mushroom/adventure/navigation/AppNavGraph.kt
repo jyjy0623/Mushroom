@@ -28,7 +28,6 @@ import com.mushroom.feature.task.ui.DailyTaskListScreen
 import com.mushroom.feature.task.ui.TaskEditScreen
 import com.mushroom.feature.task.ui.TaskTemplateScreen
 import com.mushroom.feature.game.ui.GameScreen
-import com.mushroom.feature.game.ui.LeaderboardScreen
 import java.time.LocalDate
 
 private const val NAV_TAG = "AppNavGraph"
@@ -90,9 +89,6 @@ fun AppNavGraph(
                 },
                 onNavigateToGame = {
                     navController.safeNavigate(AppDestination.Game.route)
-                },
-                onNavigateToLeaderboard = {
-                    navController.safeNavigate(AppDestination.Leaderboard.route)
                 }
             )
         }
@@ -291,9 +287,6 @@ fun AppNavGraph(
         // ---- 游戏 ----
         composable(AppDestination.Game.route) {
             GameScreen(onExit = { navController.popBackStack() })
-        }
-        composable(AppDestination.Leaderboard.route) {
-            LeaderboardScreen(onBack = { navController.popBackStack() })
         }
     }
 }

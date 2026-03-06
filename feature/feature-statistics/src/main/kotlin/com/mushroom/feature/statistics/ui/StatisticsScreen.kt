@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -42,14 +45,18 @@ import com.mushroom.core.domain.entity.ScoreStatistics
 import com.mushroom.core.domain.entity.ScoreTrend
 import com.mushroom.core.domain.entity.StatisticsPeriod
 import com.mushroom.core.domain.entity.Subject
+import com.mushroom.feature.game.viewmodel.GameViewModel
 import com.mushroom.feature.statistics.viewmodel.StatisticsViewModel
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
-    viewModel: StatisticsViewModel = hiltViewModel()
+    viewModel: StatisticsViewModel = hiltViewModel(),
+    gameViewModel: GameViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val topScores by gameViewModel.topScores.collectAsStateWithLifecycle()
     var tabIndex by remember { mutableStateOf(0) }
 
     Scaffold(
@@ -60,31 +67,33 @@ fun StatisticsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 时间段选择
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    FilterChip(
-                        selected = uiState.period == StatisticsPeriod.LAST_7_DAYS,
-                        onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_7_DAYS) },
-                        label = { Text("近7天") }
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = uiState.period == StatisticsPeriod.LAST_30_DAYS,
-                        onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_30_DAYS) },
-                        label = { Text("近30天") }
-                    )
-                }
-                item {
-                    FilterChip(
-                        selected = uiState.period == StatisticsPeriod.THIS_SEMESTER,
-                        onClick = { viewModel.selectPeriod(StatisticsPeriod.THIS_SEMESTER) },
-                        label = { Text("本学期") }
-                    )
+            // 时间段选择（跑酷 Tab 不需要，仅前三个 Tab 用到）
+            if (tabIndex < 3) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = uiState.period == StatisticsPeriod.LAST_7_DAYS,
+                            onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_7_DAYS) },
+                            label = { Text("近7天") }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = uiState.period == StatisticsPeriod.LAST_30_DAYS,
+                            onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_30_DAYS) },
+                            label = { Text("近30天") }
+                        )
+                    }
+                    item {
+                        FilterChip(
+                            selected = uiState.period == StatisticsPeriod.THIS_SEMESTER,
+                            onClick = { viewModel.selectPeriod(StatisticsPeriod.THIS_SEMESTER) },
+                            label = { Text("本学期") }
+                        )
+                    }
                 }
             }
 
@@ -93,9 +102,10 @@ fun StatisticsScreen(
                 Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("学习情况") })
                 Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("蘑菇收支") })
                 Tab(selected = tabIndex == 2, onClick = { tabIndex = 2 }, text = { Text("成绩趋势") })
+                Tab(selected = tabIndex == 3, onClick = { tabIndex = 3 }, text = { Text("跑酷游戏") })
             }
 
-            if (uiState.isLoading) {
+            if (uiState.isLoading && tabIndex < 3) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("加载中…")
                 }
@@ -104,6 +114,7 @@ fun StatisticsScreen(
                     0 -> CheckInTab(stats = uiState.checkInStats)
                     1 -> MushroomTab(stats = uiState.mushroomStats)
                     2 -> ScoreTab(scoreStats = uiState.scoreStats)
+                    3 -> GameLeaderboardTab(scores = topScores)
                 }
             }
         }
@@ -367,4 +378,73 @@ private fun milestoneTypeLabel(type: MilestoneType) = when (type) {
 private fun mushroomEmoji(level: MushroomLevel) = when (level) {
     MushroomLevel.SMALL -> "🍄"; MushroomLevel.MEDIUM -> "🍄‍🟫"; MushroomLevel.LARGE -> "🌟"
     MushroomLevel.GOLD -> "✨"; MushroomLevel.LEGEND -> "👑"
+}
+
+// -----------------------------------------------------------------------
+// Tab 4: 跑酷游戏排行榜
+// -----------------------------------------------------------------------
+private val GAME_DATE_FMT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
+
+@Composable
+private fun GameLeaderboardTab(scores: List<com.mushroom.feature.game.entity.GameScore>) {
+    if (scores.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("还没有游戏记录", style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "完成所有任务后解锁游戏！",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            itemsIndexed(scores) { index, score ->
+                val rank = index + 1
+                val rankLabel = when (rank) { 1 -> "🥇"; 2 -> "🥈"; 3 -> "🥉"; else -> "$rank." }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (rank <= 3)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = rankLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(40.dp)
+                        )
+                        Text(
+                            text = "${score.score} 分",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = score.playedAt.format(GAME_DATE_FMT),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

@@ -53,5 +53,4 @@ sealed class AppDestination(val route: String) {
 
     // 游戏
     object Game : AppDestination("game")
-    object Leaderboard : AppDestination("leaderboard")
 }
