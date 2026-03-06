@@ -155,7 +155,7 @@ private fun IdleOverlay(fg: Color, bg: Color, onStart: () -> Unit) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                "DINO  RUN",
+                "MUSHROOM  ADVENTURE",
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -245,8 +245,8 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
         gx += dotW + 8f + ((gx.toInt() * 3) % 20)
     }
 
-    // 恐龙（Dino 像素风）
-    drawDino(0.1f * w, groundPx, physics.frameIndex, physics.isOnGround, fg)
+    // 蘑菇（像素风）
+    drawMushroomPixel(0.1f * w, groundPx, physics.frameIndex, physics.isOnGround, fg)
 
     // 仙人掌
     physics.obstacles.forEach { obs ->
@@ -255,61 +255,58 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
     }
 }
 
-// ── 恐龙绘制 ──────────────────────────────────────────────────
-// 全部用矩形拼出像素风身体，原点 (cx, groundY)
-private fun DrawScope.drawDino(cx: Float, groundY: Float, frame: Int, onGround: Boolean, fg: Color) {
-    // 尺寸基准
-    val u = 6f  // 1 pixel unit
+// ── 蘑菇绘制（像素风，原点 (cx, groundY)）──────────────────────
+// 帽子（圆弧用多个矩形叠拼）+ 帽沿 + 身体 + 腿
+private fun DrawScope.drawMushroomPixel(cx: Float, groundY: Float, frame: Int, onGround: Boolean, fg: Color) {
+    val u = 5f  // 1 pixel unit
 
-    // 身体（躯干）
-    val bodyW = 8 * u; val bodyH = 5 * u
-    val bodyLeft = cx - bodyW * 0.4f
-    val bodyTop  = groundY - bodyH - 2 * u  // 腿高 = 2u
-    drawRect(fg, Offset(bodyLeft, bodyTop), Size(bodyW, bodyH))
-
-    // 尾巴（身体左下方斜块，用两个矩形）
-    drawRect(fg, Offset(bodyLeft - 2 * u, bodyTop + bodyH - 2 * u), Size(2 * u, 2 * u))
-    drawRect(fg, Offset(bodyLeft - 3 * u, bodyTop + bodyH - u),     Size(u, u))
-
-    // 脖子 + 头
-    val neckLeft = bodyLeft + bodyW - 2 * u
-    val neckTop  = bodyTop - 3 * u
-    drawRect(fg, Offset(neckLeft, neckTop), Size(3 * u, 3 * u))   // 脖子
-
-    val headW = 7 * u; val headH = 4 * u
-    val headLeft = neckLeft - u
-    val headTop  = neckTop - headH
-    drawRect(fg, Offset(headLeft, headTop), Size(headW, headH))   // 头
-
-    // 嘴（开口，挖掉右下角 1u×1u 白块）
-    drawRect(fg.copy(alpha = 0f), Offset(headLeft + headW - u, headTop + headH - u), Size(u, u))
-
-    // 眼睛（白色小圆孔）
-    drawRect(
-        color = if (fg == DinoColors.fgDay) DinoColors.bgDay else DinoColors.bgNight,
-        topLeft = Offset(headLeft + headW - 3 * u, headTop + u),
-        size = Size(u, u)
-    )
-
-    // 腿（地面上方 2u 高，IDLE/空中固定，奔跑时交替）
+    // ── 腿（地面上 2u，跑步动画）──────────────────────────────
     val legTop = groundY - 2 * u
     when {
         !onGround -> {
-            // 空中：双腿平行伸出
             drawRect(fg, Offset(cx - 2 * u, legTop), Size(u + 1, 2 * u))
             drawRect(fg, Offset(cx + u,     legTop), Size(u + 1, 2 * u))
         }
         frame == 0 -> {
-            // 左腿前伸
-            drawRect(fg, Offset(cx - 3 * u, legTop), Size(u + 1, 2 * u))
+            drawRect(fg, Offset(cx - 3 * u, legTop),     Size(u + 1, 2 * u))
             drawRect(fg, Offset(cx + u,     legTop + u), Size(u + 1, u))
         }
         else -> {
-            // 右腿前伸
             drawRect(fg, Offset(cx - 3 * u, legTop + u), Size(u + 1, u))
-            drawRect(fg, Offset(cx + u,     legTop), Size(u + 1, 2 * u))
+            drawRect(fg, Offset(cx + u,     legTop),     Size(u + 1, 2 * u))
         }
     }
+
+    // ── 身体（矩形躯干）────────────────────────────────────────
+    val bodyW = 6 * u; val bodyH = 4 * u
+    val bodyLeft = cx - bodyW / 2f
+    val bodyTop  = groundY - 2 * u - bodyH
+    drawRect(fg, Offset(bodyLeft, bodyTop), Size(bodyW, bodyH))
+
+    // ── 帽沿（比身体宽一圈）───────────────────────────────────
+    val brimW = bodyW + 4 * u
+    val brimH = u
+    val brimLeft = cx - brimW / 2f
+    val brimTop  = bodyTop - brimH
+    drawRect(fg, Offset(brimLeft, brimTop), Size(brimW, brimH))
+
+    // ── 帽顶（像素拱形：5 行矩形，从宽到窄）──────────────────
+    // 每层宽度：10u 8u 7u 6u 4u，高度各 1u
+    val capRowWidths = listOf(10 * u, 8 * u, 7 * u, 6 * u, 4 * u)
+    var capRowTop = brimTop - capRowWidths.size * u
+    for (rowW in capRowWidths) {
+        drawRect(fg, Offset(cx - rowW / 2f, capRowTop), Size(rowW, u))
+        capRowTop += u
+    }
+
+    // ── 帽子白色斑点（两个小方块，画在帽中层）────────────────
+    val spotColor = if (fg == DinoColors.fgDay) DinoColors.bgDay else DinoColors.bgNight
+    val spotY = brimTop - 3 * u  // 帽中部
+    drawRect(spotColor, Offset(cx - 3 * u, spotY), Size(u, u))
+    drawRect(spotColor, Offset(cx + u,     spotY), Size(u, u))
+
+    // ── 眼睛（身体右侧小白块）────────────────────────────────
+    drawRect(spotColor, Offset(bodyLeft + bodyW - u, bodyTop + u), Size(u, u))
 }
 
 // ── 仙人掌绘制（Dino 风格：深灰矩形组合）──────────────────────

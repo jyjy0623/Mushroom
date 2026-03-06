@@ -124,9 +124,9 @@ class GameViewModel @Inject constructor(
         val state = _uiState.value
         val physics = state.physics
 
-        // 物理更新
+        // 物理更新（先用旧速度更新位置，再更新速度，避免跳跃初帧被重力抵消）
+        var newY = physics.mushroomY + physics.velocityY * dtMs
         var newVY = physics.velocityY + gravity * dtMs
-        var newY = physics.mushroomY + newVY * dtMs
         val onGround: Boolean
         if (newY >= groundY) {
             newY = groundY
@@ -156,10 +156,10 @@ class GameViewModel @Inject constructor(
             }
         }
 
-        // 碰撞检测（蘑菇宽0.08，高0.14，居中于0.1位置）
-        val mushroomLeft = 0.1f
-        val mushroomRight = 0.18f
-        val mushroomTop = newY - 0.14f
+        // 碰撞检测（蘑菇宽0.07，高0.13，居中于0.1位置）
+        val mushroomLeft = 0.065f
+        val mushroomRight = 0.135f
+        val mushroomTop = newY - 0.13f
         val mushroomBottom = newY
 
         val collision = newObstacles.any { obs ->
