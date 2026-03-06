@@ -91,20 +91,13 @@ fun GameScreen(
     val fg   = if (isNight) DinoColors.fgNight  else DinoColors.fgDay
     val text = if (isNight) DinoColors.textNight else DinoColors.textDay
 
-    // 用 state 作为 key，确保每次状态变化都重新绑定点击处理
-    val gameState = uiState.state
+    // pointerInput 用固定 key=Unit，始终挂载；状态判断交给 ViewModel.onTap()
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bg)
-            .pointerInput(gameState) {
-                detectTapGestures {
-                    when (gameState) {
-                        GameState.IDLE     -> viewModel.startGame()
-                        GameState.RUNNING  -> viewModel.jump()
-                        GameState.GAME_OVER -> { /* 等待自动返回 */ }
-                    }
-                }
+            .pointerInput(Unit) {
+                detectTapGestures { viewModel.onTap() }
             }
     ) {
         // ── Canvas 游戏场景 ────────────────────────────────────

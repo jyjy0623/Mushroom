@@ -112,6 +112,14 @@ class GameViewModel @Inject constructor(
         startGameLoop()
     }
 
+    fun onTap() {
+        when (_uiState.value.state) {
+            GameState.IDLE     -> startGame()
+            GameState.RUNNING  -> jump()
+            GameState.GAME_OVER -> { /* 等待自动返回 */ }
+        }
+    }
+
     fun jump() {
         val physics = _uiState.value.physics
         if (_uiState.value.state != GameState.RUNNING) return
@@ -143,9 +151,9 @@ class GameViewModel @Inject constructor(
             .filter { it.x + it.width > -0.05f }  // 移出屏幕左边后删除
             .toMutableList()
 
-        // 随机生成新障碍物
-        val lastX = newObstacles.lastOrNull()?.x ?: 0f
-        if (newObstacles.isEmpty() || lastX < 0.7f) {
+        // 随机生成新障碍物（取最右侧障碍物 x，确保间距判断正确）
+        val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
+        if (newObstacles.isEmpty() || rightmostX < 0.7f) {
             if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
                 newObstacles.add(
                     Obstacle(
