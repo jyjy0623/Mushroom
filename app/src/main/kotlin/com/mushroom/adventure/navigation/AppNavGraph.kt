@@ -199,7 +199,11 @@ fun AppNavGraph(
 
         // ---- 统计 ----
         composable(AppDestination.Statistics.route) {
-            StatisticsScreen()
+            StatisticsScreen(
+                onNavigateToMilestoneList = {
+                    navController.safeNavigate(AppDestination.MilestoneList.route)
+                }
+            )
         }
 
         // ---- 打卡历史 ----

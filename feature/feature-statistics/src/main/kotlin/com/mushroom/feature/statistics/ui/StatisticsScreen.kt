@@ -52,6 +52,7 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
+    onNavigateToMilestoneList: () -> Unit = {},
     viewModel: StatisticsViewModel = hiltViewModel(),
     gameViewModel: GameViewModel = hiltViewModel()
 ) {
@@ -113,7 +114,7 @@ fun StatisticsScreen(
                 when (tabIndex) {
                     0 -> CheckInTab(stats = uiState.checkInStats)
                     1 -> MushroomTab(stats = uiState.mushroomStats)
-                    2 -> ScoreTab(scoreStats = uiState.scoreStats)
+                    2 -> ScoreTab(scoreStats = uiState.scoreStats, onNavigateToMilestoneList = onNavigateToMilestoneList)
                     3 -> GameLeaderboardTab(scores = topScores)
                 }
             }
@@ -140,12 +141,20 @@ private fun CheckInTab(stats: CheckInStatistics?) {
             // Streak 卡片
             Card(Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StreakItem("当前连续", "${stats.currentStreak} 天")
-                    StreakItem("最长连续", "${stats.longestStreak} 天")
-                    StreakItem("总打卡", "${stats.totalCheckins} 次")
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        StreakItem("当前连续", "${stats.currentStreak} 天")
+                    }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        StreakItem("最长连续", "${stats.longestStreak} 天")
+                    }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        StreakItem("总打卡", "${stats.totalCheckins} 次")
+                    }
                 }
             }
         }
@@ -270,7 +279,7 @@ private fun MushroomTab(stats: MushroomStatistics?) {
 // Tab 3: 成绩趋势
 // -----------------------------------------------------------------------
 @Composable
-private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>) {
+private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMilestoneList: () -> Unit) {
     var selectedSubject by remember { mutableStateOf(Subject.MATH) }
     val currentStats = scoreStats[selectedSubject]
 
@@ -291,7 +300,13 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>) {
 
         if (currentStats == null || currentStats.scorePoints.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("${subjectLabel(selectedSubject)}暂无成绩记录")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("${subjectLabel(selectedSubject)}暂无成绩记录")
+                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.material3.OutlinedButton(onClick = onNavigateToMilestoneList) {
+                        Text("前往里程碑录入成绩")
+                    }
+                }
             }
         } else {
         LazyColumn(
