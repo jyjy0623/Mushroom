@@ -36,17 +36,29 @@ data class Obstacle(
     val height: Float   // 0.1f..0.22f
 )
 
+data class Cloud(
+    val x: Float,   // 归一化 0..1
+    val y: Float,   // 归一化 0..1
+    val scale: Float = 1f
+)
+
 data class GamePhysics(
     val mushroomY: Float = 0.7f,        // 归一化 Y，0=top 1=bottom
     val velocityY: Float = 0f,
     val isOnGround: Boolean = true,
     val obstacles: List<Obstacle> = emptyList(),
-    val frameIndex: Int = 0             // 0/1 交替，用于跑步动画
+    val frameIndex: Int = 0,            // 0/1 交替，用于跑步动画
+    val clouds: List<Cloud> = listOf(
+        Cloud(0.3f, 0.15f, 1.0f),
+        Cloud(0.65f, 0.25f, 0.7f),
+        Cloud(0.9f, 0.1f, 0.85f)
+    )
 )
 
 data class GameUiState(
     val state: GameState = GameState.IDLE,
     val score: Int = 0,
+    val highScore: Int = 0,
     val isNewRecord: Boolean = false,
     val topScores: List<GameScore> = emptyList(),
     val physics: GamePhysics = GamePhysics()
@@ -60,6 +72,12 @@ class GameViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _uiState.update { it.copy(highScore = gameRepo.getHighScore()) }
+        }
+    }
 
     val topScores: StateFlow<List<GameScore>> = gameRepo.getTopScores(10)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -157,6 +175,14 @@ class GameViewModel @Inject constructor(
 
         val newFrame = if (dtMs > 0) (physics.frameIndex + 1) % 2 else physics.frameIndex
 
+        // 云朵缓慢向左漂移，移出左边后从右侧重新进入
+        val cloudSpeed = speed * 0.15f
+        val newClouds = physics.clouds.map { cloud ->
+            val nx = cloud.x - cloudSpeed * dtMs
+            if (nx + 0.2f < 0f) cloud.copy(x = 1.1f, y = 0.05f + Random.nextFloat() * 0.3f)
+            else cloud.copy(x = nx)
+        }
+
         _uiState.update {
             it.copy(
                 physics = GamePhysics(
@@ -164,7 +190,8 @@ class GameViewModel @Inject constructor(
                     velocityY = newVY,
                     isOnGround = onGround,
                     obstacles = newObstacles,
-                    frameIndex = newFrame
+                    frameIndex = newFrame,
+                    clouds = newClouds
                 )
             )
         }
@@ -201,7 +228,12 @@ class GameViewModel @Inject constructor(
             // 插入排行榜
             gameRepo.insertScore(GameScore(score = finalScore, playedAt = LocalDateTime.now()))
 
-            _uiState.update { it.copy(isNewRecord = isNew) }
+            _uiState.update {
+                it.copy(
+                    isNewRecord = isNew,
+                    highScore = maxOf(finalScore, highScore)
+                )
+            }
 
             // 检查里程碑奖励
             checkMilestoneRewards(maxOf(finalScore, highScore))
