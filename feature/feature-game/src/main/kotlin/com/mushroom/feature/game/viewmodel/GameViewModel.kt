@@ -64,7 +64,8 @@ data class GameUiState(
     val highScore: Int = 0,
     val isNewRecord: Boolean = false,
     val topScores: List<GameScore> = emptyList(),
-    val physics: GamePhysics = GamePhysics()
+    val physics: GamePhysics = GamePhysics(),
+    val warmupMs: Long = 0L   // 游戏开始后的已运行时间，前2000ms不生成障碍物
 )
 
 @HiltViewModel
@@ -105,6 +106,7 @@ class GameViewModel @Inject constructor(
                 state = GameState.RUNNING,
                 score = 0,
                 isNewRecord = false,
+                warmupMs = 0L,
                 physics = GamePhysics(
                     mushroomY = groundY,
                     velocityY = 0f,
@@ -162,16 +164,20 @@ class GameViewModel @Inject constructor(
             .filter { it.x + it.width > -0.05f }  // 移出屏幕左边后删除
             .toMutableList()
 
-        // 随机生成新障碍物（取最右侧障碍物 x，确保间距判断正确）
-        val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
-        if (newObstacles.isEmpty() || rightmostX < 0.7f) {
-            if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
-                newObstacles.add(
-                    Obstacle(
-                        x = 1.05f,
-                        height = 0.1f + Random.nextFloat() * 0.12f
+        // 热身期（前2000ms）不生成障碍物，给玩家反应时间
+        val newWarmupMs = state.warmupMs + dtMs
+        if (newWarmupMs >= 2000L) {
+            // 随机生成新障碍物（取最右侧障碍物 x，确保间距判断正确）
+            val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
+            if (newObstacles.isEmpty() || rightmostX < 0.7f) {
+                if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
+                    newObstacles.add(
+                        Obstacle(
+                            x = 1.05f,
+                            height = 0.1f + Random.nextFloat() * 0.12f
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -215,6 +221,7 @@ class GameViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
+                warmupMs = newWarmupMs,
                 physics = GamePhysics(
                     mushroomY = newY,
                     velocityY = newVY,
