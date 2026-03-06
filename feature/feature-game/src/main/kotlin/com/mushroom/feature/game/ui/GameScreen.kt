@@ -319,11 +319,11 @@ private fun DrawScope.drawMushroomPixel(cx: Float, baseY: Float, frame: Int, onG
     }
 
     // ── 帽子白色斑点（画在帽上半部，左右各一）────────────────
-    // 斑点位于帽顶第3行（从顶部起），与行间隔同步调整
+    // 斑点内缩，保持在帽顶轮廓内（第3行宽10u，内缩2u避免贴边）
     val capTopY = brimTop - capRows.size * (u + 1f)
     val spotY = capTopY + 2 * (u + 1f)
-    drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
-    drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx - 3 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx + u,     spotY), Size(2 * u, 2 * u))
 
     // ── 眼睛（茎右侧小白点）──────────────────────────────────
     drawRect(spotColor, Offset(cx + stemW / 2f - u, stemTop + u), Size(u, u))
@@ -380,11 +380,11 @@ private fun DrawScope.drawMushroomDebug(cx: Float, baseY: Float, fg: Color) {
         rowTop += u + 1f
     }
 
-    // 斑点（白色），位于帽顶第3行
+    // 斑点（白色），内缩2u保持在帽顶轮廓内
     val capTopY = brimTop - capRows.size * (u + 1f)
     val spotY = capTopY + 2 * (u + 1f)
-    drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
-    drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx - 3 * u, spotY), Size(2 * u, 2 * u))
+    drawRect(spotColor, Offset(cx + u,     spotY), Size(2 * u, 2 * u))
 
     // 眼睛
     drawRect(spotColor, Offset(cx + stemW / 2f - u, stemTop + u), Size(u, u))
