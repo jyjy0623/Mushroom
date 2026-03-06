@@ -10,19 +10,34 @@
 
 | 操作 | 无脚本 | 有脚本 | 节省 |
 |---|---|---|---|
+| 创建 Issue（bug/feat/tc） | ~300 tokens | ~30 tokens | 270 |
 | 创建修复分支 | ~200 tokens | ~30 tokens | 170 |
 | Commit（多文件） | ~300 tokens | ~40 tokens | 260 |
 | merge + push + issue comment | ~500 tokens | ~50 tokens | 450 |
-| 打 Tag 发版 | ~400 tokens | ~30 tokens | 370 |
+| 写 Issue 修改记录评论 | ~600 tokens | ~40 tokens | 560 |
+| 完整发版（compile+tag+通知） | ~800 tokens | ~50 tokens | 750 |
 | TC 同步标记通过 | ~600 tokens | ~20 tokens | 580 |
 | 权限确认往返 | ~300 tokens | 0 tokens | 300 |
-| **合计** | **~2300 tokens** | **~170 tokens** | **~2130（93%）** |
+| **合计** | **~3600 tokens** | **~260 tokens** | **~3340（93%）** |
 
-每天处理 3~5 个 Issue，每天节省约 **6000~10000 tokens**。
+每天处理 3~5 个 Issue，每天节省约 **10000~17000 tokens**。
 
 ---
 
 ## 现有脚本
+
+### `new-issue.sh` — 创建 GitHub Issue（用户反馈必须先建 Issue）
+
+```bash
+bash scripts/new-issue.sh bug  "游戏按屏幕蘑菇不跳" "点击游戏屏幕蘑菇没有跳跃反应"
+bash scripts/new-issue.sh feat "双击已完成任务删除并扣回奖励" "双击确认后删除并扣回蘑菇"
+bash scripts/new-issue.sh tc   "TC-2.8.1-01" "统计页默认近30天，应为近7天" "描述..."
+```
+
+- 自动加 label（bug/enhancement）
+- 输出 Issue 编号供 commit message 引用
+
+---
 
 ### `build.sh` — 编译 & 构建 & 测试
 
@@ -69,26 +84,44 @@ bash scripts/new-fix-branch.sh 34 key-date-entry-missing
 
 ---
 
-### `finish-fix.sh` — 完成修复
+### `finish-fix.sh` — 完成修复（含标准修改记录评论）
 
 ```bash
-bash scripts/finish-fix.sh 34 "设置页缺少关键奖励时间入口" "新增 KeyDate 入口并注册导航路由"
+bash scripts/finish-fix.sh 62 v1.6.21 \
+    "themes.xml 增加 statusBarColor=transparent + windowLightStatusBar=true" \
+    "app/src/main/res/values/themes.xml" \
+    "打开 App，状态栏图标清晰可见"
 ```
 
-- merge fix 分支到 master（no-ff）
-- push master
-- 在 Issue 写入根因 + 方案 + commit hash comment
+- 若在 fix/* 分支：merge 到 master（no-ff）+ push
+- 调用 `issue-comment-fix.sh` 写入标准修改记录评论（版本/方案/文件/commit/待回归）
 
 ---
 
-### `tag-release.sh` — 打 Tag 发版
+### `issue-comment-fix.sh` — 向 Issue 写入修改记录评论
 
 ```bash
-bash scripts/tag-release.sh v1.5.2 "fix: [TC-xxx] 修复YY问题"
+bash scripts/issue-comment-fix.sh 62 v1.6.21 \
+    "方案描述" \
+    "file1.kt,file2.kt" \
+    "回归项1,回归项2"
 ```
 
-- push master
-- 删除同名旧 tag（如存在）→ 创建 annotated tag → force push 触发 CI
+- 合入后必须调用，记录版本/方案/文件/commit/待回归
+- 通常由 `finish-fix.sh` 自动调用，无需手动执行
+
+---
+
+### `release.sh` — 完整发版流程
+
+```bash
+bash scripts/release.sh v1.6.21 \
+    "fix: 修复状态栏白底，增加游戏诊断日志（#61 #62）" \
+    61 62
+```
+
+- compile check → 构建 release APK → 打 Tag + push → 向关联 Issue 写发版通知
+- 替代原来 `build.sh release` + `tag-release.sh` 的分散操作
 
 ---
 
@@ -119,3 +152,4 @@ bash scripts/sync-tc-pass.sh
 |---|---|
 | `scan-and-issue.sh` | 扫描 tc-*.md 失败用例 + 批量 gh issue create + 回填编号 |
 | `append-bug-tc.sh` | 修复完成后向 BugIssueTestCase.md 追加 TC-B 验收块 |
+| `close-issue.sh` | 用户确认回归通过后关闭 Issue + 写关闭评论 |
