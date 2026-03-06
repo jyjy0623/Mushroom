@@ -139,7 +139,10 @@ class DailyTaskViewModel @Inject constructor(
                 .sortedBy { it.scheduledDate }
                 .take(3)
         }
-    ) { (date, tasks, uiModels), streak, memoStreak, upcomingMilestones ->
+    ) { triple, streak, memoStreak, upcomingMilestones ->
+        val date = triple.first
+        val tasks = triple.second
+        val uiModels = triple.third
         DailyTaskUiState(
             date = date,
             tasks = uiModels,
