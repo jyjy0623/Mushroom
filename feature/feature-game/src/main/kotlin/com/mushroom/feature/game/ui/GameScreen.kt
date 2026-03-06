@@ -259,8 +259,8 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
     // 蘑菇（像素风）—— 使用 physics.mushroomY * h 渲染实际位置
     drawMushroomPixel(0.1f * w, physics.mushroomY * h, physics.frameIndex, physics.isOnGround, fg)
 
-    // ── 调试参考蘑菇（固定 u=15f 大像素，屏幕中央偏上，后续删除）──
-    drawMushroomDebug(0.5f * w, 0.5f * h, fg)
+    // ── 调试参考蘑菇（固定 u=15f 大像素，右侧空白区，后续删除）──
+    drawMushroomDebug(0.82f * w, 0.55f * h, fg)
 
     // 仙人掌
     physics.obstacles.forEach { obs ->
@@ -310,17 +310,18 @@ private fun DrawScope.drawMushroomPixel(cx: Float, baseY: Float, frame: Int, onG
     drawRect(fg, Offset(cx - brimW / 2f, brimTop), Size(brimW, brimH))
 
     // ── 帽顶（像素拱形：从上到下由窄变宽，模拟圆弧穹顶）────────
-    // 行宽序列（从上到下）：5u 8u 10u 12u 12u
+    // 行宽序列（从上到下）：5u 8u 10u 12u 12u，行间留1px间隔增加层次感
     val capRows = listOf(5 * u, 8 * u, 10 * u, 12 * u, 12 * u)
-    var rowTop = brimTop - capRows.size * u
+    var rowTop = brimTop - capRows.size * (u + 1f)
     for (rowW in capRows) {
         drawRect(fg, Offset(cx - rowW / 2f, rowTop), Size(rowW, u))
-        rowTop += u
+        rowTop += u + 1f
     }
 
     // ── 帽子白色斑点（画在帽上半部，左右各一）────────────────
-    // 斑点位于帽顶第2、3行高度，左右对称
-    val spotY = brimTop - 4 * u
+    // 斑点位于帽顶第3行（从顶部起），与行间隔同步调整
+    val capTopY = brimTop - capRows.size * (u + 1f)
+    val spotY = capTopY + 2 * (u + 1f)
     drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
     drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
 
@@ -371,16 +372,17 @@ private fun DrawScope.drawMushroomDebug(cx: Float, baseY: Float, fg: Color) {
     val brimW = 14 * u; val brimH = 2 * u; val brimTop = stemTop - brimH
     drawRect(fg, Offset(cx - brimW / 2f, brimTop), Size(brimW, brimH))
 
-    // 帽顶：从上到下 5→8→10→12→12（顶窄底宽穹顶）
+    // 帽顶：从上到下 5→8→10→12→12（顶窄底宽穹顶），行高u，行间留1px间隔
     val capRows = listOf(5 * u, 8 * u, 10 * u, 12 * u, 12 * u)
-    var rowTop = brimTop - capRows.size * u
+    var rowTop = brimTop - capRows.size * (u + 1f)
     for (rowW in capRows) {
         drawRect(fg, Offset(cx - rowW / 2f, rowTop), Size(rowW, u))
-        rowTop += u
+        rowTop += u + 1f
     }
 
-    // 斑点（白色）
-    val spotY = brimTop - 4 * u
+    // 斑点（白色），位于帽顶第3行
+    val capTopY = brimTop - capRows.size * (u + 1f)
+    val spotY = capTopY + 2 * (u + 1f)
     drawRect(spotColor, Offset(cx - 5 * u, spotY), Size(2 * u, 2 * u))
     drawRect(spotColor, Offset(cx + 3 * u, spotY), Size(2 * u, 2 * u))
 
