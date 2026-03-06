@@ -1,5 +1,6 @@
 package com.mushroom.feature.reward.ui
 
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import java.io.File
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.core.domain.entity.RewardType
@@ -140,8 +142,9 @@ fun RewardDetailScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (reward.imageUri.isNotEmpty()) {
+                    val imageModel: Any = if (reward.imageUri.startsWith("/")) File(reward.imageUri) else Uri.parse(reward.imageUri)
                     AsyncImage(
-                        model = reward.imageUri,
+                        model = imageModel,
                         contentDescription = "奖品封面",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()

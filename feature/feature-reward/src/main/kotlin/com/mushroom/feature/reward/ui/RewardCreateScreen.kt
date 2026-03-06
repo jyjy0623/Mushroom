@@ -1,5 +1,6 @@
 package com.mushroom.feature.reward.ui
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,8 @@ import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewModel
 import kotlinx.coroutines.flow.collectLatest
+import java.io.File
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,10 +70,14 @@ fun RewardCreateScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val context = LocalContext.current
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) viewModel.updateImageUri(uri.toString())
+        if (uri != null) {
+            val localPath = copyImageToInternalStorage(context, uri)
+            viewModel.updateImageUri(localPath ?: uri.toString())
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -184,8 +192,9 @@ private fun CoverImagePicker(
         contentAlignment = Alignment.Center
     ) {
         if (imageUri.isNotEmpty()) {
+            val imageModel: Any = if (imageUri.startsWith("/")) File(imageUri) else Uri.parse(imageUri)
             AsyncImage(
-                model = imageUri,
+                model = imageModel,
                 contentDescription = "奖品封面",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
@@ -245,6 +254,25 @@ private fun RewardTypeSection(selected: RewardType, onSelect: (RewardType) -> Un
                 Text(label, modifier = Modifier.padding(start = 4.dp))
             }
         }
+    }
+}
+
+/**
+ * 将用户选取的图片 URI 复制到 App 内部存储，返回绝对路径。
+ * 内部存储不受 App 卸载重装影响（同包名升级保留），也不需要额外权限。
+ */
+private fun copyImageToInternalStorage(context: Context, uri: Uri): String? {
+    return try {
+        val dir = File(context.filesDir, "reward_images").apply { mkdirs() }
+        val ext = context.contentResolver.getType(uri)
+            ?.substringAfterLast('/')?.let { ".$it" } ?: ".jpg"
+        val dest = File(dir, "${UUID.randomUUID()}$ext")
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            dest.outputStream().use { output -> input.copyTo(output) }
+        }
+        dest.absolutePath
+    } catch (e: Exception) {
+        null
     }
 }
 
