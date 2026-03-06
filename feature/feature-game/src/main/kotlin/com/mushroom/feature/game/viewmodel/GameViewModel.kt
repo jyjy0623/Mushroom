@@ -92,15 +92,37 @@ class GameViewModel @Inject constructor(
     private var gameLoopJob: Job? = null
     private var scoreJob: Job? = null
 
-    // 物理参数
-    // obstacleSpeed: 归一化/ms，对标 Chrome Dino 初始节奏
-    // jumpVelocity/gravity: 顶点时间≈250ms，跳跃高度≈0.25（屏幕25%），蘑菇最高到y≈0.50，不出屏幕
-    private val obstacleSpeedBase = 0.0004f  // 每毫秒移动距离（归一化），对标原版初始速度
-    private val obstacleSpeedMax  = 0.0012f  // 最高速度上限（约原版3倍，保证有难度）
-    private val groundY = 0.75f
-    private val jumpVelocity = -0.0020f      // 跳跃初速度：顶点高度 0.25，不飞出屏幕
-    private val gravity = 0.000008f          // 重力：顶点时间 250ms，总跳跃约 500ms
-    private val obstacleMinGap = 0.5f        // 障碍物最小间距（归一化）
+    // ── 物理参数（精确对标 Chrome T-Rex 原版，全部做归一化换算）──────────────────
+    //
+    // 原版坐标系：canvas宽600px, FPS=60
+    //   SPEED=6, MAX_SPEED=12, ACCELERATION=0.001 (px/frame 每帧加速)
+    //   GRAVITY=0.6 (px/frame²), INITIAL_JUMP_VELOCITY=-10 (px/frame, Trex.config)
+    //   GAP_COEFFICIENT=0.6
+    //
+    // 归一化换算（canvas宽600px为基准，1归一化单位=600px）：
+    //   速度: 6px/frame ÷ 60fps = 0.1px/ms ÷ 600 = 0.000167/ms
+    //   加速: 0.001px/frame ÷ 60fps ÷ 600 = 0.0000000278 归一化/(ms²)
+    //        即每1000ms速度增量 ≈ 0.0000000278 * 1000 = 0.0000278/ms
+    //        原版从6→12花费约6000帧/60fps=100秒（符合原版越来越快的感觉）
+    //   重力: 0.6px/frame² ÷ 60² ÷ 600 = 0.000000278 归一化/ms²
+    //        但我们用屏幕高h归一化，地面在0.75，跳跃高约0.25h
+    //        调整：gravity = 0.000012f（顶点时间≈167ms，落地≈334ms，手感轻快）
+    //   跳速: 10px/frame ÷ 60fps ÷ 600 = 0.000278/ms（画布宽归一化）
+    //        改用画布高归一化（h≈w*0.43横屏）：0.000278/0.43 ≈ 0.000648/ms
+    //        但跳跃高度需≤0.25h：v²/(2g) ≤ 0.25 → v ≤ sqrt(2*0.000012*0.25)=0.00245
+    //        取 jumpVelocity = -0.0024f（顶点高≈0.24h，不出屏幕，手感自然）
+    //
+    // 速度加速公式（精确对标原版 speed += ACCELERATION 每帧累加）：
+    //   用游戏时间 warmupMs 驱动：speed = speedBase + acceleration * runningTimeMs
+    //   而非用 score（score是时间函数，但不如时间直接）
+
+    private val speedBase        = 0.000167f   // 归一化初速度（原版SPEED=6 @600px/60fps）
+    private val speedMax         = 0.000334f   // 归一化最高速（原版MAX_SPEED=12，初速2倍）
+    private val speedAccel       = 0.0000000278f // 归一化加速度/ms²（原版ACCELERATION=0.001）
+    private val groundY          = 0.75f
+    private val jumpVelocity     = -0.0024f    // 跳跃初速（顶点高≈0.24h，落地约500ms）
+    private val gravity          = 0.000012f   // 重力（顶点时间≈200ms）
+    private val gapCoefficient   = 0.6f        // 障碍物间距系数（原版GAP_COEFFICIENT=0.6）
 
     fun startGame() {
         MushroomLogger.w(TAG, "startGame() called, current state=${_uiState.value.state}")
@@ -161,9 +183,10 @@ class GameViewModel @Inject constructor(
             onGround = false
         }
 
-        // 障碍物更新（速度随分数缓慢增加，上限 obstacleSpeedMax）
-        val speed = (obstacleSpeedBase + obstacleSpeedBase * state.score / 2000f)
-            .coerceAtMost(obstacleSpeedMax)
+        // 障碍物更新（速度用运行时间驱动，精确对标原版 speed += ACCELERATION 每帧累加）
+        val runningMs = state.warmupMs.toFloat()
+        val speed = (speedBase + speedAccel * runningMs * runningMs / 2f)
+            .coerceAtMost(speedMax)
         val newObstacles = physics.obstacles
             .map { it.copy(x = it.x - speed * dtMs) }
             .filter { it.x + it.width > -0.05f }
@@ -173,7 +196,10 @@ class GameViewModel @Inject constructor(
         val newWarmupMs = state.warmupMs + dtMs
         if (newWarmupMs >= 3000L) {
             val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
-            if (newObstacles.isEmpty() || rightmostX < obstacleMinGap) {
+            // 最小间距：对标原版 minGap = obstacleWidth * currentSpeed * GAP_COEFFICIENT
+            // 原版障碍物宽约 0.06（归一化），速度越快间距越大，保证可跳跃反应时间
+            val minGap = 0.06f * speed / speedBase * gapCoefficient
+            if (newObstacles.isEmpty() || rightmostX < minGap) {
                 if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
                     val spawnX = if (newObstacles.isEmpty()) 1.5f else 1.05f
                     newObstacles.add(
