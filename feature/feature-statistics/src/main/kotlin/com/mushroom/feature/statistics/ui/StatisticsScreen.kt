@@ -100,10 +100,10 @@ fun StatisticsScreen(
 
             // Tabs
             TabRow(selectedTabIndex = tabIndex) {
-                Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("学习情况") })
-                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("蘑菇收支") })
-                Tab(selected = tabIndex == 2, onClick = { tabIndex = 2 }, text = { Text("成绩趋势") })
-                Tab(selected = tabIndex == 3, onClick = { tabIndex = 3 }, text = { Text("跑酷游戏") })
+                Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("学习\n情况", textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
+                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("蘑菇\n收支", textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
+                Tab(selected = tabIndex == 2, onClick = { tabIndex = 2 }, text = { Text("成绩\n趋势", textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
+                Tab(selected = tabIndex == 3, onClick = { tabIndex = 3 }, text = { Text("跑酷\n游戏", textAlign = androidx.compose.ui.text.style.TextAlign.Center) })
             }
 
             if (uiState.isLoading && tabIndex < 3) {
