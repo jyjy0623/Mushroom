@@ -256,8 +256,8 @@ private fun DrawScope.drawDinoScene(physics: GamePhysics, w: Float, h: Float, fg
         gx += dotW + 8f + ((gx.toInt() * 3) % 20)
     }
 
-    // 蘑菇（像素风）
-    drawMushroomPixel(0.1f * w, groundPx, physics.frameIndex, physics.isOnGround, fg)
+    // 蘑菇（像素风）—— 使用 physics.mushroomY * h 渲染实际位置
+    drawMushroomPixel(0.1f * w, physics.mushroomY * h, physics.frameIndex, physics.isOnGround, fg)
 
     // 仙人掌
     physics.obstacles.forEach { obs ->

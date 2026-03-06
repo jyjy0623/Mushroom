@@ -164,16 +164,18 @@ class GameViewModel @Inject constructor(
             .filter { it.x + it.width > -0.05f }  // 移出屏幕左边后删除
             .toMutableList()
 
-        // 热身期（前2000ms）不生成障碍物，给玩家反应时间
+        // 热身期（前3000ms）不生成障碍物，给玩家反应时间；热身结束后第一个障碍物从更远处出现
         val newWarmupMs = state.warmupMs + dtMs
-        if (newWarmupMs >= 2000L) {
+        if (newWarmupMs >= 3000L) {
             // 随机生成新障碍物（取最右侧障碍物 x，确保间距判断正确）
             val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
             if (newObstacles.isEmpty() || rightmostX < 0.7f) {
                 if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
+                    // 第一个障碍物（列表为空）从 x=1.5 生成，给玩家额外约1秒反应时间
+                    val spawnX = if (newObstacles.isEmpty()) 1.5f else 1.05f
                     newObstacles.add(
                         Obstacle(
-                            x = 1.05f,
+                            x = spawnX,
                             height = 0.1f + Random.nextFloat() * 0.12f
                         )
                     )
