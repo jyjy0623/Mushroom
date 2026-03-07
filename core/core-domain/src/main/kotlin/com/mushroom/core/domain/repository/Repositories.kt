@@ -80,3 +80,10 @@ interface KeyDateRepository {
     suspend fun insertKeyDate(keyDate: KeyDate): Long
     suspend fun deleteKeyDate(id: Long)
 }
+
+interface ScoringRuleTemplateRepository {
+    fun getAll(): Flow<List<ScoringRuleTemplate>>
+    suspend fun insert(t: ScoringRuleTemplate): Long
+    suspend fun update(t: ScoringRuleTemplate)
+    suspend fun delete(id: Long)
+}

@@ -1,7 +1,9 @@
 package com.mushroom.feature.milestone.di
 
 import com.mushroom.core.data.repository.MilestoneRepositoryImpl
+import com.mushroom.core.data.repository.ScoringRuleTemplateRepositoryImpl
 import com.mushroom.core.domain.repository.MilestoneRepository
+import com.mushroom.core.domain.repository.ScoringRuleTemplateRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,4 +17,8 @@ abstract class MilestoneModule {
     @Binds
     @Singleton
     abstract fun bindMilestoneRepository(impl: MilestoneRepositoryImpl): MilestoneRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindScoringRuleTemplateRepository(impl: ScoringRuleTemplateRepositoryImpl): ScoringRuleTemplateRepository
 }

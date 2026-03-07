@@ -280,6 +280,26 @@ class CheckInTaskUseCase @Inject constructor(
 // ---------------------------------------------------------------------------
 // 9. 保存自定义模板
 // ---------------------------------------------------------------------------
+class UpdateTaskTemplateUseCase @Inject constructor(
+    private val repo: TaskTemplateRepository
+) {
+    suspend operator fun invoke(template: TaskTemplate): Result<Unit> = runCatching {
+        repo.updateTemplate(template)
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "更新模板失败 id=${template.id} name=${template.name}", e)
+    }
+}
+
+class DeleteTaskTemplateUseCase @Inject constructor(
+    private val repo: TaskTemplateRepository
+) {
+    suspend operator fun invoke(id: Long): Result<Unit> = runCatching {
+        repo.deleteTemplate(id)
+    }.onFailure { e ->
+        MushroomLogger.e(TAG, "删除模板失败 id=$id", e)
+    }
+}
+
 class SaveCustomTemplateUseCase @Inject constructor(
     private val repo: TaskTemplateRepository
 ) {

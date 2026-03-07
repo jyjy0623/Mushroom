@@ -198,6 +198,16 @@ class MilestoneEditViewModel @Inject constructor(
         }
     }
 
+    fun applyTemplateRules(rules: List<ScoringRule>) {
+        _uiState.update { state ->
+            state.copy(
+                scoringRules = rules,
+                ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() },
+                isUsingDefaultRules = false
+            )
+        }
+    }
+
     /** 修改某档分数段的奖励数量（index 对应 scoringRules 列表下标） */
     fun updateRuleAmount(index: Int, amountText: String) {
         _uiState.update { state ->

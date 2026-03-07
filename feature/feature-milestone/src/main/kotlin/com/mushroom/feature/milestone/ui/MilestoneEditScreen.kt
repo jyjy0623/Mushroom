@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,9 +51,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.MilestoneType
+import com.mushroom.core.domain.entity.ScoringRuleTemplate
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewEvent
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewModel
+import com.mushroom.feature.milestone.viewmodel.ScoringRuleTemplateViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
 import java.time.ZoneOffset
@@ -62,10 +65,13 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun MilestoneEditScreen(
     onNavigateBack: () -> Unit = {},
-    viewModel: MilestoneEditViewModel = hiltViewModel()
+    viewModel: MilestoneEditViewModel = hiltViewModel(),
+    scoringRuleTemplateViewModel: ScoringRuleTemplateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scoringTemplates by scoringRuleTemplateViewModel.templates.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showTemplatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.viewEvent.collectLatest { event ->
@@ -224,11 +230,19 @@ fun MilestoneEditScreen(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        OutlinedButton(
-                            onClick = viewModel::applyDefaultRules,
-                            modifier = Modifier
-                        ) {
-                            Text("应用默认规则", style = MaterialTheme.typography.labelSmall)
+                        Row {
+                            if (scoringTemplates.isNotEmpty()) {
+                                TextButton(onClick = { showTemplatePicker = true }) {
+                                    Text("套用模板", style = MaterialTheme.typography.labelSmall)
+                                }
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            OutlinedButton(
+                                onClick = viewModel::applyDefaultRules,
+                                modifier = Modifier
+                            ) {
+                                Text("应用默认规则", style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -269,6 +283,18 @@ fun MilestoneEditScreen(
             }
         }
     }
+
+    // 套用模板弹窗
+    if (showTemplatePicker) {
+        TemplatePickerDialog(
+            templates = scoringTemplates,
+            onDismiss = { showTemplatePicker = false },
+            onPick = { template ->
+                viewModel.applyTemplateRules(template.rules)
+                showTemplatePicker = false
+            }
+        )
+    }
 }
 
 private fun subjectLabel(subject: Subject) = when (subject) {
@@ -289,4 +315,45 @@ private fun milestoneTypeLabel(type: MilestoneType) = when (type) {
     MilestoneType.SCHOOL_EXAM -> "校测"
     MilestoneType.MIDTERM     -> "期中"
     MilestoneType.FINAL       -> "期末"
+}
+
+@Composable
+private fun TemplatePickerDialog(
+    templates: List<ScoringRuleTemplate>,
+    onDismiss: () -> Unit,
+    onPick: (ScoringRuleTemplate) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择评分规则模板") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (templates.isEmpty()) {
+                    Text("还没有评分规则模板", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                templates.forEach { template ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(template) }
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(template.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            template.rules.forEach { rule ->
+                                Text(
+                                    "${rule.minScore}-${rule.maxScore}分：${rule.rewardConfig.level.displayName} × ${rule.rewardConfig.amount}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }

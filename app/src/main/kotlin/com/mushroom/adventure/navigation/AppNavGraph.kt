@@ -284,6 +284,9 @@ fun AppNavGraph(
                 },
                 onNavigateToGame = {
                     navController.safeNavigate(AppDestination.Game.route)
+                },
+                onNavigateToTemplateManage = {
+                    navController.safeNavigate(AppDestination.TaskTemplate.route)
                 }
             )
         }

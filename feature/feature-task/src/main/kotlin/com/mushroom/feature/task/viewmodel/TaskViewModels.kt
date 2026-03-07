@@ -27,7 +27,9 @@ import com.mushroom.feature.task.usecase.DeleteTaskUseCase
 import com.mushroom.feature.task.usecase.GetDailyTasksUseCase
 import com.mushroom.feature.task.usecase.GetTaskByIdUseCase
 import com.mushroom.feature.task.usecase.GetTaskTemplatesUseCase
+import com.mushroom.feature.task.usecase.DeleteTaskTemplateUseCase
 import com.mushroom.feature.task.usecase.SaveCustomTemplateUseCase
+import com.mushroom.feature.task.usecase.UpdateTaskTemplateUseCase
 import com.mushroom.feature.task.usecase.UpdateTaskUseCase
 import com.mushroom.core.domain.repository.CheckInRepository
 import com.mushroom.core.domain.repository.MilestoneRepository
@@ -549,6 +551,8 @@ data class TaskTemplateUiState(
 class TaskTemplateViewModel @Inject constructor(
     private val getTaskTemplatesUseCase: GetTaskTemplatesUseCase,
     private val saveCustomTemplateUseCase: SaveCustomTemplateUseCase,
+    private val updateTaskTemplateUseCase: UpdateTaskTemplateUseCase,
+    private val deleteTaskTemplateUseCase: DeleteTaskTemplateUseCase,
     private val applyTaskTemplateUseCase: ApplyTaskTemplateUseCase
 ) : ViewModel() {
 
@@ -568,10 +572,38 @@ class TaskTemplateViewModel @Inject constructor(
     val viewEvent: SharedFlow<String> = _viewEvent.asSharedFlow()
 
     fun saveCustomTemplate(template: TaskTemplate) {
+        val allTemplates = uiState.value.builtInTemplates + uiState.value.customTemplates
+        val nameTaken = allTemplates.any { it.name == template.name && it.id != template.id }
+        if (nameTaken) {
+            viewModelScope.launch { _viewEvent.emit("模板名称「${template.name}」已存在") }
+            return
+        }
         viewModelScope.launch {
             saveCustomTemplateUseCase(template)
                 .onSuccess { _viewEvent.emit("模板已保存") }
                 .onFailure { _viewEvent.emit("保存失败") }
+        }
+    }
+
+    fun updateTemplate(template: TaskTemplate) {
+        val allTemplates = uiState.value.builtInTemplates + uiState.value.customTemplates
+        val nameTaken = allTemplates.any { it.name == template.name && it.id != template.id }
+        if (nameTaken) {
+            viewModelScope.launch { _viewEvent.emit("模板名称「${template.name}」已存在") }
+            return
+        }
+        viewModelScope.launch {
+            updateTaskTemplateUseCase(template)
+                .onSuccess { _viewEvent.emit("模板已更新") }
+                .onFailure { _viewEvent.emit("更新失败") }
+        }
+    }
+
+    fun deleteTemplate(id: Long) {
+        viewModelScope.launch {
+            deleteTaskTemplateUseCase(id)
+                .onSuccess { _viewEvent.emit("模板已删除") }
+                .onFailure { _viewEvent.emit("删除失败") }
         }
     }
 

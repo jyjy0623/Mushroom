@@ -343,3 +343,27 @@ interface GameScoreDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setState(entity: com.mushroom.core.data.db.entity.GamePlayStateEntity)
 }
+
+@Dao
+interface ScoringRuleTemplateDao {
+    @Query("SELECT * FROM scoring_rule_templates ORDER BY id")
+    fun getAll(): Flow<List<com.mushroom.core.data.db.entity.ScoringRuleTemplateEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTemplate(template: com.mushroom.core.data.db.entity.ScoringRuleTemplateEntity): Long
+
+    @Update
+    suspend fun updateTemplate(template: com.mushroom.core.data.db.entity.ScoringRuleTemplateEntity)
+
+    @Query("DELETE FROM scoring_rule_templates WHERE id = :id")
+    suspend fun deleteTemplateById(id: Long)
+
+    @Query("SELECT * FROM scoring_rule_template_items WHERE template_id = :templateId")
+    suspend fun getItemsByTemplateId(templateId: Long): List<com.mushroom.core.data.db.entity.ScoringRuleTemplateItemEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertItems(items: List<com.mushroom.core.data.db.entity.ScoringRuleTemplateItemEntity>)
+
+    @Query("DELETE FROM scoring_rule_template_items WHERE template_id = :templateId")
+    suspend fun deleteItemsByTemplateId(templateId: Long)
+}

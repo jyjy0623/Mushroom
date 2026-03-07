@@ -216,3 +216,28 @@ data class GamePlayStateEntity(
     @PrimaryKey val key: String,
     val value: String
 )
+
+@Entity(tableName = "scoring_rule_templates")
+data class ScoringRuleTemplateEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String
+)
+
+@Entity(
+    tableName = "scoring_rule_template_items",
+    foreignKeys = [ForeignKey(
+        entity = ScoringRuleTemplateEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["template_id"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("template_id")]
+)
+data class ScoringRuleTemplateItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(name = "template_id") val templateId: Long,
+    @ColumnInfo(name = "min_score") val minScore: Int,
+    @ColumnInfo(name = "max_score") val maxScore: Int,
+    @ColumnInfo(name = "reward_level") val rewardLevel: String,
+    @ColumnInfo(name = "reward_amount") val rewardAmount: Int
+)

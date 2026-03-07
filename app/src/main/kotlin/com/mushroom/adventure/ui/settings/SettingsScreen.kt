@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -56,6 +57,7 @@ fun SettingsScreen(
     onNavigateToDeductionRecord: () -> Unit = {},
     onNavigateToKeyDateList: () -> Unit = {},
     onNavigateToGame: () -> Unit = {},
+    onNavigateToTemplateManage: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -116,6 +118,13 @@ fun SettingsScreen(
                     title = "关键奖励时间",
                     subtitle = "配置特殊日期里程碑奖励（如生日、假期结束）",
                     onClick = onNavigateToKeyDateList
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.Edit,
+                    title = "模板配置管理",
+                    subtitle = "编辑任务模板奖励，管理里程碑评分规则套餐",
+                    onClick = onNavigateToTemplateManage
                 )
             }
 

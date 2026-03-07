@@ -23,9 +23,11 @@ import com.mushroom.core.data.db.entity.*
         ScoringRuleEntity::class,
         KeyDateEntity::class,
         GameScoreEntity::class,
-        GamePlayStateEntity::class
+        GamePlayStateEntity::class,
+        ScoringRuleTemplateEntity::class,
+        ScoringRuleTemplateItemEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -44,6 +46,7 @@ abstract class MushroomDatabase : RoomDatabase() {
     abstract fun keyDateDao(): KeyDateDao
     abstract fun backupDao(): BackupDao
     abstract fun gameScoreDao(): GameScoreDao
+    abstract fun scoringRuleTemplateDao(): ScoringRuleTemplateDao
 
     companion object {
         /**
@@ -122,6 +125,32 @@ abstract class MushroomDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_time_reward_usage_reward_id ON time_reward_usage(reward_id)")
+            }
+        }
+
+        /**
+         * v6 → v7：新增评分规则模板表（scoring_rule_templates 和 scoring_rule_template_items）。
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS scoring_rule_templates (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS scoring_rule_template_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        template_id INTEGER NOT NULL,
+                        min_score INTEGER NOT NULL,
+                        max_score INTEGER NOT NULL,
+                        reward_level TEXT NOT NULL,
+                        reward_amount INTEGER NOT NULL,
+                        FOREIGN KEY (template_id) REFERENCES scoring_rule_templates(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_scoring_rule_template_items_template_id ON scoring_rule_template_items(template_id)")
             }
         }
     }
