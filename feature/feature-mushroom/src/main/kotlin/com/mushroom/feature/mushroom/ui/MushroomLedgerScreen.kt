@@ -327,11 +327,23 @@ private fun BalanceCard(balance: MushroomBalance) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "蘑菇余额",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "蘑菇余额",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "总积分：${balance.totalPoints()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -341,12 +353,6 @@ private fun BalanceCard(balance: MushroomBalance) {
                     BalanceItem(level = level, count = balance.get(level))
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "总积分：${balance.totalPoints()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
         }
     }
 }
@@ -361,6 +367,11 @@ private fun BalanceItem(level: MushroomLevel, count: Int) {
             fontWeight = FontWeight.Bold
         )
         Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+        Text(
+            "=${level.exchangePoints}积分/个",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+        )
     }
 }
 
