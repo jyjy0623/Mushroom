@@ -67,27 +67,26 @@ class RewardRepositoryImpl @Inject constructor(
         return TimeRewardBalance(
             rewardId = rewardId,
             periodStart = LocalDate.parse(usage.periodStart),
-            maxMinutes = usage.maxMinutes,
-            usedMinutes = usage.usedMinutes
+            maxTimes = usage.maxTimes,
+            usedTimes = usage.usedTimes
         )
     }
 
-    override suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedMinutes: Int) {
+    override suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedTimes: Int) {
         val existing = timeRewardUsageDao.getUsage(rewardId, periodStart.toString())
         if (existing != null) {
-            timeRewardUsageDao.updateUsedMinutes(rewardId, periodStart.toString(), usedMinutes)
+            timeRewardUsageDao.updateUsedTimes(rewardId, periodStart.toString(), usedTimes)
         } else {
             val reward = rewardDao.getRewardById(rewardId)
-            val maxMinutes = reward?.let { r ->
-                val config = r.timeLimitConfig?.let { RewardMapper.toDomain(r).timeLimitConfig }
-                config?.maxMinutesPerPeriod ?: 0
-            } ?: 0
+            val maxTimes = reward?.let { r ->
+                RewardMapper.toDomain(r).timeLimitConfig?.maxTimesPerPeriod
+            }
             timeRewardUsageDao.upsert(
                 TimeRewardUsageEntity(
                     rewardId = rewardId,
                     periodStart = periodStart.toString(),
-                    maxMinutes = maxMinutes,
-                    usedMinutes = usedMinutes
+                    maxTimes = maxTimes,
+                    usedTimes = usedTimes
                 )
             )
         }

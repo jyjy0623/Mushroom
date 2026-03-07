@@ -85,14 +85,7 @@ class RewardListViewModel @Inject constructor(
                         RewardType.TIME_BASED ->
                             flow {
                                 val balance = getTimeRewardBalanceUseCase(reward.id)
-                                    ?: reward.timeLimitConfig?.let { cfg ->
-                                        TimeRewardBalance(
-                                            rewardId = reward.id,
-                                            periodStart = java.time.LocalDate.now(),
-                                            maxMinutes = cfg.maxMinutesPerPeriod,
-                                            usedMinutes = 0
-                                        )
-                                    }
+                                    ?: null
                                 emit(RewardUiModel(reward = reward, timeBalance = balance))
                             }
                     }
@@ -189,14 +182,6 @@ class RewardDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val balance = getTimeRewardBalanceUseCase(rewardId)
-                ?: _uiState.value.reward?.timeLimitConfig?.let { cfg ->
-                    TimeRewardBalance(
-                        rewardId = rewardId,
-                        periodStart = java.time.LocalDate.now(),
-                        maxMinutes = cfg.maxMinutesPerPeriod,
-                        usedMinutes = 0
-                    )
-                }
             _uiState.update { it.copy(timeBalance = balance) }
         }
     }
@@ -218,14 +203,6 @@ class RewardDetailViewModel @Inject constructor(
 
     private suspend fun refreshTimeBalance(rewardId: Long) {
         val balance = getTimeRewardBalanceUseCase(rewardId)
-            ?: _uiState.value.reward?.timeLimitConfig?.let { cfg ->
-                TimeRewardBalance(
-                    rewardId = rewardId,
-                    periodStart = java.time.LocalDate.now(),
-                    maxMinutes = cfg.maxMinutesPerPeriod,
-                    usedMinutes = 0
-                )
-            }
         _uiState.update { it.copy(timeBalance = balance) }
     }
 
@@ -257,9 +234,10 @@ data class RewardCreateUiState(
     val requiredPointsText: String = "100",
     // TIME_BASED fields
     val unitMinutesText: String = "30",
-    val periodType: PeriodType = PeriodType.WEEKLY,
-    val maxMinutesPerPeriodText: String = "120",
-    val cooldownDaysText: String = "0",
+    val costMushroomLevel: MushroomLevel = MushroomLevel.SMALL,
+    val costMushroomCountText: String = "5",
+    val periodType: PeriodType? = null,             // null = 不限次数
+    val maxTimesPerPeriodText: String = "",          // 空 = 不限
     // form state
     val isSaving: Boolean = false,
     val validationErrors: Map<String, String> = emptyMap()
@@ -287,9 +265,10 @@ class RewardCreateViewModel @Inject constructor(
     fun updatePuzzlePiecesText(value: String) = _uiState.update { it.copy(puzzlePiecesText = value) }
     fun updateRequiredPointsText(value: String) = _uiState.update { it.copy(requiredPointsText = value) }
     fun updateUnitMinutesText(value: String) = _uiState.update { it.copy(unitMinutesText = value) }
-    fun updatePeriodType(value: PeriodType) = _uiState.update { it.copy(periodType = value) }
-    fun updateMaxMinutesPerPeriodText(value: String) = _uiState.update { it.copy(maxMinutesPerPeriodText = value) }
-    fun updateCooldownDaysText(value: String) = _uiState.update { it.copy(cooldownDaysText = value) }
+    fun updateCostMushroomLevel(value: MushroomLevel) = _uiState.update { it.copy(costMushroomLevel = value) }
+    fun updateCostMushroomCountText(value: String) = _uiState.update { it.copy(costMushroomCountText = value) }
+    fun updatePeriodType(value: PeriodType?) = _uiState.update { it.copy(periodType = value) }
+    fun updateMaxTimesPerPeriodText(value: String) = _uiState.update { it.copy(maxTimesPerPeriodText = value) }
 
     fun save() {
         val state = _uiState.value
@@ -298,8 +277,8 @@ class RewardCreateViewModel @Inject constructor(
         val puzzlePieces = state.puzzlePiecesText.toIntOrNull() ?: 0
         val requiredPoints = state.requiredPointsText.toIntOrNull() ?: 0
         val unitMinutes = state.unitMinutesText.toIntOrNull() ?: 0
-        val maxMinutesPerPeriod = state.maxMinutesPerPeriodText.toIntOrNull() ?: 0
-        val cooldownDays = state.cooldownDaysText.toIntOrNull() ?: 0
+        val costMushroomCount = state.costMushroomCountText.toIntOrNull() ?: 0
+        val maxTimesPerPeriod = state.maxTimesPerPeriodText.toIntOrNull()
 
         if (state.name.isBlank()) errors["name"] = "请输入奖品名称"
         if (state.type == RewardType.PHYSICAL) {
@@ -308,7 +287,9 @@ class RewardCreateViewModel @Inject constructor(
         }
         if (state.type == RewardType.TIME_BASED) {
             if (unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
-            if (maxMinutesPerPeriod < unitMinutes) errors["maxMinutesPerPeriod"] = "周期上限不能小于单次时长"
+            if (costMushroomCount < 1) errors["costMushroomCount"] = "每次消耗数量至少为 1"
+            if (state.periodType != null && state.maxTimesPerPeriodText.isNotBlank() && (maxTimesPerPeriod == null || maxTimesPerPeriod < 1))
+                errors["maxTimesPerPeriod"] = "次数上限至少为 1"
         }
         if (errors.isNotEmpty()) {
             _uiState.update { it.copy(validationErrors = errors) }
@@ -326,9 +307,10 @@ class RewardCreateViewModel @Inject constructor(
                 timeLimitConfig = if (state.type == RewardType.TIME_BASED) {
                     TimeLimitConfig(
                         unitMinutes = unitMinutes,
+                        costMushroomLevel = state.costMushroomLevel,
+                        costMushroomCount = costMushroomCount,
                         periodType = state.periodType,
-                        maxMinutesPerPeriod = maxMinutesPerPeriod,
-                        cooldownDays = cooldownDays,
+                        maxTimesPerPeriod = if (state.periodType != null && state.maxTimesPerPeriodText.isNotBlank()) maxTimesPerPeriod else null,
                         requireParentConfirm = false
                     )
                 } else null

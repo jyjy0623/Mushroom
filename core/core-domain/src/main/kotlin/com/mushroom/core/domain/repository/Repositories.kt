@@ -59,7 +59,7 @@ interface RewardRepository {
     suspend fun updateReward(reward: Reward)
     fun getPuzzleProgress(rewardId: Long): Flow<PuzzleProgress>
     suspend fun getTimeRewardBalance(rewardId: Long, periodStart: LocalDate): TimeRewardBalance?
-    suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedMinutes: Int)
+    suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedTimes: Int)
     suspend fun insertExchange(exchange: RewardExchange): Long
     /** 删除尚未完成的奖品，并返回需要退还给用户的蘑菇列表（level -> count） */
     suspend fun deleteActiveReward(id: Long): Map<MushroomLevel, Int>

@@ -305,40 +305,86 @@ private fun TimeRewardContent(
     onExchange: (MushroomLevel, Int) -> Unit
 ) {
     val balance = uiState.timeBalance
-    val config = uiState.reward?.timeLimitConfig
+    val config = uiState.reward?.timeLimitConfig ?: return
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text("本期额度", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            if (balance != null) {
-                Text(
-                    "${balance.usedMinutes} / ${balance.maxMinutes} 分钟",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                LinearProgressIndicator(
-                    progress = { balance.usedMinutes.toFloat() / balance.maxMinutes.coerceAtLeast(1) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                )
-                Text(
-                    "剩余 ${balance.remainingMinutes} 分钟",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Text("本期额度充足", style = MaterialTheme.typography.bodySmall)
+    // 次数余额卡片（有周期限制才显示）
+    val periodType = config.periodType
+    if (periodType != null) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                val periodLabel = if (periodType.name == "WEEKLY") "本周" else "本月"
+                Text("$periodLabel 兑换次数", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                val usedTimes = balance?.usedTimes ?: 0
+                val maxTimes = balance?.maxTimes ?: config.maxTimesPerPeriod
+                if (maxTimes != null) {
+                    Text(
+                        "$usedTimes / $maxTimes 次",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    LinearProgressIndicator(
+                        progress = { usedTimes.toFloat() / maxTimes.coerceAtLeast(1) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    )
+                    val remaining = maxTimes - usedTimes
+                    Text(
+                        if (remaining > 0) "剩余 $remaining 次" else "本期已用完",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (remaining > 0) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    Text("已兑换 $usedTimes 次", style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }
 
-    if (config != null) {
-        Text(
-            "每次可获得 ${config.unitMinutes} 分钟",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        ExchangeSection(isExchanging = uiState.isExchanging, pointsPerPiece = 0, remainingPieces = Int.MAX_VALUE, onExchange = onExchange)
+    // 一键兑换卡片
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("兑换时长", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "消耗：${mushroomEmoji(config.costMushroomLevel)} ${config.costMushroomLevel.displayName} × ${config.costMushroomCount}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "获得：⏱ ${config.unitMinutes} 分钟",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            val canExchange = run {
+                val pt = config.periodType
+                val mt = config.maxTimesPerPeriod
+                if (pt == null || mt == null) return@run true
+                val usedTimes = balance?.usedTimes ?: 0
+                usedTimes < mt
+            }
+
+            Button(
+                onClick = { onExchange(config.costMushroomLevel, config.costMushroomCount) },
+                enabled = !uiState.isExchanging && canExchange,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    when {
+                        uiState.isExchanging -> "兑换中…"
+                        !canExchange -> "本期已达上限"
+                        else -> "确认兑换"
+                    }
+                )
+            }
+        }
     }
 }
 

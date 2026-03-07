@@ -232,8 +232,8 @@ private fun ActiveRewardRow(model: RewardUiModel, onClick: () -> Unit, onLongCli
                 }
             }
             RewardType.TIME_BASED -> {
-                val used = model.timeBalance?.usedMinutes ?: 0
-                val max = model.timeBalance?.maxMinutes ?: 0
+                val used = model.timeBalance?.usedTimes ?: 0
+                val max = model.timeBalance?.maxTimes
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -248,7 +248,7 @@ private fun ActiveRewardRow(model: RewardUiModel, onClick: () -> Unit, onLongCli
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "已用 $used / $max 分钟",
+                        text = if (max != null) "已用 $used / $max 次" else "已用 $used 次",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

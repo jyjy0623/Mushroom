@@ -25,7 +25,7 @@ import com.mushroom.core.data.db.entity.*
         GameScoreEntity::class,
         GamePlayStateEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -100,6 +100,28 @@ abstract class MushroomDatabase : RoomDatabase() {
                         value TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+        /**
+         * v5 → v6：time_reward_usage 表重建，用次数（used_times/max_times）替代分钟（used_minutes/max_minutes）。
+         * TimeLimitConfig JSON 字段改为存 costMushroomLevel/costMushroomCount/maxTimesPerPeriod，
+         * 旧数据通过 Mapper 的 ignoreUnknownKeys 兼容读取（旧字段忽略，新字段取默认值）。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 重建 time_reward_usage 表（SQLite 不支持 DROP COLUMN，用重建方式）
+                db.execSQL("DROP TABLE IF EXISTS time_reward_usage")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS time_reward_usage (
+                        reward_id INTEGER NOT NULL,
+                        period_start TEXT NOT NULL,
+                        max_times INTEGER,
+                        used_times INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY (reward_id, period_start),
+                        FOREIGN KEY (reward_id) REFERENCES rewards(id)
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_time_reward_usage_reward_id ON time_reward_usage(reward_id)")
             }
         }
     }

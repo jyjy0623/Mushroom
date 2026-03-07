@@ -181,8 +181,8 @@ interface TimeRewardUsageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(usage: TimeRewardUsageEntity)
 
-    @Query("UPDATE time_reward_usage SET used_minutes = :usedMinutes WHERE reward_id = :rewardId AND period_start = :periodStart")
-    suspend fun updateUsedMinutes(rewardId: Long, periodStart: String, usedMinutes: Int)
+    @Query("UPDATE time_reward_usage SET used_times = :usedTimes WHERE reward_id = :rewardId AND period_start = :periodStart")
+    suspend fun updateUsedTimes(rewardId: Long, periodStart: String, usedTimes: Int)
 
     @Query("DELETE FROM time_reward_usage WHERE reward_id = :rewardId")
     suspend fun deleteByRewardId(rewardId: Long)

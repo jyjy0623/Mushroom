@@ -159,8 +159,8 @@ data class RewardExchangeEntity(
 data class TimeRewardUsageEntity(
     @ColumnInfo(name = "reward_id") val rewardId: Long,
     @ColumnInfo(name = "period_start") val periodStart: String,
-    @ColumnInfo(name = "max_minutes") val maxMinutes: Int,
-    @ColumnInfo(name = "used_minutes") val usedMinutes: Int = 0
+    @ColumnInfo(name = "max_times") val maxTimes: Int?,       // null = 不限
+    @ColumnInfo(name = "used_times") val usedTimes: Int = 0
 )
 
 @Entity(tableName = "milestones")

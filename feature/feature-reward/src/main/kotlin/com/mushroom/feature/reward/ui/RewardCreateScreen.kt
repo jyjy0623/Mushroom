@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.PeriodType
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewEvent
@@ -160,15 +162,18 @@ fun RewardCreateScreen(
                 )
                 RewardType.TIME_BASED -> TimeConfigSection(
                     unitMinutesText = uiState.unitMinutesText,
+                    costMushroomLevel = uiState.costMushroomLevel,
+                    costMushroomCountText = uiState.costMushroomCountText,
                     periodType = uiState.periodType,
-                    maxMinutesPerPeriodText = uiState.maxMinutesPerPeriodText,
-                    cooldownDaysText = uiState.cooldownDaysText,
+                    maxTimesPerPeriodText = uiState.maxTimesPerPeriodText,
                     unitMinutesError = uiState.validationErrors["unitMinutes"],
-                    maxMinutesError = uiState.validationErrors["maxMinutesPerPeriod"],
+                    costMushroomCountError = uiState.validationErrors["costMushroomCount"],
+                    maxTimesError = uiState.validationErrors["maxTimesPerPeriod"],
                     onUnitMinutesChange = viewModel::updateUnitMinutesText,
+                    onCostMushroomLevelChange = viewModel::updateCostMushroomLevel,
+                    onCostMushroomCountChange = viewModel::updateCostMushroomCountText,
                     onPeriodTypeChange = viewModel::updatePeriodType,
-                    onMaxMinutesChange = viewModel::updateMaxMinutesPerPeriodText,
-                    onCooldownDaysChange = viewModel::updateCooldownDaysText
+                    onMaxTimesChange = viewModel::updateMaxTimesPerPeriodText
                 )
             }
 
@@ -338,15 +343,18 @@ private fun PhysicalConfigSection(
 @Composable
 private fun TimeConfigSection(
     unitMinutesText: String,
-    periodType: PeriodType,
-    maxMinutesPerPeriodText: String,
-    cooldownDaysText: String,
+    costMushroomLevel: MushroomLevel,
+    costMushroomCountText: String,
+    periodType: PeriodType?,
+    maxTimesPerPeriodText: String,
     unitMinutesError: String?,
-    maxMinutesError: String?,
+    costMushroomCountError: String?,
+    maxTimesError: String?,
     onUnitMinutesChange: (String) -> Unit,
-    onPeriodTypeChange: (PeriodType) -> Unit,
-    onMaxMinutesChange: (String) -> Unit,
-    onCooldownDaysChange: (String) -> Unit
+    onCostMushroomLevelChange: (MushroomLevel) -> Unit,
+    onCostMushroomCountChange: (String) -> Unit,
+    onPeriodTypeChange: (PeriodType?) -> Unit,
+    onMaxTimesChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -376,9 +384,60 @@ private fun TimeConfigSection(
                 singleLine = true
             )
 
-            // 周期类型
-            Text("周期类型", style = MaterialTheme.typography.bodyMedium)
-            listOf(PeriodType.WEEKLY to "每周", PeriodType.MONTHLY to "每月").forEach { (pt, label) ->
+            // 每次消耗蘑菇
+            Text("每次消耗蘑菇", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 等级选择
+                MushroomLevel.values().forEach { level ->
+                    val isSelected = costMushroomLevel == level
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surface,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .clickable { onCostMushroomLevelChange(level) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(mushroomEmojiForCreate(level), fontSize = 16.sp)
+                    }
+                }
+            }
+            Text(
+                "已选：${mushroomEmojiForCreate(costMushroomLevel)} ${costMushroomLevel.displayName}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            OutlinedTextField(
+                value = costMushroomCountText,
+                onValueChange = onCostMushroomCountChange,
+                label = { Text("数量 *") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = costMushroomCountError != null,
+                supportingText = if (costMushroomCountError != null) ({ Text(costMushroomCountError) })
+                                 else ({ Text("默认 5 个") }),
+                singleLine = true
+            )
+
+            // 兑换次数上限（可选）
+            Text("兑换次数上限（可选）", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            listOf(
+                null to "不限次数",
+                PeriodType.WEEKLY to "每周",
+                PeriodType.MONTHLY to "每月"
+            ).forEach { (pt, label) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = periodType == pt,
@@ -387,28 +446,26 @@ private fun TimeConfigSection(
                     Text(label, modifier = Modifier.padding(start = 4.dp))
                 }
             }
-
-            // 周期上限
-            OutlinedTextField(
-                value = maxMinutesPerPeriodText,
-                onValueChange = onMaxMinutesChange,
-                label = { Text("周期最多使用（分钟）*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = maxMinutesError != null,
-                supportingText = if (maxMinutesError != null) ({ Text(maxMinutesError) }) else null,
-                singleLine = true
-            )
-
-            // 冷却天数
-            OutlinedTextField(
-                value = cooldownDaysText,
-                onValueChange = onCooldownDaysChange,
-                label = { Text("冷却天数（0 表示不限）") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
+            if (periodType != null) {
+                OutlinedTextField(
+                    value = maxTimesPerPeriodText,
+                    onValueChange = onMaxTimesChange,
+                    label = { Text("最多几次（空=不限）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = maxTimesError != null,
+                    supportingText = if (maxTimesError != null) ({ Text(maxTimesError) }) else null,
+                    singleLine = true
+                )
+            }
         }
     }
+}
+
+private fun mushroomEmojiForCreate(level: MushroomLevel) = when (level) {
+    MushroomLevel.SMALL -> "🍄"
+    MushroomLevel.MEDIUM -> "🍄‍🟫"
+    MushroomLevel.LARGE -> "🌟"
+    MushroomLevel.GOLD -> "✨"
+    MushroomLevel.LEGEND -> "👑"
 }
