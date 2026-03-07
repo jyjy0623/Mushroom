@@ -107,8 +107,7 @@ fun TaskTemplateScreen(
 
             when (selectedTab) {
                 0 -> TaskTemplateManageTab(
-                    builtInTemplates = uiState.builtInTemplates,
-                    customTemplates = uiState.customTemplates,
+                    templates = uiState.builtInTemplates + uiState.customTemplates,
                     onEdit = { showTaskTemplateDialog = it },
                     onDelete = { viewModel.deleteTemplate(it.id) }
                 )
@@ -180,8 +179,7 @@ fun TaskTemplateScreen(
 // ---------------------------------------------------------------------------
 @Composable
 private fun TaskTemplateManageTab(
-    builtInTemplates: List<TaskTemplate>,
-    customTemplates: List<TaskTemplate>,
+    templates: List<TaskTemplate>,
     onEdit: (TaskTemplate) -> Unit,
     onDelete: (TaskTemplate) -> Unit
 ) {
@@ -189,46 +187,19 @@ private fun TaskTemplateManageTab(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (builtInTemplates.isNotEmpty()) {
-            item {
-                Text(
-                    "内置模板",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            items(builtInTemplates, key = { "builtin_${it.id}" }) { template ->
-                TaskTemplateManageCard(
-                    template = template,
-                    onEdit = { onEdit(template) },
-                    onDelete = null
-                )
-            }
-        }
-        if (customTemplates.isNotEmpty()) {
-            item {
-                Text(
-                    "自定义模板",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            items(customTemplates, key = { "custom_${it.id}" }) { template ->
-                TaskTemplateManageCard(
-                    template = template,
-                    onEdit = { onEdit(template) },
-                    onDelete = { onDelete(template) }
-                )
-            }
-        }
-        if (builtInTemplates.isEmpty() && customTemplates.isEmpty()) {
+        if (templates.isEmpty()) {
             item {
                 Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("暂无模板", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        }
+        items(templates, key = { it.id }) { template ->
+            TaskTemplateManageCard(
+                template = template,
+                onEdit = { onEdit(template) },
+                onDelete = { onDelete(template) }
+            )
         }
     }
 }
@@ -237,7 +208,7 @@ private fun TaskTemplateManageTab(
 private fun TaskTemplateManageCard(
     template: TaskTemplate,
     onEdit: () -> Unit,
-    onDelete: (() -> Unit)?
+    onDelete: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -255,10 +226,8 @@ private fun TaskTemplateManageCard(
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "编辑")
                 }
-                if (onDelete != null) {
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
-                    }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
                 }
             }
             Text(
