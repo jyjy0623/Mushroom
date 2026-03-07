@@ -1,5 +1,7 @@
 package com.mushroom.feature.task.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,6 +64,10 @@ fun TaskTemplateScreen(
     var showScoringTemplateDialog by remember { mutableStateOf<ScoringRuleTemplate?>(null) }
     var showNewScoringTemplateDialog by remember { mutableStateOf(false) }
 
+    // Delete confirmation state
+    var pendingDeleteTaskTemplate by remember { mutableStateOf<TaskTemplate?>(null) }
+    var pendingDeleteScoringTemplate by remember { mutableStateOf<ScoringRuleTemplate?>(null) }
+
     LaunchedEffect(viewModel) {
         viewModel.viewEvent.collectLatest { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -109,16 +114,62 @@ fun TaskTemplateScreen(
                 0 -> TaskTemplateManageTab(
                     templates = uiState.builtInTemplates + uiState.customTemplates,
                     onEdit = { showTaskTemplateDialog = it },
-                    onDelete = { viewModel.deleteTemplate(it.id) }
+                    onRequestDelete = { template ->
+                        if (!template.isBuiltIn) {
+                            pendingDeleteTaskTemplate = template
+                        }
+                    }
                 )
                 1 -> ScoringRuleTemplateTab(
                     templates = scoringTemplates,
                     onEdit = { showScoringTemplateDialog = it },
-                    onDelete = { scoringRuleTemplateViewModel.delete(it.id) },
+                    onRequestDelete = { pendingDeleteScoringTemplate = it },
                     onNavigateToMilestoneList = onNavigateToMilestoneList
                 )
             }
         }
+    }
+
+    pendingDeleteTaskTemplate?.let { template ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteTaskTemplate = null },
+            title = { Text("删除模板「${template.name}」") },
+            text = { Text("确认删除这个任务模板吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteTemplate(template.id)
+                    pendingDeleteTaskTemplate = null
+                }) {
+                    Text("确认删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteTaskTemplate = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    pendingDeleteScoringTemplate?.let { template ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteScoringTemplate = null },
+            title = { Text("删除模板「${template.name}」") },
+            text = { Text("确认删除这个里程碑评分模板吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scoringRuleTemplateViewModel.delete(template.id)
+                    pendingDeleteScoringTemplate = null
+                }) {
+                    Text("确认删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteScoringTemplate = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     // Task template edit dialog (for editing existing)
@@ -181,7 +232,7 @@ fun TaskTemplateScreen(
 private fun TaskTemplateManageTab(
     templates: List<TaskTemplate>,
     onEdit: (TaskTemplate) -> Unit,
-    onDelete: (TaskTemplate) -> Unit
+    onRequestDelete: (TaskTemplate) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -198,23 +249,31 @@ private fun TaskTemplateManageTab(
             TaskTemplateManageCard(
                 template = template,
                 onEdit = { onEdit(template) },
-                onDelete = { onDelete(template) }
+                onRequestDelete = { onRequestDelete(template) }
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskTemplateManageCard(
     template: TaskTemplate,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onRequestDelete: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onEdit,
+                onDoubleClick = onRequestDelete
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -223,12 +282,6 @@ private fun TaskTemplateManageCard(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "编辑")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
-                }
             }
             Text(
                 "预估时长：${template.estimatedMinutes} 分钟",
@@ -259,7 +312,7 @@ private fun TaskTemplateManageCard(
 private fun ScoringRuleTemplateTab(
     templates: List<ScoringRuleTemplate>,
     onEdit: (ScoringRuleTemplate) -> Unit,
-    onDelete: (ScoringRuleTemplate) -> Unit,
+    onRequestDelete: (ScoringRuleTemplate) -> Unit,
     onNavigateToMilestoneList: () -> Unit
 ) {
     LazyColumn(
@@ -277,7 +330,7 @@ private fun ScoringRuleTemplateTab(
             ScoringRuleTemplateCard(
                 template = template,
                 onEdit = { onEdit(template) },
-                onDelete = { onDelete(template) }
+                onRequestDelete = { onRequestDelete(template) }
             )
         }
         item {
@@ -292,32 +345,28 @@ private fun ScoringRuleTemplateTab(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ScoringRuleTemplateCard(
     template: ScoringRuleTemplate,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onRequestDelete: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onEdit,
+                onDoubleClick = onRequestDelete
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    template.name,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "编辑")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
-                }
-            }
+            Text(
+                template.name,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge
+            )
             Spacer(Modifier.height(4.dp))
             template.rules.forEach { rule ->
                 Text(
