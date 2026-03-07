@@ -424,34 +424,51 @@ private fun TaskTemplateEditDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
-                // 基础奖励等级
-                Text("基础奖励等级", style = MaterialTheme.typography.labelMedium)
-                MushroomLevelSelector(selected = baseLevel, onSelect = { baseLevel = it })
-                // 基础奖励数量
-                OutlinedTextField(
-                    value = baseAmount,
-                    onValueChange = { baseAmount = it },
-                    label = { Text("基础奖励数量") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // 基础奖励
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MushroomLevelDropdown(
+                        selected = baseLevel,
+                        onSelect = { baseLevel = it },
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = baseAmount,
+                        onValueChange = { baseAmount = it },
+                        label = { Text("×数量") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(0.4f)
+                    )
+                }
                 // 额外奖励开关
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("开启额外奖励", modifier = Modifier.weight(1f))
                     Switch(checked = enableBonus, onCheckedChange = { enableBonus = it })
                 }
                 if (enableBonus) {
-                    Text("额外奖励等级", style = MaterialTheme.typography.labelMedium)
-                    MushroomLevelSelector(selected = bonusLevel, onSelect = { bonusLevel = it })
-                    OutlinedTextField(
-                        value = bonusAmount,
-                        onValueChange = { bonusAmount = it },
-                        label = { Text("额外奖励数量") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MushroomLevelDropdown(
+                            selected = bonusLevel,
+                            onSelect = { bonusLevel = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = bonusAmount,
+                            onValueChange = { bonusAmount = it },
+                            label = { Text("×数量") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(0.4f)
+                        )
+                    }
                 }
             }
         },
@@ -654,22 +671,18 @@ private fun ScoringRuleRowEditor(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(top = 4.dp)
         ) {
-            MushroomLevel.values().forEach { level ->
-                val isSelected = row.level == level
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onRowChange(row.copy(level = level)) },
-                    label = { Text(mushroomEmoji(level)) }
-                )
-            }
-            Spacer(Modifier.weight(1f))
+            MushroomLevelDropdown(
+                selected = row.level,
+                onSelect = { onRowChange(row.copy(level = it)) },
+                modifier = Modifier.weight(1f)
+            )
             OutlinedTextField(
                 value = row.amount,
                 onValueChange = { onRowChange(row.copy(amount = it)) },
-                label = { Text("数量") },
+                label = { Text("×数量") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(72.dp)
+                modifier = Modifier.weight(0.4f)
             )
         }
         HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
