@@ -220,7 +220,8 @@ data class GamePlayStateEntity(
 @Entity(tableName = "scoring_rule_templates")
 data class ScoringRuleTemplateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String
+    val name: String,
+    @ColumnInfo(name = "is_built_in") val isBuiltIn: Boolean = false
 )
 
 @Entity(

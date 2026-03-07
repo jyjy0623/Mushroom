@@ -46,6 +46,11 @@ class ScoringRuleTemplateViewModel @Inject constructor(
     }
 
     fun delete(id: Long) {
+        val template = templates.value.find { it.id == id }
+        if (template?.isBuiltIn == true) {
+            viewModelScope.launch { _viewEvent.emit("内置模板不可删除") }
+            return
+        }
         viewModelScope.launch {
             runCatching { repo.delete(id) }
                 .onSuccess { _viewEvent.emit("模板已删除") }

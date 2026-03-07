@@ -111,6 +111,7 @@ data class MilestoneEditUiState(
 sealed class MilestoneEditViewEvent {
     object SaveSuccess : MilestoneEditViewEvent()
     data class ShowError(val message: String) : MilestoneEditViewEvent()
+    data class ShowMessage(val message: String) : MilestoneEditViewEvent()
 }
 
 @HiltViewModel
@@ -198,13 +199,16 @@ class MilestoneEditViewModel @Inject constructor(
         }
     }
 
-    fun applyTemplateRules(rules: List<ScoringRule>) {
+    fun applyTemplateRules(rules: List<ScoringRule>, templateName: String) {
         _uiState.update { state ->
             state.copy(
                 scoringRules = rules,
                 ruleAmountTexts = rules.map { it.rewardConfig.amount.toString() },
                 isUsingDefaultRules = false
             )
+        }
+        viewModelScope.launch {
+            _viewEvent.emit(MilestoneEditViewEvent.ShowMessage("已套用模板「${templateName}」"))
         }
     }
 

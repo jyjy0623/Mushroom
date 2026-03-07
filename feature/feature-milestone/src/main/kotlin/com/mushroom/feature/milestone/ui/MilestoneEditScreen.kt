@@ -79,6 +79,8 @@ fun MilestoneEditScreen(
                 MilestoneEditViewEvent.SaveSuccess -> onNavigateBack()
                 is MilestoneEditViewEvent.ShowError ->
                     snackbarHostState.showSnackbar(event.message)
+                is MilestoneEditViewEvent.ShowMessage ->
+                    snackbarHostState.showSnackbar(event.message)
             }
         }
     }
@@ -290,7 +292,7 @@ fun MilestoneEditScreen(
             templates = scoringTemplates,
             onDismiss = { showTemplatePicker = false },
             onPick = { template ->
-                viewModel.applyTemplateRules(template.rules)
+                viewModel.applyTemplateRules(template.rules, template.name)
                 showTemplatePicker = false
             }
         )

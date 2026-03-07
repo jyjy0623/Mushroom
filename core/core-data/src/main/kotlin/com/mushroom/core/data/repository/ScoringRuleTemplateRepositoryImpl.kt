@@ -20,10 +20,12 @@ class ScoringRuleTemplateRepositoryImpl @Inject constructor(
 
     override fun getAll(): Flow<List<ScoringRuleTemplate>> =
         dao.getAll().map { entities ->
-            entities.map { entity ->
-                val items = dao.getItemsByTemplateId(entity.id)
-                entity.toDomain(items)
-            }
+            entities
+                .sortedWith(compareByDescending<ScoringRuleTemplateEntity> { it.isBuiltIn }.thenBy { it.id })
+                .map { entity ->
+                    val items = dao.getItemsByTemplateId(entity.id)
+                    entity.toDomain(items)
+                }
         }
 
     override suspend fun insert(t: ScoringRuleTemplate): Long {
@@ -48,6 +50,7 @@ private fun ScoringRuleTemplateEntity.toDomain(
 ): ScoringRuleTemplate = ScoringRuleTemplate(
     id = id,
     name = name,
+    isBuiltIn = isBuiltIn,
     rules = items.map { item ->
         ScoringRule(
             minScore = item.minScore,

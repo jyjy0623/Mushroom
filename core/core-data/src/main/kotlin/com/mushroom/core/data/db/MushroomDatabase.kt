@@ -27,7 +27,7 @@ import com.mushroom.core.data.db.entity.*
         ScoringRuleTemplateEntity::class,
         ScoringRuleTemplateItemEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class MushroomDatabase : RoomDatabase() {
@@ -151,6 +151,14 @@ abstract class MushroomDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_scoring_rule_template_items_template_id ON scoring_rule_template_items(template_id)")
+            }
+        }
+        /**
+         * v7 → v8：scoring_rule_templates 新增 is_built_in 列，支持内置模板。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE scoring_rule_templates ADD COLUMN is_built_in INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

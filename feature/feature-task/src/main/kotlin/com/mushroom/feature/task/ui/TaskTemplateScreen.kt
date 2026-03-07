@@ -293,23 +293,57 @@ private fun ScoringRuleTemplateTab(
     onDelete: (ScoringRuleTemplate) -> Unit,
     onNavigateToMilestoneList: () -> Unit
 ) {
+    val builtIn = templates.filter { it.isBuiltIn }
+    val custom  = templates.filter { !it.isBuiltIn }
+
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (templates.isEmpty()) {
+        if (builtIn.isNotEmpty()) {
             item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("还没有评分规则模板", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text(
+                    "内置模板",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(builtIn, key = { "builtin_${it.id}" }) { template ->
+                ScoringRuleTemplateCard(
+                    template = template,
+                    onEdit = { onEdit(template) },
+                    onDelete = null
+                )
             }
         }
-        items(templates, key = { it.id }) { template ->
-            ScoringRuleTemplateCard(
-                template = template,
-                onEdit = { onEdit(template) },
-                onDelete = { onDelete(template) }
-            )
+        if (custom.isNotEmpty()) {
+            item {
+                Text(
+                    "自定义模板",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(custom, key = { "custom_${it.id}" }) { template ->
+                ScoringRuleTemplateCard(
+                    template = template,
+                    onEdit = { onEdit(template) },
+                    onDelete = { onDelete(template) }
+                )
+            }
+        }
+        if (custom.isEmpty()) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "还没有自定义模板，点击右下角 + 新建",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
         item {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -327,7 +361,7 @@ private fun ScoringRuleTemplateTab(
 private fun ScoringRuleTemplateCard(
     template: ScoringRuleTemplate,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)?
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -345,8 +379,10 @@ private fun ScoringRuleTemplateCard(
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "编辑")
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                if (onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
             Spacer(Modifier.height(4.dp))
