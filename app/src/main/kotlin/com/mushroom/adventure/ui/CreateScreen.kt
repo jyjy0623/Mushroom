@@ -123,6 +123,8 @@ fun CreateScreen(
                 MilestoneEditViewEvent.SaveSuccess -> onNavigateBack()
                 is MilestoneEditViewEvent.ShowError ->
                     snackbarHostState.showSnackbar(event.message)
+                is MilestoneEditViewEvent.ShowMessage ->
+                    snackbarHostState.showSnackbar(event.message)
             }
         }
     }
