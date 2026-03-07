@@ -13,21 +13,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,12 +69,33 @@ fun MilestoneListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var tabIndex by remember { mutableStateOf(0) }
 
+    // Dialog state
+    var showScoreDialog by remember { mutableStateOf(false) }
+    var scoringMilestone by remember { mutableStateOf<Milestone?>(null) }
+    var scoreInputText by remember { mutableStateOf("") }
+
     LaunchedEffect(Unit) {
         viewModel.viewEvent.collectLatest { event ->
             when (event) {
                 is MilestoneListViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
+    }
+
+    if (showScoreDialog && scoringMilestone != null) {
+        ScoreInputDialog(
+            milestoneName = scoringMilestone!!.name,
+            scoreText = scoreInputText,
+            onScoreChange = { scoreInputText = it },
+            onConfirm = {
+                val score = scoreInputText.toIntOrNull()
+                if (score != null && score in 0..100) {
+                    viewModel.recordScore(scoringMilestone!!.id, score)
+                    showScoreDialog = false
+                }
+            },
+            onDismiss = { showScoreDialog = false }
+        )
     }
 
     Scaffold(
@@ -104,8 +131,8 @@ fun MilestoneListScreen(
 
             // Tabs
             TabRow(selectedTabIndex = tabIndex) {
-                Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("即将到来") })
-                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("已到期") })
+                Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("待确认") })
+                Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("已关闭") })
             }
 
             val currentList = if (tabIndex == 0) uiState.upcomingMilestones else uiState.completedMilestones
@@ -113,7 +140,7 @@ fun MilestoneListScreen(
             if (currentList.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        if (tabIndex == 0) "暂无待完成的里程碑" else "暂无已到期的里程碑",
+                        if (tabIndex == 0) "暂无待确认的里程碑" else "暂无已关闭的里程碑",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -123,13 +150,21 @@ fun MilestoneListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(currentList, key = { it.id }) { milestone ->
-                        // 未过期且 PENDING 才可点击进入编辑
                         val today = LocalDate.now()
-                        val isEditable = milestone.status == com.mushroom.core.domain.entity.MilestoneStatus.PENDING &&
-                                !milestone.scheduledDate.isBefore(today)
+                        val isOverdue = milestone.status == MilestoneStatus.PENDING &&
+                                milestone.scheduledDate.isBefore(today)
+                        // Tab 0: 全部 PENDING 可点击录入成绩；Tab 1: 不可点击
+                        val onClick: (() -> Unit)? = if (tabIndex == 0) {
+                            {
+                                scoringMilestone = milestone
+                                scoreInputText = milestone.actualScore?.toString() ?: ""
+                                showScoreDialog = true
+                            }
+                        } else null
                         MilestoneCard(
                             milestone = milestone,
-                            onClick = if (isEditable) { { onNavigateToEdit(milestone.id) } } else null
+                            isOverdue = isOverdue,
+                            onClick = onClick
                         )
                     }
                 }
@@ -139,23 +174,64 @@ fun MilestoneListScreen(
 }
 
 @Composable
-private fun MilestoneCard(milestone: Milestone, onClick: (() -> Unit)?) {
+private fun ScoreInputDialog(
+    milestoneName: String,
+    scoreText: String,
+    onScoreChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isValid = scoreText.toIntOrNull()?.let { it in 0..100 } == true
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("录入成绩 — $milestoneName") },
+        text = {
+            OutlinedTextField(
+                value = scoreText,
+                onValueChange = { onScoreChange(it.filter { c -> c.isDigit() }) },
+                label = { Text("分数（0～100）") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = isValid) {
+                Text("确认录入")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
+}
+
+@Composable
+private fun MilestoneCard(milestone: Milestone, isOverdue: Boolean, onClick: (() -> Unit)?) {
     val today = LocalDate.now()
     val daysLeft = ChronoUnit.DAYS.between(today, milestone.scheduledDate)
+    val containerColor = if (isOverdue) MaterialTheme.colorScheme.errorContainer
+                         else MaterialTheme.colorScheme.surface
 
     if (onClick != null) {
-        Card(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
-            MilestoneCardContent(milestone, daysLeft)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onClick,
+            colors = CardDefaults.cardColors(containerColor = containerColor)
+        ) {
+            MilestoneCardContent(milestone, daysLeft, isOverdue)
         }
     } else {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            MilestoneCardContent(milestone, daysLeft)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = containerColor)
+        ) {
+            MilestoneCardContent(milestone, daysLeft, isOverdue)
         }
     }
 }
 
 @Composable
-private fun MilestoneCardContent(milestone: Milestone, daysLeft: Long) {
+private fun MilestoneCardContent(milestone: Milestone, daysLeft: Long, isOverdue: Boolean) {
     Column(modifier = Modifier.padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -178,7 +254,9 @@ private fun MilestoneCardContent(milestone: Milestone, daysLeft: Long) {
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     milestone.scheduledDate.format(DATE_FMT),
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isOverdue) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (milestone.status == MilestoneStatus.PENDING) {
                     Text(
