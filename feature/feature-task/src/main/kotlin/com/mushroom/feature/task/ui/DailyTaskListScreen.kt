@@ -572,7 +572,7 @@ private fun TaskCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { onEdit?.invoke() },
-                onDoubleClick = onDelete
+                onLongClick = onDelete
             ),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
