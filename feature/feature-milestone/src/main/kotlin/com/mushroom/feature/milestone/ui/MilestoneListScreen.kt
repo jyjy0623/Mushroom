@@ -1,5 +1,7 @@
 package com.mushroom.feature.milestone.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +60,7 @@ import java.time.temporal.ChronoUnit
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("MM-dd")
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MilestoneListScreen(
     onNavigateToEdit: (Long) -> Unit = {},
@@ -73,6 +75,9 @@ fun MilestoneListScreen(
     var showScoreDialog by remember { mutableStateOf(false) }
     var scoringMilestone by remember { mutableStateOf<Milestone?>(null) }
     var scoreInputText by remember { mutableStateOf("") }
+
+    // 删除确认弹窗
+    var pendingDeleteMilestone by remember { mutableStateOf<Milestone?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.viewEvent.collectLatest { event ->
@@ -95,6 +100,28 @@ fun MilestoneListScreen(
                 }
             },
             onDismiss = { showScoreDialog = false }
+        )
+    }
+
+    pendingDeleteMilestone?.let { milestone ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteMilestone = null },
+            title = { Text("确认删除") },
+            text = { Text("确定删除「${milestone.name}」？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteMilestone(milestone.id)
+                        pendingDeleteMilestone = null
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) { Text("删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteMilestone = null }) { Text("取消") }
+            }
         )
     }
 
@@ -161,10 +188,14 @@ fun MilestoneListScreen(
                                 showScoreDialog = true
                             }
                         } else null
+                        val onLongClick: (() -> Unit)? = if (tabIndex == 0) {
+                            { pendingDeleteMilestone = milestone }
+                        } else null
                         MilestoneCard(
                             milestone = milestone,
                             isOverdue = isOverdue,
-                            onClick = onClick
+                            onClick = onClick,
+                            onLongClick = onLongClick
                         )
                     }
                 }
@@ -205,28 +236,29 @@ private fun ScoreInputDialog(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MilestoneCard(milestone: Milestone, isOverdue: Boolean, onClick: (() -> Unit)?) {
+private fun MilestoneCard(
+    milestone: Milestone,
+    isOverdue: Boolean,
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)? = null
+) {
     val today = LocalDate.now()
     val daysLeft = ChronoUnit.DAYS.between(today, milestone.scheduledDate)
     val containerColor = if (isOverdue) MaterialTheme.colorScheme.errorContainer
                          else MaterialTheme.colorScheme.surface
 
-    if (onClick != null) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onClick,
-            colors = CardDefaults.cardColors(containerColor = containerColor)
-        ) {
-            MilestoneCardContent(milestone, daysLeft, isOverdue)
-        }
-    } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = containerColor)
-        ) {
-            MilestoneCardContent(milestone, daysLeft, isOverdue)
-        }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { onClick?.invoke() },
+                onLongClick = onLongClick
+            ),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        MilestoneCardContent(milestone, daysLeft, isOverdue)
     }
 }
 

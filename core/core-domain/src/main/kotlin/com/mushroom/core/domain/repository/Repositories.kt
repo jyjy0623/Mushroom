@@ -72,6 +72,7 @@ interface MilestoneRepository {
     suspend fun insertMilestone(milestone: Milestone): Long
     suspend fun updateMilestone(milestone: Milestone)
     suspend fun updateScore(id: Long, score: Int, status: MilestoneStatus)
+    suspend fun deleteMilestone(id: Long)
 }
 
 interface KeyDateRepository {

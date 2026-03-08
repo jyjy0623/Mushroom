@@ -61,4 +61,9 @@ class MilestoneRepositoryImpl @Inject constructor(
     override suspend fun updateScore(id: Long, score: Int, status: MilestoneStatus) {
         milestoneDao.updateScore(id, score, status.name)
     }
+
+    override suspend fun deleteMilestone(id: Long) {
+        scoringRuleDao.deleteByMilestoneId(id)
+        milestoneDao.deleteById(id)
+    }
 }

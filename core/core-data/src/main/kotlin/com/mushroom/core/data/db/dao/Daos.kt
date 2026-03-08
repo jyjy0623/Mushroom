@@ -207,6 +207,9 @@ interface MilestoneDao {
 
     @Query("UPDATE milestones SET actual_score = :score, status = :status WHERE id = :id")
     suspend fun updateScore(id: Long, score: Int, status: String)
+
+    @Query("DELETE FROM milestones WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }
 
 @Dao

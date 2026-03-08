@@ -46,7 +46,8 @@ sealed class MilestoneListViewEvent {
 @HiltViewModel
 class MilestoneListViewModel @Inject constructor(
     private val getMilestonesUseCase: GetMilestonesUseCase,
-    private val recordScoreUseCase: RecordMilestoneScoreUseCase
+    private val recordScoreUseCase: RecordMilestoneScoreUseCase,
+    private val milestoneRepository: com.mushroom.core.domain.repository.MilestoneRepository
 ) : ViewModel() {
 
     private val _selectedSubject = MutableStateFlow<Subject?>(null)
@@ -84,6 +85,18 @@ class MilestoneListViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(e.message ?: "录入失败"))
+                }
+        }
+    }
+
+    fun deleteMilestone(milestoneId: Long) {
+        viewModelScope.launch {
+            runCatching { milestoneRepository.deleteMilestone(milestoneId) }
+                .onSuccess {
+                    _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar("已删除"))
+                }
+                .onFailure { e ->
+                    _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(e.message ?: "删除失败"))
                 }
         }
     }
