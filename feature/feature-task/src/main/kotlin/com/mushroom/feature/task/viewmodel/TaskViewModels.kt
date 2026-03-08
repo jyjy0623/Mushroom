@@ -148,7 +148,7 @@ class DailyTaskViewModel @Inject constructor(
         _memoStreak,
         milestoneRepository.getAllMilestones().map { milestones ->
             val today = LocalDate.now()
-            val cutoff = today.plusDays(30)
+            val cutoff = today.plusDays(90)
             milestones
                 .filter { it.status == MilestoneStatus.PENDING && !it.scheduledDate.isBefore(today) && !it.scheduledDate.isAfter(cutoff) }
                 .sortedBy { it.scheduledDate }
