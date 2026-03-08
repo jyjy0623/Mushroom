@@ -57,7 +57,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import java.io.File
 import com.mushroom.core.domain.entity.MushroomLevel
-import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewModel
@@ -159,8 +158,7 @@ fun RewardDetailScreen(
                     uiState = uiState,
                     onExchange = { level, amount ->
                         viewModel.exchange(rewardId, level, amount)
-                    },
-                    onClaim = { viewModel.claimReward(rewardId) }
+                    }
                 )
                 RewardType.TIME_BASED -> TimeRewardContent(
                     uiState = uiState,
@@ -177,8 +175,7 @@ fun RewardDetailScreen(
 @Composable
 private fun PhysicalRewardContent(
     uiState: com.mushroom.feature.reward.viewmodel.RewardDetailUiState,
-    onExchange: (MushroomLevel, Int) -> Unit,
-    onClaim: () -> Unit
+    onExchange: (MushroomLevel, Int) -> Unit
 ) {
     val progress = uiState.puzzleProgress
     val reward = uiState.reward ?: return
@@ -238,16 +235,8 @@ private fun PhysicalRewardContent(
         }
     }
 
-    // 领取按钮（拼图完成后显示）
-    if (reward.status == RewardStatus.COMPLETED) {
-        Button(
-            onClick = onClaim,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("领取奖品（需家长确认）")
-        }
-    } else if (progress == null || !progress.isCompleted) {
-        // 兑换区域
+    // 兑换区域（拼图未完成时显示）
+    if (progress == null || !progress.isCompleted) {
         ExchangeSection(
             isExchanging = uiState.isExchanging,
             pointsPerPiece = reward.pointsPerPiece,
