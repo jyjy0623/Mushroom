@@ -2,7 +2,6 @@ package com.mushroom.feature.task.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -35,7 +34,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.RadioButton
@@ -256,26 +254,13 @@ fun TaskEditScreen(
 
             if (!isReadOnly) {
                 HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Button(
+                    onClick = { viewModel.save(selectedDate) },
+                    enabled = !isSaving,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(
-                        onClick = { viewModel.saveAsTemplate() },
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    ) {
-                        Text("另存为模板")
-                    }
-                    Button(
-                        onClick = { viewModel.save(selectedDate) },
-                        enabled = !isSaving,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    ) {
-                        if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
-                        else Text("保存")
-                    }
+                    if (isSaving) CircularProgressIndicator(Modifier.size(16.dp))
+                    else Text("保存")
                 }
             }
 
