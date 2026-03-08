@@ -78,8 +78,8 @@ fun GameScreen(
     DisposableEffect(Unit) {
         val activity = context as? Activity
         val orig = activity?.requestedOrientation
-        MushroomLogger.w(TAG, "orientation lock: orig=$orig → SENSOR_LANDSCAPE, activity=${activity?.javaClass?.simpleName}")
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        MushroomLogger.w(TAG, "orientation lock: orig=$orig → LANDSCAPE, activity=${activity?.javaClass?.simpleName}")
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         onDispose {
             MushroomLogger.w(TAG, "GameScreen disposed, restoring orientation to $orig")
             if (orig != null) activity.requestedOrientation = orig
@@ -129,7 +129,9 @@ fun GameScreen(
     ) {
         // ── Canvas 游戏场景 ────────────────────────────────────
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawDinoScene(uiState.physics, size.width, size.height, fg)
+            if (size.width > 0f && size.height > 0f) {
+                drawDinoScene(uiState.physics, size.width, size.height, fg)
+            }
         }
 
         // ── 分数 / HI ──────────────────────────────────────────
