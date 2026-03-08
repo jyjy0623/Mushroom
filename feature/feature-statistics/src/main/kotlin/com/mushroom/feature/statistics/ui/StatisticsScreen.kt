@@ -1,6 +1,7 @@
 package com.mushroom.feature.statistics.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,12 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -31,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.CheckInStatistics
+import com.mushroom.core.domain.entity.MilestoneScorePoint
 import com.mushroom.core.domain.entity.MilestoneType
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomStatistics
@@ -55,6 +63,7 @@ import com.mushroom.core.domain.entity.StatisticsPeriod
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.feature.game.viewmodel.GameViewModel
 import com.mushroom.feature.statistics.viewmodel.StatisticsViewModel
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -368,6 +377,18 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                 }
             }
         } else {
+        val today = LocalDate.now()
+        val yearToMonthToPoints = currentStats.scorePoints
+            .sortedByDescending { it.date }
+            .groupBy { it.date.year }
+            .toSortedMap(compareByDescending { it })
+            .mapValues { (_, pts) ->
+                pts.groupBy { it.date.monthValue }
+                    .toSortedMap(compareByDescending { it })
+            }
+        val expandedYears = rememberSaveable { mutableStateOf(setOf(today.year)) }
+        val expandedMonths = rememberSaveable { mutableStateOf(setOf(today.year * 100 + today.monthValue)) }
+
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -394,26 +415,45 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                     }
                 }
             }
-            // 折线图
+            // 折線圖
             item {
                 ScoreLineChart(scorePoints = currentStats.scorePoints)
             }
-            items(currentStats.scorePoints.reversed()) { point ->
-                Card(Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(point.name, style = MaterialTheme.typography.bodyMedium)
-                            Text("${point.date} · ${milestoneTypeLabel(point.type)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // 歷史成績：年→月 兩級分組折叠
+
+            yearToMonthToPoints.forEach { (year, monthToPoints) ->
+                val isYearExpanded = year in expandedYears.value
+                val totalForYear = monthToPoints.values.sumOf { it.size }
+                item(key = "score_year_$year") {
+                    ScoreYearHeader(
+                        year = year,
+                        count = totalForYear,
+                        isExpanded = isYearExpanded,
+                        onToggle = {
+                            expandedYears.value = if (isYearExpanded)
+                                expandedYears.value - year else expandedYears.value + year
                         }
-                        Text(
-                            "${point.score}分",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = scoreColor(point.score)
-                        )
+                    )
+                }
+                if (isYearExpanded) {
+                    monthToPoints.forEach { (month, points) ->
+                        val monthKey = year * 100 + month
+                        val isMonthExpanded = monthKey in expandedMonths.value
+                        item(key = "score_month_${year}_$month") {
+                            ScoreMonthHeader(
+                                year = year, month = month, count = points.size,
+                                isExpanded = isMonthExpanded,
+                                onToggle = {
+                                    expandedMonths.value = if (isMonthExpanded)
+                                        expandedMonths.value - monthKey else expandedMonths.value + monthKey
+                                }
+                            )
+                        }
+                        if (isMonthExpanded) {
+                            items(points, key = { "score_pt_${it.date}_${it.name}" }) { point ->
+                                ScorePointCard(point = point)
+                            }
+                        }
                     }
                 }
             }
@@ -555,6 +595,103 @@ private fun LegendItem(color: Color, label: String) {
         }
         Spacer(Modifier.width(4.dp))
         Text(label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+// -----------------------------------------------------------------------
+// 成绩历史分组 Header / Card
+// -----------------------------------------------------------------------
+@Composable
+private fun ScoreYearHeader(year: Int, count: Int, isExpanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            "${year}年",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "$count 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ScoreMonthHeader(year: Int, month: Int, count: Int, isExpanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 24.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.secondary
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            "${month}月",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "$count 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ScorePointCard(point: MilestoneScorePoint) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 40.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(point.name, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "${point.date} · ${milestoneTypeLabel(point.type)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                "${point.score}分",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = scoreColor(point.score)
+            )
+        }
     }
 }
 
