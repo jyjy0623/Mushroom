@@ -378,16 +378,21 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
             }
         } else {
         val today = LocalDate.now()
-        val yearToMonthToPoints = currentStats.scorePoints
+        val yearToMonthToDayToPoints = currentStats.scorePoints
             .sortedByDescending { it.date }
             .groupBy { it.date.year }
             .toSortedMap(compareByDescending { it })
             .mapValues { (_, pts) ->
                 pts.groupBy { it.date.monthValue }
                     .toSortedMap(compareByDescending { it })
+                    .mapValues { (_, mpts) ->
+                        mpts.groupBy { it.date }
+                            .toSortedMap(compareByDescending { it })
+                    }
             }
         val expandedYears = rememberSaveable { mutableStateOf(setOf(today.year)) }
         val expandedMonths = rememberSaveable { mutableStateOf(setOf(today.year * 100 + today.monthValue)) }
+        val expandedDates = rememberSaveable { mutableStateOf(setOf(today.toString())) }
 
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
@@ -419,11 +424,11 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
             item {
                 ScoreLineChart(scorePoints = currentStats.scorePoints)
             }
-            // 歷史成績：年→月 兩級分組折叠
+            // 歷史成績：年→月→日 三級分組折叠
 
-            yearToMonthToPoints.forEach { (year, monthToPoints) ->
+            yearToMonthToDayToPoints.forEach { (year, monthToDayToPoints) ->
                 val isYearExpanded = year in expandedYears.value
-                val totalForYear = monthToPoints.values.sumOf { it.size }
+                val totalForYear = monthToDayToPoints.values.sumOf { it.values.sumOf { d -> d.size } }
                 item(key = "score_year_$year") {
                     ScoreYearHeader(
                         year = year,
@@ -436,12 +441,13 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                     )
                 }
                 if (isYearExpanded) {
-                    monthToPoints.forEach { (month, points) ->
+                    monthToDayToPoints.forEach { (month, dayToPoints) ->
                         val monthKey = year * 100 + month
                         val isMonthExpanded = monthKey in expandedMonths.value
+                        val totalForMonth = dayToPoints.values.sumOf { it.size }
                         item(key = "score_month_${year}_$month") {
                             ScoreMonthHeader(
-                                year = year, month = month, count = points.size,
+                                year = year, month = month, count = totalForMonth,
                                 isExpanded = isMonthExpanded,
                                 onToggle = {
                                     expandedMonths.value = if (isMonthExpanded)
@@ -450,8 +456,25 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                             )
                         }
                         if (isMonthExpanded) {
-                            items(points, key = { "score_pt_${it.date}_${it.name}" }) { point ->
-                                ScorePointCard(point = point)
+                            dayToPoints.forEach { (date, points) ->
+                                val dateKey = date.toString()
+                                val isDateExpanded = dateKey in expandedDates.value
+                                item(key = "score_day_$dateKey") {
+                                    ScoreDayHeader(
+                                        date = date,
+                                        count = points.size,
+                                        isExpanded = isDateExpanded,
+                                        onToggle = {
+                                            expandedDates.value = if (isDateExpanded)
+                                                expandedDates.value - dateKey else expandedDates.value + dateKey
+                                        }
+                                    )
+                                }
+                                if (isDateExpanded) {
+                                    items(points, key = { "score_pt_${it.date}_${it.name}" }) { point ->
+                                        ScorePointCard(point = point)
+                                    }
+                                }
                             }
                         }
                     }
@@ -666,11 +689,42 @@ private fun ScoreMonthHeader(year: Int, month: Int, count: Int, isExpanded: Bool
 }
 
 @Composable
+private fun ScoreDayHeader(date: LocalDate, count: Int, isExpanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(start = 44.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Filled.KeyboardArrowDown
+                          else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            "${date.monthValue}月${date.dayOfMonth}日",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "$count 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun ScorePointCard(point: MilestoneScorePoint) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 40.dp)
+            .padding(start = 56.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
