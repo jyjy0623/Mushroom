@@ -118,32 +118,37 @@ fun DailyTaskListScreen(
     var showGameUnlockDialog by remember { mutableStateOf(false) }
     // 本地标记：当前日期是否已触发过横幅（rememberSaveable 防止导航返回后重置）
     var celebrationFiredDate by rememberSaveable { mutableStateOf<String?>(null) }
+    // 本地标记：当前日期是否已触发过游戏检查（防止重复弹窗）
+    var gameTriggerFiredDate by rememberSaveable { mutableStateOf<String?>(null) }
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
 
+    // 庆祝横幅（只弹一次）
     LaunchedEffect(isAllDone, uiState.date) {
         MushroomLogger.w(TAG, "isAllDone=$isAllDone date=${uiState.date} celebrationFiredDate=$celebrationFiredDate celebrationShown=${uiState.celebrationShown} total=${uiState.totalCount} completed=${uiState.completedCount}")
         if (isAllDone && celebrationFiredDate != uiState.date.toString() && !uiState.celebrationShown) {
             celebrationFiredDate = uiState.date.toString()
             viewModel.markCelebrationShown()
             showCelebration = true
-            // 并发检查是否可以触发游戏（今日未玩过 AND 是今天），等待挂起结果
-            val isToday = uiState.date == LocalDate.now()
-            MushroomLogger.w(TAG, "all tasks done! isToday=$isToday, checking game trigger...")
-            val canTrigger = if (isToday) {
-                viewModel.checkGameTrigger()
-            } else false
-            MushroomLogger.w(TAG, "checkGameTrigger result=$canTrigger")
             delay(3_000)
             showCelebration = false
-            // 3秒横幅后弹出游戏解锁提示（结果已确定，无竞态问题）
-            if (canTrigger) {
-                MushroomLogger.w(TAG, "showing game unlock dialog")
-                showGameUnlockDialog = true
-            } else {
-                MushroomLogger.w(TAG, "game trigger skipped: canTrigger=$canTrigger")
-            }
         } else if (!isAllDone) {
             showCelebration = false
+        }
+    }
+
+    // 游戏触发（独立于庆祝横幅，全部完成+今天+未玩过即触发）
+    LaunchedEffect(isAllDone, uiState.date) {
+        if (isAllDone && uiState.date == LocalDate.now() && gameTriggerFiredDate != uiState.date.toString()) {
+            MushroomLogger.w(TAG, "all tasks done today, checking game trigger...")
+            val canTrigger = viewModel.checkGameTrigger()
+            MushroomLogger.w(TAG, "checkGameTrigger result=$canTrigger")
+            if (canTrigger) {
+                gameTriggerFiredDate = uiState.date.toString()
+                // 等庆祝横幅结束后再弹游戏弹窗
+                if (showCelebration) delay(3_200)
+                MushroomLogger.w(TAG, "showing game unlock dialog")
+                showGameUnlockDialog = true
+            }
         }
     }
 
