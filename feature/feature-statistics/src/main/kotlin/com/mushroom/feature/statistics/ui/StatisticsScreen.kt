@@ -47,7 +47,10 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -539,6 +542,9 @@ private fun ScoreLineChart(scorePoints: List<com.mushroom.core.domain.entity.Mil
     val quizColor = Color(0xFF4CAF50)   // 绿色：小测验
     val examColor = Color(0xFF2196F3)   // 蓝色：大考
 
+    val textMeasurer = rememberTextMeasurer()
+    val axisTextStyle = TextStyle(fontSize = 10.sp, color = Color.Gray)
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("成绩趋势", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -553,23 +559,24 @@ private fun ScoreLineChart(scorePoints: List<com.mushroom.core.domain.entity.Mil
             val allPoints = (quizPoints + examPoints)
             val minScore = (allPoints.minOf { it.score } - 5).coerceAtLeast(0)
             val maxScore = (allPoints.maxOf { it.score } + 5).coerceAtMost(100)
+            val allDates = allPoints.map { it.date }.distinct().sorted()
 
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(180.dp)
             ) {
                 val w = size.width
                 val h = size.height
-                val padLeft = 32f
+                val padLeft = 40f
                 val padRight = 16f
                 val padTop = 12f
-                val padBottom = 24f
+                val padBottom = 36f
                 val chartW = w - padLeft - padRight
                 val chartH = h - padTop - padBottom
 
-                // 基准线（0/50/100）
-                val gridLines = listOf(0, 50, 100).filter { it in minScore..maxScore }
+                // Y 轴刻度
+                val gridLines = listOf(0, 25, 50, 75, 100).filter { it in minScore..maxScore }
                 gridLines.forEach { score ->
                     val yFrac = 1f - (score - minScore).toFloat() / (maxScore - minScore).coerceAtLeast(1)
                     val y = padTop + yFrac * chartH
@@ -579,12 +586,33 @@ private fun ScoreLineChart(scorePoints: List<com.mushroom.core.domain.entity.Mil
                         end = Offset(padLeft + chartW, y),
                         strokeWidth = 1f
                     )
+                    // Y 轴分数标注
+                    val textResult = textMeasurer.measure(score.toString(), axisTextStyle)
+                    drawText(
+                        textLayoutResult = textResult,
+                        topLeft = Offset(padLeft - textResult.size.width - 4f, y - textResult.size.height / 2f)
+                    )
+                }
+
+                // X 轴日期标注（最多显示 6 个，避免重叠）
+                val totalDates = allDates.size.coerceAtLeast(1)
+                val dateFmt = java.time.format.DateTimeFormatter.ofPattern("M/d")
+                val step = if (allDates.size <= 6) 1 else (allDates.size / 5).coerceAtLeast(1)
+                allDates.forEachIndexed { idx, date ->
+                    if (idx % step == 0 || idx == allDates.lastIndex) {
+                        val xFrac = if (totalDates > 1) idx.toFloat() / (totalDates - 1) else 0.5f
+                        val x = padLeft + xFrac * chartW
+                        val label = date.format(dateFmt)
+                        val textResult = textMeasurer.measure(label, axisTextStyle)
+                        drawText(
+                            textLayoutResult = textResult,
+                            topLeft = Offset(x - textResult.size.width / 2f, padTop + chartH + 4f)
+                        )
+                    }
                 }
 
                 fun drawSeries(points: List<com.mushroom.core.domain.entity.MilestoneScorePoint>, color: Color) {
-                    if (points.size < 1) return
-                    val allDates = allPoints.map { it.date }.distinct().sorted()
-                    val totalDates = allDates.size.coerceAtLeast(1)
+                    if (points.isEmpty()) return
 
                     val offsets = points.map { pt ->
                         val xIdx = allDates.indexOf(pt.date).toFloat()
