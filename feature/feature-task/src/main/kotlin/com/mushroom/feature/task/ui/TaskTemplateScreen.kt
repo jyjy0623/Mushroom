@@ -555,14 +555,16 @@ private fun ScoringRuleTemplateEditDialog(
     var name by remember { mutableStateOf(template?.name ?: "") }
     var nameError by remember { mutableStateOf("") }
     val initialRows = remember(template) {
-        template?.rules?.map { rule ->
+        val existing = template?.rules?.map { rule ->
             RuleRow(
                 minScore = rule.minScore.toString(),
                 maxScore = rule.maxScore.toString(),
                 level = rule.rewardConfig.level,
                 amount = rule.rewardConfig.amount.toString()
             )
-        } ?: listOf(RuleRow())
+        } ?: emptyList()
+        // 固定 3 个档位，不足时补空行
+        (existing + List(3) { RuleRow() }).take(3)
     }
     var rows by remember { mutableStateOf(initialRows) }
 
@@ -580,25 +582,15 @@ private fun ScoringRuleTemplateEditDialog(
                     supportingText = if (nameError.isNotEmpty()) {{ Text(nameError) }} else null,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("评分规则", style = MaterialTheme.typography.labelMedium)
+                Text("评分规则（3个档位）", style = MaterialTheme.typography.labelMedium)
                 rows.forEachIndexed { index, row ->
                     ScoringRuleRowEditor(
                         row = row,
                         onRowChange = { updated ->
                             rows = rows.toMutableList().also { it[index] = updated }
                         },
-                        onRemove = if (rows.size > 1) {
-                            { rows = rows.toMutableList().also { it.removeAt(index) } }
-                        } else null
+                        onRemove = null
                     )
-                }
-                TextButton(
-                    onClick = { rows = rows + RuleRow() },
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("添加规则行")
                 }
             }
         },
