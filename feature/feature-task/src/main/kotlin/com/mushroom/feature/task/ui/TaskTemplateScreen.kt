@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -555,16 +557,18 @@ private fun ScoringRuleTemplateEditDialog(
     var name by remember { mutableStateOf(template?.name ?: "") }
     var nameError by remember { mutableStateOf("") }
     val initialRows = remember(template) {
-        val existing = template?.rules?.map { rule ->
-            RuleRow(
-                minScore = rule.minScore.toString(),
-                maxScore = rule.maxScore.toString(),
-                level = rule.rewardConfig.level,
-                amount = rule.rewardConfig.amount.toString()
-            )
-        } ?: emptyList()
-        // 固定 3 个档位，不足时补空行
-        (existing + List(3) { RuleRow() }).take(3)
+        if (isNew) {
+            listOf(RuleRow())
+        } else {
+            template!!.rules.map { rule ->
+                RuleRow(
+                    minScore = rule.minScore.toString(),
+                    maxScore = rule.maxScore.toString(),
+                    level = rule.rewardConfig.level,
+                    amount = rule.rewardConfig.amount.toString()
+                )
+            }.ifEmpty { listOf(RuleRow()) }
+        }
     }
     var rows by remember { mutableStateOf(initialRows) }
 
@@ -582,15 +586,33 @@ private fun ScoringRuleTemplateEditDialog(
                     supportingText = if (nameError.isNotEmpty()) {{ Text(nameError) }} else null,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text("评分规则（3个档位）", style = MaterialTheme.typography.labelMedium)
-                rows.forEachIndexed { index, row ->
-                    ScoringRuleRowEditor(
-                        row = row,
-                        onRowChange = { updated ->
-                            rows = rows.toMutableList().also { it[index] = updated }
-                        },
-                        onRemove = null
-                    )
+                Text("评分规则档位", style = MaterialTheme.typography.labelMedium)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rows.forEachIndexed { index, row ->
+                        ScoringRuleRowEditor(
+                            row = row,
+                            onRowChange = { updated ->
+                                rows = rows.toMutableList().also { it[index] = updated }
+                            },
+                            onRemove = if (rows.size > 1) {
+                                { rows = rows.toMutableList().also { it.removeAt(index) } }
+                            } else null
+                        )
+                    }
+                }
+                TextButton(
+                    onClick = { rows = rows + RuleRow() },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("添加档位")
                 }
             }
         },
