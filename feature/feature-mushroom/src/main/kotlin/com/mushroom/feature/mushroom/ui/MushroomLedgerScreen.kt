@@ -368,7 +368,7 @@ private fun BalanceItem(level: MushroomLevel, count: Int) {
         )
         Text(level.displayName, style = MaterialTheme.typography.labelSmall)
         Text(
-            "=${level.exchangePoints}积分/个",
+            "${level.exchangePoints}积分",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
         )
