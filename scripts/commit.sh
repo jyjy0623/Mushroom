@@ -25,5 +25,9 @@ fi
 
 git commit -m "${MSG}
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+Generated with [Claude Code](https://claude.ai/code)
+via [Happy](https://happy.engineering)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Happy <yesreply@happy.engineering>"
 echo "[commit.sh] 提交完成：$(git log --oneline -1)"

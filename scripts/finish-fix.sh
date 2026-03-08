@@ -30,7 +30,11 @@ if [[ "${FIX_BRANCH}" != "master" ]]; then
     git checkout master
     git merge "${FIX_BRANCH}" --no-ff -m "Merge ${FIX_BRANCH}
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+Generated with [Claude Code](https://claude.ai/code)
+via [Happy](https://happy.engineering)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Co-Authored-By: Happy <yesreply@happy.engineering>"
     echo "[finish-fix.sh] 推送 master..."
     git push origin master
 else
