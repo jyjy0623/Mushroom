@@ -53,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,14 +116,14 @@ fun DailyTaskListScreen(
     var showCelebration by remember { mutableStateOf(false) }
     // 游戏解锁弹窗
     var showGameUnlockDialog by remember { mutableStateOf(false) }
-    // 本地标记：当前日期是否已触发过横幅（立即置位，防止 uiState 异步更新前重复触发）
-    var celebrationFiredDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
+    // 本地标记：当前日期是否已触发过横幅（rememberSaveable 防止导航返回后重置）
+    var celebrationFiredDate by rememberSaveable { mutableStateOf<String?>(null) }
     val isAllDone = uiState.totalCount > 0 && uiState.completedCount == uiState.totalCount
 
     LaunchedEffect(isAllDone, uiState.date) {
         MushroomLogger.w(TAG, "isAllDone=$isAllDone date=${uiState.date} celebrationFiredDate=$celebrationFiredDate celebrationShown=${uiState.celebrationShown} total=${uiState.totalCount} completed=${uiState.completedCount}")
-        if (isAllDone && celebrationFiredDate != uiState.date && !uiState.celebrationShown) {
-            celebrationFiredDate = uiState.date
+        if (isAllDone && celebrationFiredDate != uiState.date.toString() && !uiState.celebrationShown) {
+            celebrationFiredDate = uiState.date.toString()
             viewModel.markCelebrationShown()
             showCelebration = true
             // 并发检查是否可以触发游戏（今日未玩过 AND 是今天），等待挂起结果
