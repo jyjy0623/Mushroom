@@ -357,7 +357,7 @@ private fun ScoringRuleTemplateCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onEdit,
-                onDoubleClick = onRequestDelete
+                onLongClick = onRequestDelete
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
