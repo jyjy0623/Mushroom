@@ -116,11 +116,7 @@ fun TaskTemplateScreen(
                 0 -> TaskTemplateManageTab(
                     templates = uiState.builtInTemplates + uiState.customTemplates,
                     onEdit = { showTaskTemplateDialog = it },
-                    onRequestDelete = { template ->
-                        if (!template.isBuiltIn) {
-                            pendingDeleteTaskTemplate = template
-                        }
-                    }
+                    onRequestDelete = { pendingDeleteTaskTemplate = it }
                 )
                 1 -> ScoringRuleTemplateTab(
                     templates = scoringTemplates,
