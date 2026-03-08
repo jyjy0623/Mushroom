@@ -15,7 +15,6 @@ import com.mushroom.feature.reward.usecase.CreateRewardUseCase
 import com.mushroom.feature.reward.usecase.DeleteRewardUseCase
 import com.mushroom.feature.reward.usecase.ExchangeMushroomsUseCase
 import com.mushroom.core.domain.entity.RewardStatus
-import com.mushroom.feature.reward.usecase.GetActiveRewardsUseCase
 import com.mushroom.feature.reward.usecase.GetAllNonArchivedRewardsUseCase
 import com.mushroom.feature.reward.usecase.GetPuzzleProgressUseCase
 import com.mushroom.feature.reward.usecase.GetTimeRewardBalanceUseCase
@@ -152,7 +151,7 @@ class RewardDetailViewModel @Inject constructor(
     private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase,
     private val exchangeMushroomsUseCase: ExchangeMushroomsUseCase,
     private val claimRewardUseCase: ClaimRewardUseCase,
-    private val getActiveRewardsUseCase: GetActiveRewardsUseCase
+    private val getAllNonArchivedRewardsUseCase: GetAllNonArchivedRewardsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RewardDetailUiState())
@@ -163,7 +162,7 @@ class RewardDetailViewModel @Inject constructor(
 
     fun loadReward(rewardId: Long) {
         viewModelScope.launch {
-            getActiveRewardsUseCase().collect { rewards ->
+            getAllNonArchivedRewardsUseCase().collect { rewards ->
                 val reward = rewards.firstOrNull { it.id == rewardId } ?: return@collect
                 _uiState.update { it.copy(reward = reward) }
             }
