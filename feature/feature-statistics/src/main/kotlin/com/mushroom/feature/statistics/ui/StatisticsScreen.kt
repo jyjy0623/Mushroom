@@ -328,7 +328,7 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                                 Text("最高分", style = MaterialTheme.typography.labelSmall)
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(trendLabel(currentStats.trend), style = MaterialTheme.typography.titleSmall, color = trendColor(currentStats.trend))
+                                Text(trendLabel(currentStats.trend), style = MaterialTheme.typography.titleLarge, color = trendColor(currentStats.trend))
                                 Text("趋势", style = MaterialTheme.typography.labelSmall)
                             }
                         }
