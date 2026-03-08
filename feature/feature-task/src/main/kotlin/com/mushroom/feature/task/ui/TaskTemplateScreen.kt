@@ -267,7 +267,7 @@ private fun TaskTemplateManageCard(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onEdit,
-                onDoubleClick = onRequestDelete
+                onLongClick = onRequestDelete
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
