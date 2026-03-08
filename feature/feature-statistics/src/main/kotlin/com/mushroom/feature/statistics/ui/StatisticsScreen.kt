@@ -1,5 +1,6 @@
 package com.mushroom.feature.statistics.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -387,6 +394,10 @@ private fun ScoreTab(scoreStats: Map<Subject, ScoreStatistics>, onNavigateToMile
                     }
                 }
             }
+            // 折线图
+            item {
+                ScoreLineChart(scorePoints = currentStats.scorePoints)
+            }
             items(currentStats.scorePoints.reversed()) { point ->
                 Card(Modifier.fillMaxWidth()) {
                     Row(
@@ -445,6 +456,106 @@ private fun milestoneTypeLabel(type: MilestoneType) = when (type) {
 private fun mushroomEmoji(level: MushroomLevel) = when (level) {
     MushroomLevel.SMALL -> "🍄"; MushroomLevel.MEDIUM -> "🍄‍🟫"; MushroomLevel.LARGE -> "🌟"
     MushroomLevel.GOLD -> "✨"; MushroomLevel.LEGEND -> "👑"
+}
+
+// -----------------------------------------------------------------------
+// 成绩折线图
+// -----------------------------------------------------------------------
+@Composable
+private fun ScoreLineChart(scorePoints: List<com.mushroom.core.domain.entity.MilestoneScorePoint>) {
+    // 小测验：MINI_TEST；大考：其余类型
+    val quizPoints = scorePoints
+        .filter { it.type == MilestoneType.MINI_TEST }
+        .sortedBy { it.date }
+    val examPoints = scorePoints
+        .filter { it.type != MilestoneType.MINI_TEST }
+        .sortedBy { it.date }
+
+    if (quizPoints.isEmpty() && examPoints.isEmpty()) return
+
+    val quizColor = Color(0xFF4CAF50)   // 绿色：小测验
+    val examColor = Color(0xFF2196F3)   // 蓝色：大考
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("成绩趋势", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            // 图例
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (quizPoints.isNotEmpty()) LegendItem(color = quizColor, label = "小测验")
+                if (examPoints.isNotEmpty()) LegendItem(color = examColor, label = "校测/期中/期末")
+            }
+            Spacer(Modifier.height(8.dp))
+
+            val allPoints = (quizPoints + examPoints)
+            val minScore = (allPoints.minOf { it.score } - 5).coerceAtLeast(0)
+            val maxScore = (allPoints.maxOf { it.score } + 5).coerceAtMost(100)
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+            ) {
+                val w = size.width
+                val h = size.height
+                val padLeft = 32f
+                val padRight = 16f
+                val padTop = 12f
+                val padBottom = 24f
+                val chartW = w - padLeft - padRight
+                val chartH = h - padTop - padBottom
+
+                // 基准线（0/50/100）
+                val gridLines = listOf(0, 50, 100).filter { it in minScore..maxScore }
+                gridLines.forEach { score ->
+                    val yFrac = 1f - (score - minScore).toFloat() / (maxScore - minScore).coerceAtLeast(1)
+                    val y = padTop + yFrac * chartH
+                    drawLine(
+                        color = Color.LightGray.copy(alpha = 0.5f),
+                        start = Offset(padLeft, y),
+                        end = Offset(padLeft + chartW, y),
+                        strokeWidth = 1f
+                    )
+                }
+
+                fun drawSeries(points: List<com.mushroom.core.domain.entity.MilestoneScorePoint>, color: Color) {
+                    if (points.size < 1) return
+                    val allDates = allPoints.map { it.date }.distinct().sorted()
+                    val totalDates = allDates.size.coerceAtLeast(1)
+
+                    val offsets = points.map { pt ->
+                        val xIdx = allDates.indexOf(pt.date).toFloat()
+                        val xFrac = if (totalDates > 1) xIdx / (totalDates - 1) else 0.5f
+                        val yFrac = 1f - (pt.score - minScore).toFloat() / (maxScore - minScore).coerceAtLeast(1)
+                        Offset(padLeft + xFrac * chartW, padTop + yFrac * chartH)
+                    }
+
+                    if (offsets.size >= 2) {
+                        val path = Path().apply {
+                            moveTo(offsets[0].x, offsets[0].y)
+                            offsets.drop(1).forEach { lineTo(it.x, it.y) }
+                        }
+                        drawPath(path, color = color, style = Stroke(width = 3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    }
+                    offsets.forEach { drawCircle(color = color, radius = 5f, center = it) }
+                }
+
+                drawSeries(quizPoints, quizColor)
+                drawSeries(examPoints, examColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Canvas(modifier = Modifier.width(20.dp).height(3.dp)) {
+            drawLine(color = color, start = Offset(0f, size.height / 2), end = Offset(size.width, size.height / 2), strokeWidth = 4f)
+        }
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
 }
 
 // -----------------------------------------------------------------------
