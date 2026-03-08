@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.CheckInStatistics
@@ -236,20 +237,38 @@ private fun MushroomTab(stats: MushroomStatistics?) {
         modifier = Modifier.fillMaxSize()
     ) {
         item {
-            // 当前余额
-            Card(Modifier.fillMaxWidth()) {
+            // 当前余额 - 与蘑菇页余额卡片布局一致
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("当前余额", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("当前余额", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "总积分：${stats.currentBalance.totalPoints()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         MushroomLevel.values().forEach { level ->
                             val cnt = stats.currentBalance.get(level)
-                            if (cnt > 0) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(mushroomEmoji(level))
-                                    Text(cnt.toString(), fontWeight = FontWeight.Bold)
-                                    Text(level.displayName, style = MaterialTheme.typography.labelSmall)
-                                }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(mushroomEmoji(level), fontSize = 24.sp)
+                                Text(cnt.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    "${level.exchangePoints}积分",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                )
                             }
                         }
                     }
@@ -257,17 +276,50 @@ private fun MushroomTab(stats: MushroomStatistics?) {
             }
         }
         item {
-            // 收支汇总
-            Card(Modifier.fillMaxWidth()) {
+            // 期间收支 - 按蘑菇等级分列展示
+            Card(
+                Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("期间收支", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
                     val totalEarned = stats.totalEarned.entries.sumOf { (level, cnt) -> level.exchangePoints * cnt }
                     val totalSpent = stats.totalSpent.entries.sumOf { (level, cnt) -> level.exchangePoints * cnt }
                     val totalDeducted = stats.totalDeducted.entries.sumOf { (level, cnt) -> level.exchangePoints * cnt }
-                    Text("获得积分：+$totalEarned", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.tertiary)
-                    Text("兑换消耗：-$totalSpent", style = MaterialTheme.typography.bodyMedium)
-                    Text("扣除：-$totalDeducted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("期间收支", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "净：${totalEarned - totalSpent - totalDeducted}积分",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        MushroomLevel.values().forEach { level ->
+                            val earned = stats.totalEarned[level] ?: 0
+                            val spent = (stats.totalSpent[level] ?: 0) + (stats.totalDeducted[level] ?: 0)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(mushroomEmoji(level), fontSize = 24.sp)
+                                Text(
+                                    "+$earned",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                                Text(
+                                    "-$spent",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
                 }
             }
         }
