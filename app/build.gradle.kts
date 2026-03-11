@@ -38,6 +38,8 @@ android {
         buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
         buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
         buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+        // Server configuration
+        buildConfigField("String", "SERVER_URL", "\"http://192.168.31.174:8080\"")
     }
 
     signingConfigs {
@@ -88,6 +90,7 @@ dependencies {
     implementation(project(":core:core-domain"))
     implementation(project(":core:core-data"))
     implementation(project(":core:core-ui"))
+    implementation(project(":core:core-network"))
     implementation(project(":feature:feature-task"))
     implementation(project(":feature:feature-checkin"))
     implementation(project(":feature:feature-mushroom"))

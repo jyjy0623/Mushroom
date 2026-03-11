@@ -14,6 +14,8 @@ coroutines = "1.8.1"
 serialization = "1.7.1"
 coil = "2.6.0"
 vico = "2.0.0-alpha.20"
+okhttp = "4.12.0"
+retrofit = "2.11.0"
 junit5 = "5.10.3"
 mockk = "1.13.11"
 turbine = "1.1.0"
@@ -69,6 +71,11 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 
 # Charts
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
+# Network
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 
 # Unit Test
 junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }

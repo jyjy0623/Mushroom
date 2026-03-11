@@ -6,6 +6,7 @@ import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import com.mushroom.core.data.backup.BackupService
 import com.mushroom.core.logging.LogExporter
 import com.mushroom.core.logging.MushroomLogger
@@ -13,8 +14,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -26,15 +30,26 @@ sealed class SettingsViewEvent {
     data class ShowSnackbar(val message: String) : SettingsViewEvent()
 }
 
+data class ServerHealthState(
+    val isLoading: Boolean = false,
+    val isConnected: Boolean = false,
+    val message: String = "未测试",
+    val latency: Long = 0L
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val backupService: BackupService,
-    private val logExporter: LogExporter
+    private val logExporter: LogExporter,
+    private val serverHealthRepository: ServerHealthRepository
 ) : ViewModel() {
 
     private val _viewEvent = MutableSharedFlow<SettingsViewEvent>()
     val viewEvent: SharedFlow<SettingsViewEvent> = _viewEvent.asSharedFlow()
+
+    private val _serverHealthState = MutableStateFlow(ServerHealthState())
+    val serverHealthState: StateFlow<ServerHealthState> = _serverHealthState.asStateFlow()
 
     fun exportBackup() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -92,6 +107,35 @@ class SettingsViewModel @Inject constructor(
                 MushroomLogger.e(TAG, "Export diagnostics failed", it)
                 _viewEvent.emit(SettingsViewEvent.ShowSnackbar("诊断日志导出失败：${it.message}"))
             }
+        }
+    }
+
+    fun checkServerHealth() {
+        viewModelScope.launch {
+            _serverHealthState.value = _serverHealthState.value.copy(isLoading = true)
+            val startTime = System.currentTimeMillis()
+
+            serverHealthRepository.checkHealth()
+                .onSuccess { response ->
+                    val latency = System.currentTimeMillis() - startTime
+                    _serverHealthState.value = ServerHealthState(
+                        isLoading = false,
+                        isConnected = true,
+                        message = "连接成功 (${response.status})",
+                        latency = latency
+                    )
+                    MushroomLogger.d(TAG, "Server health check passed: ${response.status} (${latency}ms)")
+                }
+                .onFailure { error ->
+                    val latency = System.currentTimeMillis() - startTime
+                    _serverHealthState.value = ServerHealthState(
+                        isLoading = false,
+                        isConnected = false,
+                        message = "连接失败: ${error.message}",
+                        latency = latency
+                    )
+                    MushroomLogger.e(TAG, "Server health check failed", error)
+                }
         }
     }
 }

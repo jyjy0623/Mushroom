@@ -31,6 +31,7 @@ include(":core:core-logging")
 include(":core:core-domain")
 include(":core:core-data")
 include(":core:core-ui")
+include(":core:core-network")
 
 // feature modules
 include(":feature:feature-task")
