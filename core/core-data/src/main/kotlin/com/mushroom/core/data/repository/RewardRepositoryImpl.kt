@@ -61,6 +61,9 @@ class RewardRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getExchangeCount(rewardId: Long): Flow<Int> =
+        rewardExchangeDao.getExchangeCount(rewardId)
+
     override suspend fun getTimeRewardBalance(rewardId: Long, periodStart: LocalDate): TimeRewardBalance? {
         val usage = timeRewardUsageDao.getUsage(rewardId, periodStart.toString()) ?: return null
         return TimeRewardBalance(

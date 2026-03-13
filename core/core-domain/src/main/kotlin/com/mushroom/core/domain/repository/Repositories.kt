@@ -58,6 +58,7 @@ interface RewardRepository {
     suspend fun insertReward(reward: Reward): Long
     suspend fun updateReward(reward: Reward)
     fun getPuzzleProgress(rewardId: Long): Flow<PuzzleProgress>
+    fun getExchangeCount(rewardId: Long): Flow<Int>
     suspend fun getTimeRewardBalance(rewardId: Long, periodStart: LocalDate): TimeRewardBalance?
     suspend fun updateTimeRewardUsage(rewardId: Long, periodStart: LocalDate, usedTimes: Int)
     suspend fun insertExchange(exchange: RewardExchange): Long
