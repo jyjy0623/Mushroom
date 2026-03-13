@@ -169,6 +169,9 @@ interface RewardExchangeDao {
     @Query("SELECT * FROM reward_exchanges WHERE reward_id = :rewardId AND puzzle_pieces_unlocked > 0 ORDER BY created_at ASC")
     fun getPhysicalExchanges(rewardId: Long): Flow<List<RewardExchangeEntity>>
 
+    @Query("SELECT COUNT(*) FROM reward_exchanges WHERE reward_id = :rewardId")
+    fun getExchangeCount(rewardId: Long): Flow<Int>
+
     @Query("SELECT * FROM reward_exchanges WHERE reward_id = :rewardId")
     suspend fun getExchangesByRewardId(rewardId: Long): List<RewardExchangeEntity>
 

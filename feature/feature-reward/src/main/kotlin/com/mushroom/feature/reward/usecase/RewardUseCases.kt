@@ -152,15 +152,17 @@ class ExchangeMushroomsUseCase @Inject constructor(
         // 次数上限检查（periodType 为 null 表示不限）
         val periodType = config.periodType
         val maxTimes = config.maxTimesPerPeriod
+        val periodStart = if (periodType != null) currentPeriodStart(periodType) else LocalDate.MIN
+        val balance = rewardRepo.getTimeRewardBalance(reward.id, periodStart)
+        val usedTimes = balance?.usedTimes ?: 0
+
         if (periodType != null && maxTimes != null) {
-            val periodStart = currentPeriodStart(periodType)
-            val balance = rewardRepo.getTimeRewardBalance(reward.id, periodStart)
-            val usedTimes = balance?.usedTimes ?: 0
             check(usedTimes < maxTimes) {
                 "本${if (periodType.name == "WEEKLY") "周" else "月"}已达兑换上限（${maxTimes}次）"
             }
-            rewardRepo.updateTimeRewardUsage(reward.id, periodStart, usedTimes + 1)
         }
+
+        rewardRepo.updateTimeRewardUsage(reward.id, periodStart, usedTimes + 1)
 
         // 余额检验：固定消耗等级和数量
         val mushroomBalance = mushroomRepo.getBalance().first()
@@ -217,6 +219,16 @@ class GetPuzzleProgressUseCase @Inject constructor(
 }
 
 // -----------------------------------------------------------------------
+// GetExchangeCountUseCase
+// -----------------------------------------------------------------------
+class GetExchangeCountUseCase @Inject constructor(
+    private val repo: RewardRepository
+) {
+    operator fun invoke(rewardId: Long): Flow<Int> =
+        repo.getExchangeCount(rewardId)
+}
+
+// -----------------------------------------------------------------------
 // GetTimeRewardBalanceUseCase
 // -----------------------------------------------------------------------
 class GetTimeRewardBalanceUseCase @Inject constructor(
@@ -225,9 +237,8 @@ class GetTimeRewardBalanceUseCase @Inject constructor(
     suspend operator fun invoke(rewardId: Long): TimeRewardBalance? {
         val reward = repo.getRewardById(rewardId) ?: return null
         val config = reward.timeLimitConfig ?: return null
-        // 无周期限制时不需要查询余额
-        val periodType = config.periodType ?: return null
-        val periodStart = currentPeriodStart(periodType)
+        val periodType = config.periodType
+        val periodStart = if (periodType != null) currentPeriodStart(periodType) else LocalDate.MIN
         return repo.getTimeRewardBalance(rewardId, periodStart)
     }
 

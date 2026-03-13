@@ -16,6 +16,7 @@ import com.mushroom.feature.reward.usecase.DeleteRewardUseCase
 import com.mushroom.feature.reward.usecase.ExchangeMushroomsUseCase
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.feature.reward.usecase.GetAllNonArchivedRewardsUseCase
+import com.mushroom.feature.reward.usecase.GetExchangeCountUseCase
 import com.mushroom.feature.reward.usecase.GetPuzzleProgressUseCase
 import com.mushroom.feature.reward.usecase.GetTimeRewardBalanceUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 // -----------------------------------------------------------------------
 // RewardListViewModel
@@ -62,6 +64,7 @@ class RewardListViewModel @Inject constructor(
     getAllNonArchived: GetAllNonArchivedRewardsUseCase,
     private val getPuzzleProgressUseCase: GetPuzzleProgressUseCase,
     private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase,
+    private val getExchangeCountUseCase: GetExchangeCountUseCase,
     private val deleteRewardUseCase: DeleteRewardUseCase
 ) : ViewModel() {
 
@@ -82,10 +85,15 @@ class RewardListViewModel @Inject constructor(
                                 RewardUiModel(reward = reward, puzzleProgress = progress)
                             }
                         RewardType.TIME_BASED ->
-                            flow {
+                            getExchangeCountUseCase(reward.id).map { count ->
                                 val balance = getTimeRewardBalanceUseCase(reward.id)
-                                    ?: null
-                                emit(RewardUiModel(reward = reward, timeBalance = balance))
+                                val effectiveBalance = balance ?: TimeRewardBalance(
+                                    rewardId = reward.id,
+                                    periodStart = LocalDate.MIN,
+                                    maxTimes = null,
+                                    usedTimes = count
+                                )
+                                RewardUiModel(reward = reward, timeBalance = effectiveBalance)
                             }
                     }
                 }
