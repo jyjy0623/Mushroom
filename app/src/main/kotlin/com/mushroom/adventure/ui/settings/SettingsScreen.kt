@@ -182,6 +182,10 @@ fun SettingsScreen(
                 ServerConnectionItem(viewModel = viewModel)
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ServerUrlItem(viewModel = viewModel)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                CloudBackupItem(viewModel = viewModel)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                CloudRestoreItem(viewModel = viewModel)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -420,4 +424,183 @@ private fun ServerUrlEditDialog(
             }
         }
     )
+}
+
+@Composable
+private fun CloudBackupItem(viewModel: SettingsViewModel) {
+    val state by viewModel.cloudBackupState.collectAsStateWithLifecycle()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !state.isUploading) { viewModel.uploadCloudBackup() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (state.isUploading) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "云端备份",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                if (state.isUploading) "正在上传..."
+                else if (state.lastUploadTime != null) "上次备份：${state.lastUploadTime}"
+                else "将数据备份到云端服务器",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CloudRestoreItem(viewModel: SettingsViewModel) {
+    val state by viewModel.cloudBackupState.collectAsStateWithLifecycle()
+    var showRestoreDialog by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                viewModel.loadCloudBackupList()
+                showRestoreDialog = true
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (state.isDownloading) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "云端恢复",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                if (state.isDownloading) "正在恢复..."
+                else "从云端备份恢复数据",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+
+    if (showRestoreDialog) {
+        CloudRestoreDialog(
+            state = state,
+            onDismiss = { showRestoreDialog = false },
+            onRestore = { backupId ->
+                viewModel.restoreCloudBackup(backupId)
+                showRestoreDialog = false
+            },
+            onDelete = { backupId -> viewModel.deleteCloudBackup(backupId) }
+        )
+    }
+}
+
+@Composable
+private fun CloudRestoreDialog(
+    state: CloudBackupState,
+    onDismiss: () -> Unit,
+    onRestore: (Int) -> Unit,
+    onDelete: (Int) -> Unit
+) {
+    var confirmRestoreId by remember { mutableStateOf<Int?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择云端备份") },
+        text = {
+            if (state.isLoadingList) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text("加载中...", style = MaterialTheme.typography.bodySmall)
+                }
+            } else if (state.backupList.isEmpty()) {
+                Text("暂无云端备份", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    state.backupList.forEach { backup ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    "备份时间：${backup.exportedAt}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    "任务数：${backup.taskCount}，大小：${backup.sizeBytes / 1024}KB",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row {
+                                    TextButton(onClick = { confirmRestoreId = backup.id }) {
+                                        Text("恢复")
+                                    }
+                                    TextButton(onClick = { onDelete(backup.id) }) {
+                                        Text("删除", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+        dismissButton = {}
+    )
+
+    confirmRestoreId?.let { id ->
+        AlertDialog(
+            onDismissRequest = { confirmRestoreId = null },
+            title = { Text("确认恢复") },
+            text = { Text("恢复将替换当前所有数据，此操作不可撤销。确定继续吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRestoreId = null
+                    onRestore(id)
+                }) { Text("确定恢复") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRestoreId = null }) { Text("取消") }
+            }
+        )
+    }
 }

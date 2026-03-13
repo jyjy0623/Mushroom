@@ -4,6 +4,7 @@ import android.content.Context
 import com.mushroom.adventure.core.network.api.MushroomApi
 import com.mushroom.adventure.core.network.client.NetworkClientFactory
 import com.mushroom.adventure.core.network.config.ServerUrlManager
+import com.mushroom.adventure.core.network.repository.CloudBackupRepository
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import dagger.Module
 import dagger.Provides
@@ -38,5 +39,11 @@ object NetworkModule {
     @Singleton
     fun provideServerHealthRepository(api: MushroomApi): ServerHealthRepository {
         return ServerHealthRepository(api)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCloudBackupRepository(api: MushroomApi): CloudBackupRepository {
+        return CloudBackupRepository(api)
     }
 }

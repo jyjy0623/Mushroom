@@ -6,8 +6,12 @@ import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.adventure.core.network.config.DeviceIdProvider
 import com.mushroom.adventure.core.network.config.ServerUrlManager
+import com.mushroom.adventure.core.network.data.CloudBackupSummary
+import com.mushroom.adventure.core.network.repository.CloudBackupRepository
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
+import com.mushroom.core.data.backup.BackupPayload
 import com.mushroom.core.data.backup.BackupService
 import com.mushroom.core.logging.LogExporter
 import com.mushroom.core.logging.MushroomLogger
@@ -21,6 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.io.File
 import javax.inject.Inject
 
@@ -38,12 +44,22 @@ data class ServerHealthState(
     val latency: Long = 0L
 )
 
+data class CloudBackupState(
+    val isUploading: Boolean = false,
+    val isLoadingList: Boolean = false,
+    val isDownloading: Boolean = false,
+    val lastUploadTime: String? = null,
+    val backupList: List<CloudBackupSummary> = emptyList(),
+    val error: String? = null
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val backupService: BackupService,
     private val logExporter: LogExporter,
     private val serverHealthRepository: ServerHealthRepository,
+    private val cloudBackupRepository: CloudBackupRepository,
     val serverUrlManager: ServerUrlManager
 ) : ViewModel() {
 
@@ -54,6 +70,13 @@ class SettingsViewModel @Inject constructor(
     val serverHealthState: StateFlow<ServerHealthState> = _serverHealthState.asStateFlow()
 
     val currentServerUrl: StateFlow<String> = serverUrlManager.currentUrl
+
+    private val _cloudBackupState = MutableStateFlow(CloudBackupState())
+    val cloudBackupState: StateFlow<CloudBackupState> = _cloudBackupState.asStateFlow()
+
+    private val backupJson = Json { ignoreUnknownKeys = true }
+
+    private fun getDeviceId(): String = DeviceIdProvider.getDeviceId(context)
 
     fun updateServerUrl(url: String) {
         serverUrlManager.updateUrl(url)
@@ -150,6 +173,92 @@ class SettingsViewModel @Inject constructor(
                         latency = latency
                     )
                     MushroomLogger.e(TAG, "Server health check failed", error)
+                }
+        }
+    }
+
+    // --- Cloud Backup ---
+
+    fun uploadCloudBackup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _cloudBackupState.value = _cloudBackupState.value.copy(isUploading = true, error = null)
+            runCatching {
+                val payload = backupService.exportPayload()
+                val jsonStr = backupJson.encodeToString(BackupPayload.serializer(), payload)
+                val jsonObject = Json.parseToJsonElement(jsonStr).jsonObject
+                cloudBackupRepository.uploadBackup(getDeviceId(), jsonObject).getOrThrow()
+            }.onSuccess { response ->
+                _cloudBackupState.value = _cloudBackupState.value.copy(
+                    isUploading = false,
+                    lastUploadTime = response.exportedAt
+                )
+                _viewEvent.emit(SettingsViewEvent.ShowSnackbar("云端备份成功"))
+                loadCloudBackupList()
+            }.onFailure { e ->
+                _cloudBackupState.value = _cloudBackupState.value.copy(
+                    isUploading = false,
+                    error = e.message
+                )
+                _viewEvent.emit(SettingsViewEvent.ShowSnackbar("云端备份失败：${e.message}"))
+                MushroomLogger.e(TAG, "Cloud backup upload failed", e)
+            }
+        }
+    }
+
+    fun loadCloudBackupList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _cloudBackupState.value = _cloudBackupState.value.copy(isLoadingList = true, error = null)
+            cloudBackupRepository.listBackups(getDeviceId())
+                .onSuccess { list ->
+                    _cloudBackupState.value = _cloudBackupState.value.copy(
+                        isLoadingList = false,
+                        backupList = list
+                    )
+                }
+                .onFailure { e ->
+                    _cloudBackupState.value = _cloudBackupState.value.copy(
+                        isLoadingList = false,
+                        error = e.message
+                    )
+                    MushroomLogger.e(TAG, "Cloud backup list failed", e)
+                }
+        }
+    }
+
+    fun restoreCloudBackup(backupId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _cloudBackupState.value = _cloudBackupState.value.copy(isDownloading = true, error = null)
+            runCatching {
+                val response = cloudBackupRepository.downloadBackup(backupId).getOrThrow()
+                val payload = backupJson.decodeFromJsonElement(
+                    BackupPayload.serializer(),
+                    response.backup
+                )
+                backupService.importPayload(payload).getOrThrow()
+            }.onSuccess {
+                _cloudBackupState.value = _cloudBackupState.value.copy(isDownloading = false)
+                _viewEvent.emit(SettingsViewEvent.ShowSnackbar("云端恢复成功"))
+            }.onFailure { e ->
+                _cloudBackupState.value = _cloudBackupState.value.copy(
+                    isDownloading = false,
+                    error = e.message
+                )
+                _viewEvent.emit(SettingsViewEvent.ShowSnackbar("云端恢复失败：${e.message}"))
+                MushroomLogger.e(TAG, "Cloud backup restore failed", e)
+            }
+        }
+    }
+
+    fun deleteCloudBackup(backupId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            cloudBackupRepository.deleteBackup(backupId)
+                .onSuccess {
+                    _viewEvent.emit(SettingsViewEvent.ShowSnackbar("备份已删除"))
+                    loadCloudBackupList()
+                }
+                .onFailure { e ->
+                    _viewEvent.emit(SettingsViewEvent.ShowSnackbar("删除失败：${e.message}"))
+                    MushroomLogger.e(TAG, "Cloud backup delete failed", e)
                 }
         }
     }

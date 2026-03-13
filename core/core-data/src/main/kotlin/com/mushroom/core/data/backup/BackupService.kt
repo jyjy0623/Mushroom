@@ -28,8 +28,17 @@ class BackupService @Inject constructor(
     suspend fun export(): File {
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
         val exportFile = File(context.cacheDir, "mushroom_backup_$timestamp.json")
+        val payload = exportPayload()
+        exportFile.writeText(json.encodeToString(payload), Charsets.UTF_8)
+        MushroomLogger.i(TAG, "Backup exported: ${exportFile.name} " +
+                "(tasks=${payload.tasks.size}, checkIns=${payload.checkIns.size}, " +
+                "ledger=${payload.mushroomLedger.size})")
+        return exportFile
+    }
 
-        val payload = BackupPayload(
+    /** 构建 BackupPayload 到内存（供云端上传使用，不写文件）。 */
+    suspend fun exportPayload(): BackupPayload {
+        return BackupPayload(
             exportedAt = LocalDateTime.now().toString(),
             tasks = dao.getAllTasks().map { it.toBackup() },
             checkIns = dao.getAllCheckIns().map { it.toBackup() },
@@ -42,12 +51,6 @@ class BackupService @Inject constructor(
             scoringRules = dao.getAllScoringRules().map { it.toBackup() },
             keyDates = dao.getAllKeyDates().map { it.toBackup() }
         )
-
-        exportFile.writeText(json.encodeToString(payload), Charsets.UTF_8)
-        MushroomLogger.i(TAG, "Backup exported: ${exportFile.name} " +
-                "(tasks=${payload.tasks.size}, checkIns=${payload.checkIns.size}, " +
-                "ledger=${payload.mushroomLedger.size})")
-        return exportFile
     }
 
     /**
@@ -85,6 +88,35 @@ class BackupService @Inject constructor(
 
         MushroomLogger.i(TAG, "Backup imported from ${file.name}, exportedAt=${payload.exportedAt}")
     }.onFailure { MushroomLogger.e(TAG, "Backup import failed", it) }
+
+    /** 从内存中的 BackupPayload 恢复数据（供云端恢复使用）。 */
+    suspend fun importPayload(payload: BackupPayload): Result<Unit> = runCatching {
+        check(payload.schemaVersion == BackupPayload.SCHEMA_VERSION) {
+            "不支持的备份版本 ${payload.schemaVersion}，当前版本 ${BackupPayload.SCHEMA_VERSION}"
+        }
+
+        dao.clearCheckIns()
+        dao.clearLedger()
+        dao.clearDeductionRecords()
+        dao.clearExchanges()
+        dao.clearScoringRules()
+        dao.clearMilestones()
+        dao.clearKeyDates()
+        dao.clearRewards()
+        dao.clearTasks()
+
+        if (payload.tasks.isNotEmpty()) dao.insertTasks(payload.tasks.map { it.toEntity() })
+        if (payload.checkIns.isNotEmpty()) dao.insertCheckIns(payload.checkIns.map { it.toEntity() })
+        if (payload.mushroomLedger.isNotEmpty()) dao.insertLedger(payload.mushroomLedger.map { it.toEntity() })
+        if (payload.deductionRecords.isNotEmpty()) dao.insertDeductionRecords(payload.deductionRecords.map { it.toEntity() })
+        if (payload.rewards.isNotEmpty()) dao.insertRewards(payload.rewards.map { it.toEntity() })
+        if (payload.rewardExchanges.isNotEmpty()) dao.insertExchanges(payload.rewardExchanges.map { it.toEntity() })
+        if (payload.milestones.isNotEmpty()) dao.insertMilestones(payload.milestones.map { it.toEntity() })
+        if (payload.scoringRules.isNotEmpty()) dao.insertScoringRules(payload.scoringRules.map { it.toEntity() })
+        if (payload.keyDates.isNotEmpty()) dao.insertKeyDates(payload.keyDates.map { it.toEntity() })
+
+        MushroomLogger.i(TAG, "Cloud backup imported, exportedAt=${payload.exportedAt}")
+    }.onFailure { MushroomLogger.e(TAG, "Cloud backup import failed", it) }
 
     // -------------------------------------------------------------------------
     // Entity → Backup
