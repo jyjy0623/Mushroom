@@ -1,11 +1,14 @@
 package com.mushroom.adventure.core.network.di
 
+import android.content.Context
 import com.mushroom.adventure.core.network.api.MushroomApi
 import com.mushroom.adventure.core.network.client.NetworkClientFactory
+import com.mushroom.adventure.core.network.config.ServerUrlManager
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Qualifier
 import javax.inject.Singleton
@@ -19,17 +22,15 @@ annotation class ServerUrl
 object NetworkModule {
     @Provides
     @Singleton
-    @ServerUrl
-    fun provideServerBaseUrl(): String {
-        // 从 app module 的 BuildConfig 获取服务器地址
-        // 这需要在 AppModule 中提供实际的 URL
-        return "http://192.168.31.174:8080" // 默认值
-    }
+    fun provideServerUrlManager(
+        @ApplicationContext context: Context,
+        @ServerUrl defaultUrl: String
+    ): ServerUrlManager = ServerUrlManager(context, defaultUrl)
 
     @Provides
     @Singleton
-    fun provideMushroomApi(@ServerUrl baseUrl: String): MushroomApi {
-        val retrofit = NetworkClientFactory.createRetrofit(baseUrl)
+    fun provideMushroomApi(serverUrlManager: ServerUrlManager): MushroomApi {
+        val retrofit = NetworkClientFactory.createRetrofit(serverUrlManager)
         return retrofit.create(MushroomApi::class.java)
     }
 

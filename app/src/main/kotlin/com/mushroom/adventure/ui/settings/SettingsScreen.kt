@@ -19,13 +19,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,15 +34,18 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -176,6 +180,8 @@ fun SettingsScreen(
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 ServerConnectionItem(viewModel = viewModel)
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                ServerUrlItem(viewModel = viewModel)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -309,4 +315,109 @@ private fun ServerConnectionItem(viewModel: SettingsViewModel) {
             modifier = Modifier.padding(start = 8.dp)
         )
     }
+}
+
+@Composable
+private fun ServerUrlItem(viewModel: SettingsViewModel) {
+    val currentUrl by viewModel.currentServerUrl.collectAsStateWithLifecycle()
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showEditDialog = true }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Edit,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "服务器地址",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                currentUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+
+    if (showEditDialog) {
+        ServerUrlEditDialog(
+            currentUrl = currentUrl,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { newUrl ->
+                viewModel.updateServerUrl(newUrl)
+                showEditDialog = false
+            },
+            onReset = {
+                viewModel.resetServerUrl()
+                showEditDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun ServerUrlEditDialog(
+    currentUrl: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    onReset: () -> Unit
+) {
+    var urlText by remember { mutableStateOf(currentUrl) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("修改服务器地址") },
+        text = {
+            Column {
+                Text(
+                    "输入服务器地址（如 http://192.168.1.100:8080）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = urlText,
+                    onValueChange = { urlText = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("http://host:port") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(urlText) },
+                enabled = urlText.isNotBlank()
+            ) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onReset) {
+                    Text("恢复默认")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            }
+        }
+    )
 }

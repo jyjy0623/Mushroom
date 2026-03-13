@@ -6,6 +6,7 @@ import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.adventure.core.network.config.ServerUrlManager
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import com.mushroom.core.data.backup.BackupService
 import com.mushroom.core.logging.LogExporter
@@ -42,7 +43,8 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val backupService: BackupService,
     private val logExporter: LogExporter,
-    private val serverHealthRepository: ServerHealthRepository
+    private val serverHealthRepository: ServerHealthRepository,
+    val serverUrlManager: ServerUrlManager
 ) : ViewModel() {
 
     private val _viewEvent = MutableSharedFlow<SettingsViewEvent>()
@@ -50,6 +52,19 @@ class SettingsViewModel @Inject constructor(
 
     private val _serverHealthState = MutableStateFlow(ServerHealthState())
     val serverHealthState: StateFlow<ServerHealthState> = _serverHealthState.asStateFlow()
+
+    val currentServerUrl: StateFlow<String> = serverUrlManager.currentUrl
+
+    fun updateServerUrl(url: String) {
+        serverUrlManager.updateUrl(url)
+        // 重置连接状态，提示用户重新检测
+        _serverHealthState.value = ServerHealthState(message = "地址已更新，点击检测")
+    }
+
+    fun resetServerUrl() {
+        serverUrlManager.resetToDefault()
+        _serverHealthState.value = ServerHealthState(message = "已恢复默认地址，点击检测")
+    }
 
     fun exportBackup() {
         viewModelScope.launch(Dispatchers.IO) {
