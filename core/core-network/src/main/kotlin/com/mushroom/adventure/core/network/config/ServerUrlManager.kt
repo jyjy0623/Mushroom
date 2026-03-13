@@ -20,9 +20,13 @@ class ServerUrlManager(
         prefs.getString(KEY_SERVER_URL, null) ?: defaultUrl
 
     fun updateUrl(url: String) {
-        val trimmed = url.trimEnd('/')
-        prefs.edit().putString(KEY_SERVER_URL, trimmed).apply()
-        _currentUrl.value = trimmed
+        var normalized = url.trim().trimEnd('/')
+        // 用户可能只输入 ip:port，自动补全 http://
+        if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+            normalized = "http://$normalized"
+        }
+        prefs.edit().putString(KEY_SERVER_URL, normalized).apply()
+        _currentUrl.value = normalized
     }
 
     fun resetToDefault() {
