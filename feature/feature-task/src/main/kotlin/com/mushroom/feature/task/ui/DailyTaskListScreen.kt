@@ -209,7 +209,7 @@ fun DailyTaskListScreen(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 12.dp)
+                contentPadding = PaddingValues(top = 12.dp, bottom = 80.dp)
             ) {
                 if (state.upcomingMilestones.isNotEmpty()) {
                     item {
