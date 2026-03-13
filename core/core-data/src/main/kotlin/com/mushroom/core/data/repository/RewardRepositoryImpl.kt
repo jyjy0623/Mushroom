@@ -42,8 +42,7 @@ class RewardRepositoryImpl @Inject constructor(
         rewardDao.update(RewardMapper.toDb(reward))
 
     override fun getPuzzleProgress(rewardId: Long): Flow<PuzzleProgress> {
-        val rewardFlow = rewardDao.getActiveRewards()
-            .map { list -> list.firstOrNull { it.id == rewardId } }
+        val rewardFlow = rewardDao.getRewardByIdFlow(rewardId)
         val exchangesFlow = rewardExchangeDao.getPhysicalExchanges(rewardId)
         return combine(rewardFlow, exchangesFlow) { entity, exchanges ->
             val totalPieces = entity?.puzzlePieces ?: 1

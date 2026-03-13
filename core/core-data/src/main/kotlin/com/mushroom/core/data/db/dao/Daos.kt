@@ -145,6 +145,9 @@ interface RewardDao {
     @Query("SELECT * FROM rewards WHERE id = :id")
     suspend fun getRewardById(id: Long): RewardEntity?
 
+    @Query("SELECT * FROM rewards WHERE id = :id")
+    fun getRewardByIdFlow(id: Long): Flow<RewardEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(reward: RewardEntity): Long
 
