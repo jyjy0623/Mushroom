@@ -59,6 +59,8 @@ import com.mushroom.core.domain.entity.PeriodType
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.core.ui.themedEmoji
+import com.mushroom.core.ui.R as CoreUiR
+import androidx.compose.ui.res.stringResource
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -319,7 +321,7 @@ private fun PhysicalConfigSection(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = requiredPointsError != null,
                 supportingText = if (requiredPointsError != null) ({ Text(requiredPointsError) })
-                else ({ Text("兑换蘑菇时按等级折算积分，累计达到门槛即可解锁拼图") }),
+                else ({ Text(stringResource(CoreUiR.string.exchange_hint)) }),
                 singleLine = true
             )
             OutlinedTextField(
@@ -386,8 +388,8 @@ private fun TimeConfigSection(
                 singleLine = true
             )
 
-            // 每次消耗蘑菇
-            Text("每次消耗蘑菇", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            // 每次消耗
+            Text(stringResource(CoreUiR.string.consume_currency), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically

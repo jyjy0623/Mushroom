@@ -12,6 +12,9 @@ import com.mushroom.feature.milestone.usecase.CreateMilestoneUseCase
 import com.mushroom.feature.milestone.usecase.DefaultScoringRules
 import com.mushroom.feature.milestone.usecase.GetMilestonesUseCase
 import com.mushroom.feature.milestone.usecase.RecordMilestoneScoreUseCase
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.mushroom.core.ui.R as CoreUiR
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +50,8 @@ sealed class MilestoneListViewEvent {
 class MilestoneListViewModel @Inject constructor(
     private val getMilestonesUseCase: GetMilestonesUseCase,
     private val recordScoreUseCase: RecordMilestoneScoreUseCase,
-    private val milestoneRepository: com.mushroom.core.domain.repository.MilestoneRepository
+    private val milestoneRepository: com.mushroom.core.domain.repository.MilestoneRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _selectedSubject = MutableStateFlow<Subject?>(null)
@@ -81,7 +85,7 @@ class MilestoneListViewModel @Inject constructor(
         viewModelScope.launch {
             recordScoreUseCase(milestoneId, score)
                 .onSuccess {
-                    _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar("成绩已录入，获得蘑菇奖励！"))
+                    _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(appContext.getString(CoreUiR.string.milestone_reward_earned)))
                 }
                 .onFailure { e ->
                     _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(e.message ?: "录入失败"))

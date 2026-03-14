@@ -1,5 +1,6 @@
 package com.mushroom.feature.reward.usecase
 
+import android.content.Context
 import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomSource
@@ -15,7 +16,9 @@ import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.RewardRepository
 import com.mushroom.core.logging.MushroomLogger
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.reward.puzzle.PuzzleCutter
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.time.DayOfWeek
@@ -62,7 +65,8 @@ class CreateRewardUseCase @Inject constructor(
 class ExchangeMushroomsUseCase @Inject constructor(
     private val rewardRepo: RewardRepository,
     private val mushroomRepo: MushroomRepository,
-    private val eventBus: AppEventBus
+    private val eventBus: AppEventBus,
+    @ApplicationContext private val appContext: Context
 ) {
     suspend operator fun invoke(
         rewardId: Long,
@@ -97,7 +101,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
         val pointsPerPiece = reward.pointsPerPiece
         val piecesToUnlock = minOf(contributedPoints / pointsPerPiece, remaining)
         check(piecesToUnlock > 0) {
-            "积分不足：${mushroomLevel.displayName}×$amount = ${contributedPoints}分，" +
+            "积分不足：${mushroomLevel.themedDisplayName(appContext)}×$amount = ${contributedPoints}分，" +
             "解锁1块拼图需 ${pointsPerPiece}分"
         }
 
@@ -105,7 +109,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
         val balance = mushroomRepo.getBalance().first()
         val available = balance.get(mushroomLevel)
         check(available >= amount) {
-            "${mushroomLevel.displayName}余额不足（需要 $amount，当前 $available）"
+            "${mushroomLevel.themedDisplayName(appContext)}余额不足（需要 $amount，当前 $available）"
         }
 
         // 写入交换记录
@@ -168,7 +172,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
         val mushroomBalance = mushroomRepo.getBalance().first()
         val available = mushroomBalance.get(config.costMushroomLevel)
         check(available >= config.costMushroomCount) {
-            "${config.costMushroomLevel.displayName}余额不足（需要 ${config.costMushroomCount}，当前 $available）"
+            "${config.costMushroomLevel.themedDisplayName(appContext)}余额不足（需要 ${config.costMushroomCount}，当前 $available）"
         }
 
         rewardRepo.insertExchange(
@@ -274,7 +278,8 @@ class ClaimRewardUseCase @Inject constructor(
 // -----------------------------------------------------------------------
 class DeleteRewardUseCase @Inject constructor(
     private val rewardRepo: RewardRepository,
-    private val mushroomRepo: MushroomRepository
+    private val mushroomRepo: MushroomRepository,
+    @ApplicationContext private val appContext: Context
 ) {
     suspend operator fun invoke(rewardId: Long): Result<Unit> {
         MushroomLogger.i(TAG, "DeleteRewardUseCase: rewardId=$rewardId")
@@ -293,7 +298,7 @@ class DeleteRewardUseCase @Inject constructor(
                     amount = count,
                     sourceType = MushroomSource.APPEAL_REFUND,
                     sourceId = rewardId,
-                    note = "删除奖品「${reward.name}」退还 ${level.displayName}×$count",
+                    note = "删除奖品「${reward.name}」退还 ${level.themedDisplayName(appContext)}×$count",
                     createdAt = LocalDateTime.now()
                 )
             }

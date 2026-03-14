@@ -60,6 +60,8 @@ import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.core.ui.themedEmoji
+import com.mushroom.core.ui.R as CoreUiR
+import androidx.compose.ui.res.stringResource
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewModel
 import kotlinx.coroutines.delay
@@ -400,7 +402,7 @@ private fun ExchangeSection(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("消耗蘑菇", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(CoreUiR.string.consume_currency), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
             // 兑换条件说明
             if (pointsPerPiece > 0) {

@@ -13,6 +13,9 @@ import com.mushroom.core.domain.entity.TimeRewardBalance
 import com.mushroom.feature.reward.usecase.ClaimRewardUseCase
 import com.mushroom.feature.reward.usecase.CreateRewardUseCase
 import com.mushroom.feature.reward.usecase.DeleteRewardUseCase
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.mushroom.core.ui.R as CoreUiR
 import com.mushroom.feature.reward.usecase.ExchangeMushroomsUseCase
 import com.mushroom.core.domain.entity.RewardStatus
 import com.mushroom.feature.reward.usecase.GetAllNonArchivedRewardsUseCase
@@ -65,7 +68,8 @@ class RewardListViewModel @Inject constructor(
     private val getPuzzleProgressUseCase: GetPuzzleProgressUseCase,
     private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase,
     private val getExchangeCountUseCase: GetExchangeCountUseCase,
-    private val deleteRewardUseCase: DeleteRewardUseCase
+    private val deleteRewardUseCase: DeleteRewardUseCase,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _viewEvent = MutableSharedFlow<RewardListViewEvent>()
@@ -124,7 +128,7 @@ class RewardListViewModel @Inject constructor(
         viewModelScope.launch {
             deleteRewardUseCase(rewardId)
                 .onSuccess {
-                    _viewEvent.emit(RewardListViewEvent.ShowSnackbar("奖品已删除，蘑菇已退还"))
+                    _viewEvent.emit(RewardListViewEvent.ShowSnackbar(appContext.getString(CoreUiR.string.reward_deleted_refunded)))
                 }
                 .onFailure { e ->
                     _viewEvent.emit(RewardListViewEvent.ShowSnackbar(e.message ?: "删除失败"))

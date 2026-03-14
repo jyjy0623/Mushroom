@@ -62,6 +62,8 @@ import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.entity.TaskTemplate
 import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.R as CoreUiR
+import androidx.compose.ui.res.stringResource
 import java.time.DayOfWeek
 import com.mushroom.feature.task.viewmodel.TaskEditViewEvent
 import com.mushroom.feature.task.viewmodel.TaskEditViewModel
@@ -409,7 +411,7 @@ fun RewardSection(
                 }
             } else {
                 Text(
-                    "默认：由规则引擎自动计算（小蘑菇×1）",
+                    stringResource(CoreUiR.string.task_reward_default_hint, stringResource(CoreUiR.string.level_small)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -449,7 +451,7 @@ fun RewardSection(
                     }
                 } else {
                     Text(
-                        "默认：截止前完成得小蘑菇×1",
+                        stringResource(CoreUiR.string.task_early_default_hint, stringResource(CoreUiR.string.level_small)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -569,7 +571,7 @@ fun DeadlineSection(
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = if (enabled) Modifier.clickable { showTimePicker = true } else Modifier
             )
-            Text("设置截止时间后，提前完成可获得额外蘑菇奖励 ⚡",
+            Text(stringResource(CoreUiR.string.early_bonus_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

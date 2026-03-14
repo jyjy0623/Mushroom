@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.RewardType
+import com.mushroom.core.ui.R as CoreUiR
+import androidx.compose.ui.res.stringResource
 import com.mushroom.feature.reward.viewmodel.RewardListViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardListViewModel
 import com.mushroom.feature.reward.viewmodel.RewardUiModel
@@ -80,7 +82,7 @@ fun RewardListScreen(
             text = {
                 Text(
                     "确定删除「${model?.reward?.name ?: ""}」？\n" +
-                    "已兑换的蘑菇将全部退还。"
+                    stringResource(CoreUiR.string.refund_currency_hint)
                 )
             },
             confirmButton = {

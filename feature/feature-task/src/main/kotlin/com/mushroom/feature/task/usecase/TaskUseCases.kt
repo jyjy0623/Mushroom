@@ -1,5 +1,6 @@
 package com.mushroom.feature.task.usecase
 
+import android.content.Context
 import com.mushroom.core.domain.entity.CheckIn
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Task
@@ -12,6 +13,9 @@ import com.mushroom.core.domain.repository.CheckInRepository
 import com.mushroom.core.domain.repository.TaskRepository
 import com.mushroom.core.domain.repository.TaskTemplateRepository
 import com.mushroom.core.logging.MushroomLogger
+import com.mushroom.core.ui.R as CoreUiR
+import com.mushroom.core.ui.themedDisplayName
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -204,7 +208,8 @@ class GetTaskByIdUseCase @Inject constructor(
 class CheckInTaskUseCase @Inject constructor(
     private val taskRepo: TaskRepository,
     private val checkInRepo: CheckInRepository,
-    private val eventBus: AppEventBus
+    private val eventBus: AppEventBus,
+    @ApplicationContext private val appContext: Context
 ) {
     /** 返回打卡成功后获得的奖励描述文字，供 UI 展示 */
     suspend operator fun invoke(taskId: Long): Result<String> = runCatching {
@@ -259,25 +264,27 @@ class CheckInTaskUseCase @Inject constructor(
         isEarly: Boolean,
         earlyMinutes: Int
     ): String {
+        val smallName = appContext.getString(CoreUiR.string.level_small)
+        val mediumName = appContext.getString(CoreUiR.string.level_medium)
         val rewards = mutableListOf<String>()
         // 完成奖励：优先使用自定义配置，否则按规则默认值
         val baseConfig = task.customRewardConfig
         val baseLabel = if (baseConfig != null) {
-            "${baseConfig.level.displayName}×${baseConfig.amount}"
+            "${baseConfig.level.themedDisplayName(appContext)}×${baseConfig.amount}"
         } else when (task.templateType) {
-            TaskTemplateType.MORNING_READING    -> "小蘑菇×1"
-            TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"
-            TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"
-            else                                -> "小蘑菇×1"
+            TaskTemplateType.MORNING_READING    -> "${smallName}×1"
+            TaskTemplateType.HOMEWORK_AT_SCHOOL -> "${mediumName}×1"
+            TaskTemplateType.HOMEWORK_MEMO      -> "${smallName}×1"
+            else                                -> "${smallName}×1"
         }
         rewards += baseLabel
-        // 提前完成奖励：使用自定义配置，未配置时默认小蘑菇×1
+        // 提前完成奖励：使用自定义配置，未配置时默认小等级×1
         if (isEarly) {
             val earlyConfig = task.customEarlyRewardConfig
             val bonus = if (earlyConfig != null) {
-                "${earlyConfig.level.displayName}×${earlyConfig.amount}"
+                "${earlyConfig.level.themedDisplayName(appContext)}×${earlyConfig.amount}"
             } else {
-                "小蘑菇×1"
+                "${smallName}×1"
             }
             rewards += "提前完成 $bonus"
         }

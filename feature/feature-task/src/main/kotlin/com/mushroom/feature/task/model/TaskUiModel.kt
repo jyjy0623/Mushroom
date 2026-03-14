@@ -1,10 +1,14 @@
 package com.mushroom.feature.task.model
 
+import android.content.Context
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.entity.Task
 import com.mushroom.core.domain.entity.TaskStatus
 import com.mushroom.core.domain.entity.TaskTemplateType
+import com.mushroom.core.ui.R as CoreUiR
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import java.time.format.DateTimeFormatter
 
 private val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
@@ -18,12 +22,12 @@ data class TaskUiModel(
     val status: TaskStatus,
     val isEarlyDone: Boolean,
     val hasRepeat: Boolean,
-    val rewardPreview: String       // "🍄 小蘑菇×1" 等奖励预览
+    val rewardPreview: String       // 奖励预览
 ) {
     val isDone: Boolean get() = status == TaskStatus.EARLY_DONE || status == TaskStatus.ON_TIME_DONE
 }
 
-fun Task.toUiModel(): TaskUiModel = TaskUiModel(
+fun Task.toUiModel(context: Context): TaskUiModel = TaskUiModel(
     id = id,
     title = title,
     subjectLabel = subject.displayName(),
@@ -32,26 +36,29 @@ fun Task.toUiModel(): TaskUiModel = TaskUiModel(
     status = status,
     isEarlyDone = status == TaskStatus.EARLY_DONE,
     hasRepeat = repeatRule !is RepeatRule.None,
-    rewardPreview = computeRewardPreview(this)
+    rewardPreview = computeRewardPreview(this, context)
 )
 
 /** 根据规则预估奖励文字（不写入DB，仅展示用，与 RewardRules.kt 保持一致） */
-private fun computeRewardPreview(task: Task): String {
+private fun computeRewardPreview(task: Task, context: Context): String {
+    val smallName = context.getString(CoreUiR.string.level_small)
+    val mediumName = context.getString(CoreUiR.string.level_medium)
+    val emoji = context.getString(CoreUiR.string.level_emoji_small)
     val baseConfig = task.customRewardConfig
     val base = if (baseConfig != null) {
-        "${baseConfig.level.displayName}×${baseConfig.amount}"
+        "${baseConfig.level.themedDisplayName(context)}×${baseConfig.amount}"
     } else when (task.templateType) {
-        TaskTemplateType.MORNING_READING    -> "小蘑菇×1"
-        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "中蘑菇×1"
-        TaskTemplateType.HOMEWORK_MEMO      -> "小蘑菇×1"
-        TaskTemplateType.CUSTOM, null       -> "小蘑菇×1"
+        TaskTemplateType.MORNING_READING    -> "${smallName}×1"
+        TaskTemplateType.HOMEWORK_AT_SCHOOL -> "${mediumName}×1"
+        TaskTemplateType.HOMEWORK_MEMO      -> "${smallName}×1"
+        TaskTemplateType.CUSTOM, null       -> "${smallName}×1"
     }
     val earlyHint = if (task.deadline != null) {
         val earlyConfig = task.customEarlyRewardConfig
-        if (earlyConfig != null) " + 截止前完成可得 ${earlyConfig.level.displayName}×${earlyConfig.amount}"
+        if (earlyConfig != null) " + 截止前完成可得 ${earlyConfig.level.themedDisplayName(context)}×${earlyConfig.amount}"
         else " + 截止前完成可得提前奖励"
     } else ""
-    return "🍄 $base$earlyHint"
+    return "$emoji $base$earlyHint"
 }
 
 private fun Subject.displayName(): String = when (this) {

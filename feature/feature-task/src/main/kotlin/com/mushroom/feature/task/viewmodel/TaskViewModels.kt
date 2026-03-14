@@ -18,6 +18,8 @@ import com.mushroom.core.domain.entity.TemplateRewardConfig
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.feature.task.model.TaskUiModel
 import com.mushroom.feature.task.model.toUiModel
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.mushroom.feature.task.usecase.CheckInTaskUseCase
 import com.mushroom.feature.task.usecase.ApplyTaskTemplateUseCase
 import com.mushroom.feature.task.usecase.CopyTasksUseCase
@@ -38,6 +40,7 @@ import com.mushroom.core.domain.repository.TaskRepository
 import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomSource
 import com.mushroom.core.domain.entity.MushroomTransaction
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.game.repository.GameRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -96,7 +99,8 @@ class DailyTaskViewModel @Inject constructor(
     private val taskRepo: TaskRepository,
     private val milestoneRepository: MilestoneRepository,
     private val gameRepo: GameRepository,
-    private val mushroomRepo: MushroomRepository
+    private val mushroomRepo: MushroomRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _date = MutableStateFlow(LocalDate.now())
@@ -140,7 +144,7 @@ class DailyTaskViewModel @Inject constructor(
     val uiState: StateFlow<DailyTaskUiState> = combine(
         _date.flatMapLatest { date ->
             getDailyTasksUseCase(date).map { tasks ->
-                val uiModels = tasks.map { it.toUiModel() }
+                val uiModels = tasks.map { it.toUiModel(appContext) }
                 Triple(date, tasks, uiModels)
             }
         },
@@ -221,7 +225,7 @@ class DailyTaskViewModel @Inject constructor(
                         createdAt = now
                     )
                 })
-                val summary = rewards.joinToString("、") { (level, amount) -> "${level.displayName}×$amount" }
+                val summary = rewards.joinToString("、") { (level, amount) -> "${level.themedDisplayName(appContext)}×$amount" }
                 _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除并扣回奖励：$summary"))
             } else {
                 _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除"))
@@ -234,7 +238,7 @@ class DailyTaskViewModel @Inject constructor(
         val task = taskRepo.getTaskById(taskId) ?: return ""
         val checkIn = checkInRepo.getLatestCheckInForTask(taskId)
         val rewards = calcTaskRewards(task, checkIn?.isEarly == true)
-        return rewards.joinToString("、") { (level, amount) -> "${level.displayName}×$amount" }
+        return rewards.joinToString("、") { (level, amount) -> "${level.themedDisplayName(appContext)}×$amount" }
     }
 
     /**

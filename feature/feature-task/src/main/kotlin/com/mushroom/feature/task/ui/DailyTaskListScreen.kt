@@ -68,6 +68,8 @@ import com.mushroom.feature.task.usecase.DeleteMode
 import com.mushroom.feature.task.viewmodel.DailyTaskViewEvent
 import com.mushroom.feature.task.viewmodel.DailyTaskViewModel
 import com.mushroom.core.domain.entity.Milestone
+import com.mushroom.core.ui.R as CoreUiR
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -358,7 +360,7 @@ fun DailyTaskListScreen(
             title = { Text("🎮 解锁游戏！") },
             text = {
                 Text(
-                    "恭喜完成今日全勤！蘑菇大冒险 Run 已解锁，现在去挑战高分吧！",
+                    stringResource(CoreUiR.string.game_unlock_message),
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -515,15 +517,17 @@ private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int, mem
             )
             Spacer(Modifier.height(6.dp))
             // 全勤奖提示
+            val mediumEmoji = stringResource(CoreUiR.string.level_emoji_medium)
+            val mediumName = stringResource(CoreUiR.string.level_medium)
             if (allDone) {
                 Text(
-                    text = "🎉 已获得全勤奖 🍄‍🟫 中蘑菇×1",
+                    text = stringResource(CoreUiR.string.attendance_earned, mediumEmoji, mediumName),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
             } else if (total > 0) {
                 Text(
-                    text = "完成全部任务可额外获得 🍄‍🟫 中蘑菇×1",
+                    text = stringResource(CoreUiR.string.attendance_hint, mediumEmoji, mediumName),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

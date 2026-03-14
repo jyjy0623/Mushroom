@@ -17,6 +17,8 @@ import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.core.domain.repository.RewardRepository
+import android.content.Context
+import android.content.res.Resources
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -72,11 +74,15 @@ class ExchangeMushroomsUseCaseTest {
     private val rewardRepo = mockk<RewardRepository>()
     private val mushroomRepo = mockk<MushroomRepository>()
     private val eventBus = mockk<AppEventBus>()
+    private val mockContext = mockk<Context> {
+        every { getString(any()) } answers { "mock_level" }
+    }
 
     private val useCase = ExchangeMushroomsUseCase(
         rewardRepo = rewardRepo,
         mushroomRepo = mushroomRepo,
-        eventBus = eventBus
+        eventBus = eventBus,
+        appContext = mockContext
     )
 
     @Test
