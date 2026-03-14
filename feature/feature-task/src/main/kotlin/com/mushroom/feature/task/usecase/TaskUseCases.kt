@@ -83,8 +83,16 @@ class DeleteTaskUseCase @Inject constructor(
     suspend operator fun invoke(taskId: Long, deleteMode: DeleteMode): Result<Unit> = runCatching {
         when (deleteMode) {
             DeleteMode.SINGLE -> {
-                repo.deleteTask(taskId)
-                MushroomLogger.i(TAG, "[TASK] 删除 id=$taskId mode=SINGLE")
+                val task = repo.getTaskById(taskId)
+                if (task != null && task.repeatRule !is RepeatRule.None) {
+                    // 重复任务单次删除：标记为 SKIPPED 而非物理删除，
+                    // 防止 TaskGeneratorService 在 App 重启时重新生成
+                    repo.skipTask(taskId)
+                    MushroomLogger.i(TAG, "[TASK] 跳过 id=$taskId mode=SINGLE (repeating)")
+                } else {
+                    repo.deleteTask(taskId)
+                    MushroomLogger.i(TAG, "[TASK] 删除 id=$taskId mode=SINGLE")
+                }
             }
             DeleteMode.ALL_RECURRING -> {
                 val task = repo.getTaskById(taskId) ?: return@runCatching

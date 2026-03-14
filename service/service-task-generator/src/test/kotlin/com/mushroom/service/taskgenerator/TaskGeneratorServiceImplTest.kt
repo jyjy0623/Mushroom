@@ -50,7 +50,7 @@ class TaskGeneratorServiceImplTest {
     @BeforeEach
     fun setup() {
         // 默认当天没有任何任务
-        coEvery { taskRepository.getTasksByDate(wednesday) } returns flowOf(emptyList())
+        coEvery { taskRepository.getAllTaskTitlesByDate(wednesday) } returns emptyList()
         coEvery { taskRepository.insertTask(any()) } returns 99L
     }
 
@@ -73,7 +73,7 @@ class TaskGeneratorServiceImplTest {
         @Test
         fun `Daily task is generated for weekend`() = runTest {
             val saturday = LocalDate.of(2026, 3, 7)
-            coEvery { taskRepository.getTasksByDate(saturday) } returns flowOf(emptyList())
+            coEvery { taskRepository.getAllTaskTitlesByDate(saturday) } returns emptyList()
             val template = makeTask(repeatRule = RepeatRule.Daily)
             coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
 
@@ -128,7 +128,7 @@ class TaskGeneratorServiceImplTest {
         @Test
         fun `Weekdays task is NOT generated on Saturday`() = runTest {
             val saturday = LocalDate.of(2026, 3, 7)
-            coEvery { taskRepository.getTasksByDate(saturday) } returns flowOf(emptyList())
+            coEvery { taskRepository.getAllTaskTitlesByDate(saturday) } returns emptyList()
             val template = makeTask(repeatRule = RepeatRule.Weekdays)
             coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
 
@@ -140,7 +140,7 @@ class TaskGeneratorServiceImplTest {
         @Test
         fun `Weekdays task is NOT generated on Sunday`() = runTest {
             val sunday = LocalDate.of(2026, 3, 8)
-            coEvery { taskRepository.getTasksByDate(sunday) } returns flowOf(emptyList())
+            coEvery { taskRepository.getAllTaskTitlesByDate(sunday) } returns emptyList()
             val template = makeTask(repeatRule = RepeatRule.Weekdays)
             coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
 
@@ -172,7 +172,7 @@ class TaskGeneratorServiceImplTest {
         fun `Custom task is NOT generated when date does not match`() = runTest {
             // thursday
             val thursday = LocalDate.of(2026, 3, 5)
-            coEvery { taskRepository.getTasksByDate(thursday) } returns flowOf(emptyList())
+            coEvery { taskRepository.getAllTaskTitlesByDate(thursday) } returns emptyList()
             val rule = RepeatRule.Custom(setOf(DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY))
             val template = makeTask(repeatRule = rule)
             coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
@@ -192,10 +192,8 @@ class TaskGeneratorServiceImplTest {
         @Test
         fun `task with same title already existing is skipped`() = runTest {
             val template = makeTask(title = "Morning Reading", repeatRule = RepeatRule.Daily)
-            // 当天已有同名任务
-            val existing = makeTask(id = 10L, title = "Morning Reading", date = wednesday,
-                repeatRule = RepeatRule.None)
-            coEvery { taskRepository.getTasksByDate(wednesday) } returns flowOf(listOf(existing))
+            // 当天已有同名任务（包括 SKIPPED 状态）
+            coEvery { taskRepository.getAllTaskTitlesByDate(wednesday) } returns listOf("Morning Reading")
             coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
 
             service.generateForDate(wednesday)
@@ -228,6 +226,18 @@ class TaskGeneratorServiceImplTest {
             assertEquals(wednesday, capturedDeadline.toLocalDate())
             assertEquals(20, capturedDeadline.hour)
             assertEquals(0, capturedDeadline.minute)
+        }
+
+        @Test
+        fun `skipped task title prevents regeneration after process kill`() = runTest {
+            val template = makeTask(title = "Morning Reading", repeatRule = RepeatRule.Daily)
+            // 当天存在 SKIPPED 状态的同名任务（用户删除后标记为 SKIPPED）
+            coEvery { taskRepository.getAllTaskTitlesByDate(wednesday) } returns listOf("Morning Reading")
+            coEvery { taskRepository.getTasksByDateRange(any(), any()) } returns flowOf(listOf(template))
+
+            service.generateForDate(wednesday)
+
+            coVerify(exactly = 0) { taskRepository.insertTask(any()) }
         }
     }
 }

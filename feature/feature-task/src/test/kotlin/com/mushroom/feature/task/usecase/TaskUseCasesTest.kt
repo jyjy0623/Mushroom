@@ -154,10 +154,25 @@ class TaskUseCasesTest {
     @Nested
     inner class DeleteTaskUseCaseTest {
         @Test
-        fun `SINGLE mode should delete only the given task`() = runTest {
+        fun `SINGLE mode should delete non-repeating task`() = runTest {
+            val task = buildTask(id = 7, repeatRule = RepeatRule.None)
+            coEvery { taskRepo.getTaskById(7L) } returns task
+
             val result = DeleteTaskUseCase(taskRepo)(taskId = 7L, deleteMode = DeleteMode.SINGLE)
             assertTrue(result.isSuccess)
             coVerify(exactly = 1) { taskRepo.deleteTask(7L) }
+            coVerify(exactly = 0) { taskRepo.skipTask(any()) }
+        }
+
+        @Test
+        fun `SINGLE mode should skip repeating task instead of deleting`() = runTest {
+            val task = buildTask(id = 8, repeatRule = RepeatRule.Daily)
+            coEvery { taskRepo.getTaskById(8L) } returns task
+
+            val result = DeleteTaskUseCase(taskRepo)(taskId = 8L, deleteMode = DeleteMode.SINGLE)
+            assertTrue(result.isSuccess)
+            coVerify(exactly = 1) { taskRepo.skipTask(8L) }
+            coVerify(exactly = 0) { taskRepo.deleteTask(any()) }
         }
 
         @Test

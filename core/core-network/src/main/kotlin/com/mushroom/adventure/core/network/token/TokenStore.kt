@@ -7,4 +7,7 @@ interface TokenStore {
     fun clearTokens()
     fun getUserId(): Int?
     fun saveUserId(userId: Int)
+    fun getLastPhone(): String?
+    fun getLastNickname(): String?
+    fun saveLastLogin(phone: String, nickname: String)
 }

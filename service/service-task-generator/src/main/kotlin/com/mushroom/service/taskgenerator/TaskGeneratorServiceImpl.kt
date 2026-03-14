@@ -28,10 +28,8 @@ class TaskGeneratorServiceImpl @Inject constructor(
     override suspend fun generateForDate(date: LocalDate) {
         MushroomLogger.i(TAG, "generateForDate: $date")
 
-        // 查询该日期已存在的任务标题（用于幂等判断）
-        val existingTitles = taskRepository.getTasksByDate(date).first()
-            .map { it.title }
-            .toSet()
+        // 查询该日期已存在的所有任务标题（包括 SKIPPED，用于幂等判断）
+        val existingTitles = taskRepository.getAllTaskTitlesByDate(date).toSet()
 
         // 查询前 30 天内所有任务，从中找出有重复规则的"模板行"
         // 策略：以 date-30 到 date-1 为窗口，找 repeatRule != None 的任务

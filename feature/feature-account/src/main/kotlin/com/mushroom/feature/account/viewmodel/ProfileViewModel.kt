@@ -60,7 +60,22 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = "加载失败: ${e.message}") }
+                    // 网络失败时，尝试使用内存中已缓存的用户资料
+                    val cached = authRepository.currentUser.value
+                    if (cached != null) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                phone = cached.phone,
+                                nickname = cached.nickname,
+                                avatarUrl = cached.avatarUrl,
+                                editingNickname = cached.nickname,
+                                error = null
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false, error = "加载失败: ${e.message}") }
+                    }
                 }
         }
     }

@@ -27,6 +27,9 @@ class TaskRepositoryImpl @Inject constructor(
     override suspend fun getTaskById(id: Long): Task? =
         taskDao.getTaskById(id)?.let(TaskMapper::toDomain)
 
+    override suspend fun getAllTaskTitlesByDate(date: LocalDate): List<String> =
+        taskDao.getAllTaskTitlesByDate(date.toString())
+
     override suspend fun insertTask(task: Task): Long =
         taskDao.insert(TaskMapper.toDb(task))
 
@@ -35,6 +38,9 @@ class TaskRepositoryImpl @Inject constructor(
 
     override suspend fun deleteTask(id: Long) =
         taskDao.deleteById(id)
+
+    override suspend fun skipTask(id: Long) =
+        taskDao.markSkipped(id)
 
     override suspend fun deleteRecurringByTitle(title: String, fromDate: LocalDate) =
         taskDao.deleteRecurringByTitle(title, fromDate.toString())

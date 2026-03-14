@@ -7,10 +7,12 @@ import java.time.LocalDate
 interface TaskRepository {
     fun getTasksByDate(date: LocalDate): Flow<List<Task>>
     fun getTasksByDateRange(from: LocalDate, to: LocalDate): Flow<List<Task>>
+    suspend fun getAllTaskTitlesByDate(date: LocalDate): List<String>
     suspend fun getTaskById(id: Long): Task?
     suspend fun insertTask(task: Task): Long
     suspend fun updateTask(task: Task)
     suspend fun deleteTask(id: Long)
+    suspend fun skipTask(id: Long)
     suspend fun deleteRecurringByTitle(title: String, fromDate: LocalDate)
     suspend fun generateRepeatTasks(templateTaskId: Long, until: LocalDate)
 }

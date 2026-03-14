@@ -88,6 +88,29 @@ fun ProfileScreen(
             return@Scaffold
         }
 
+        if (state.error != null && !state.isEditing && state.phone.isEmpty()) {
+            // 加载失败且无缓存数据时显示错误页面
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = state.error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = viewModel::loadProfile) {
+                        Text("重试")
+                    }
+                }
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -1,6 +1,7 @@
 package com.mushroom.adventure
 
 import android.app.Application
+import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.core.data.seed.DeductionConfigSeed
 import com.mushroom.core.data.seed.ScoringRuleTemplateSeed
 import com.mushroom.core.data.seed.TaskTemplateSeed
@@ -31,6 +32,7 @@ class MushroomApp : Application() {
     @Inject lateinit var deductionConfigSeed: DeductionConfigSeed
     @Inject lateinit var mushroomRewardEngine: MushroomRewardEngine
     @Inject lateinit var taskGeneratorService: TaskGeneratorService
+    @Inject lateinit var authRepository: AuthRepository
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -50,6 +52,12 @@ class MushroomApp : Application() {
         appScope.launch {
             runCatching { taskGeneratorService.generateForDate(LocalDate.now()) }
                 .onFailure { MushroomLogger.e(TAG, "generateForDate failed", it) }
+        }
+
+        // 恢复登录会话：如果本地有 token，自动拉取用户资料
+        appScope.launch {
+            runCatching { authRepository.restoreSession() }
+                .onFailure { MushroomLogger.e(TAG, "restoreSession failed", it) }
         }
 
         // Touch the engine so its init block subscribes to the event bus

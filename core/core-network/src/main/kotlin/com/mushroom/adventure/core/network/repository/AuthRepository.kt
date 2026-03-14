@@ -28,6 +28,7 @@ class AuthRepository(
         val response = authApi.login(LoginRequest(phone, code, deviceId, nickname))
         tokenStore.saveTokens(response.accessToken, response.refreshToken)
         tokenStore.saveUserId(response.user.id)
+        tokenStore.saveLastLogin(response.user.phone, response.user.nickname)
         _isLoggedIn.value = true
         _currentUser.value = response.user
         response.user
@@ -59,9 +60,23 @@ class AuthRepository(
         _isLoggedIn.value = tokenStore.getAccessToken() != null
     }
 
+    /**
+     * App 启动时恢复登录会话：如果本地有 token，自动拉取用户资料。
+     * 网络失败时静默忽略，下次打开 App 再重试。
+     */
+    suspend fun restoreSession() {
+        if (tokenStore.getAccessToken() != null) {
+            runCatching { fetchProfile() }
+        }
+    }
+
     fun onSessionExpired() {
         tokenStore.clearTokens()
         _isLoggedIn.value = false
         _currentUser.value = null
     }
+
+    fun getLastPhone(): String? = tokenStore.getLastPhone()
+
+    fun getLastNickname(): String? = tokenStore.getLastNickname()
 }

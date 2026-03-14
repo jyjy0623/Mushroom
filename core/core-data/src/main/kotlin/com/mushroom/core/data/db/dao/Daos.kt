@@ -6,11 +6,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    @Query("SELECT * FROM tasks WHERE date = :date ORDER BY id")
+    @Query("SELECT * FROM tasks WHERE date = :date AND status != 'SKIPPED' ORDER BY id")
     fun getTasksByDate(date: String): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE date >= :from AND date <= :to ORDER BY date, status")
     fun getTasksByDateRange(from: String, to: String): Flow<List<TaskEntity>>
+
+    @Query("SELECT title FROM tasks WHERE date = :date")
+    suspend fun getAllTaskTitlesByDate(date: String): List<String>
 
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getTaskById(id: Long): TaskEntity?
@@ -23,6 +26,9 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("UPDATE tasks SET status = 'SKIPPED' WHERE id = :id")
+    suspend fun markSkipped(id: Long)
 
     @Query("DELETE FROM tasks WHERE title = :title AND repeat_rule_type != 'NONE' AND date >= :fromDate")
     suspend fun deleteRecurringByTitle(title: String, fromDate: String)
