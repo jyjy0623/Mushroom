@@ -15,10 +15,11 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // CI 环境优先使用官方源，避免第三方镜像偶发超时
+        google()
+        mavenCentral()
         maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/google") }
-        mavenCentral()
-        google()
     }
 }
 

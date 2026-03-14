@@ -11,7 +11,7 @@ class RewardMapperTest {
         name = "高达模型",
         imageUri = "content://images/gundam.jpg",
         type = RewardType.PHYSICAL,
-        requiredMushrooms = mapOf(MushroomLevel.GOLD to 2, MushroomLevel.LEGEND to 1),
+        requiredPoints = 100,
         puzzlePieces = 9,
         timeLimitConfig = null,
         status = RewardStatus.ACTIVE
@@ -23,10 +23,9 @@ class RewardMapperTest {
     }
 
     @Test
-    fun `when_requiredMushrooms_has_multiple_levels_should_roundtrip`() {
+    fun `when_requiredPoints_roundtrip_should_preserve_value`() {
         val restored = RewardMapper.toDomain(RewardMapper.toDb(base))
-        assertEquals(2, restored.requiredMushrooms[MushroomLevel.GOLD])
-        assertEquals(1, restored.requiredMushrooms[MushroomLevel.LEGEND])
+        assertEquals(100, restored.requiredPoints)
     }
 
     @Test
@@ -39,9 +38,10 @@ class RewardMapperTest {
     fun `when_timeLimitConfig_is_set_should_roundtrip_all_fields`() {
         val config = TimeLimitConfig(
             unitMinutes = 30,
+            costMushroomLevel = MushroomLevel.SMALL,
+            costMushroomCount = 5,
             periodType = PeriodType.WEEKLY,
-            maxMinutesPerPeriod = 120,
-            cooldownDays = 1,
+            maxTimesPerPeriod = 4,
             requireParentConfirm = true
         )
         val reward = base.copy(
@@ -52,8 +52,9 @@ class RewardMapperTest {
         assertNotNull(restored.timeLimitConfig)
         assertEquals(30, restored.timeLimitConfig!!.unitMinutes)
         assertEquals(PeriodType.WEEKLY, restored.timeLimitConfig!!.periodType)
-        assertEquals(120, restored.timeLimitConfig!!.maxMinutesPerPeriod)
-        assertEquals(1, restored.timeLimitConfig!!.cooldownDays)
+        assertEquals(4, restored.timeLimitConfig!!.maxTimesPerPeriod)
+        assertEquals(MushroomLevel.SMALL, restored.timeLimitConfig!!.costMushroomLevel)
+        assertEquals(5, restored.timeLimitConfig!!.costMushroomCount)
         assertTrue(restored.timeLimitConfig!!.requireParentConfirm)
     }
 

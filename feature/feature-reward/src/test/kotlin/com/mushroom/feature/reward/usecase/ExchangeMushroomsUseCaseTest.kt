@@ -35,6 +35,7 @@ import java.time.LocalDateTime
 private fun buildReward(
     id: Long = 1L,
     type: RewardType = RewardType.PHYSICAL,
+    requiredPoints: Int = 10,
     puzzlePieces: Int = 10,
     status: RewardStatus = RewardStatus.ACTIVE,
     timeLimitConfig: TimeLimitConfig? = null
@@ -43,7 +44,7 @@ private fun buildReward(
     name = "测试奖品",
     imageUri = "",
     type = type,
-    requiredMushrooms = mapOf(MushroomLevel.SMALL to 10),
+    requiredPoints = requiredPoints,
     puzzlePieces = puzzlePieces,
     timeLimitConfig = timeLimitConfig,
     status = status
@@ -52,14 +53,14 @@ private fun buildReward(
 private fun buildTimeLimitConfig(
     unitMinutes: Int = 30,
     periodType: PeriodType = PeriodType.WEEKLY,
-    maxMinutesPerPeriod: Int = 120,
-    cooldownDays: Int = 0,
+    maxTimesPerPeriod: Int = 4,
     requireParentConfirm: Boolean = false
 ) = TimeLimitConfig(
     unitMinutes = unitMinutes,
+    costMushroomLevel = MushroomLevel.SMALL,
+    costMushroomCount = 5,
     periodType = periodType,
-    maxMinutesPerPeriod = maxMinutesPerPeriod,
-    cooldownDays = cooldownDays,
+    maxTimesPerPeriod = maxTimesPerPeriod,
     requireParentConfirm = requireParentConfirm
 )
 
@@ -145,7 +146,7 @@ class ExchangeMushroomsUseCaseTest {
 
     @Test
     fun `completed puzzle triggers reward status update to COMPLETED`() = runTest {
-        val reward = buildReward(puzzlePieces = 5)
+        val reward = buildReward(puzzlePieces = 5, requiredPoints = 5)
         coEvery { rewardRepo.getRewardById(1L) } returns reward
         every { rewardRepo.getPuzzleProgress(1L) } returns flowOf(
             PuzzleProgress(rewardId = 1L, totalPieces = 5, unlockedPieces = 4)
@@ -160,7 +161,7 @@ class ExchangeMushroomsUseCaseTest {
         coEvery { rewardRepo.updateReward(any()) } just Runs
         coEvery { eventBus.emit(any()) } just Runs
 
-        useCase(1L, MushroomLevel.SMALL, 1)
+        useCase(1L, MushroomLevel.SMALL, 5)
 
         coVerify { rewardRepo.updateReward(match { it.status == RewardStatus.COMPLETED }) }
     }
@@ -194,13 +195,13 @@ class ExchangeMushroomsUseCaseTest {
 
         @Test
         fun `time-based exchange succeeds when within period quota`() = runTest {
-            val config = buildTimeLimitConfig(unitMinutes = 30, maxMinutesPerPeriod = 120)
+            val config = buildTimeLimitConfig(unitMinutes = 30, maxTimesPerPeriod = 4)
             val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
             val periodStart = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 
             coEvery { rewardRepo.getRewardById(1L) } returns reward
             coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns
-                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxMinutes = 120, usedMinutes = 60)
+                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxTimes = 4, usedTimes = 2)
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
             every { mushroomRepo.getBalance() } returns flowOf(
@@ -217,14 +218,14 @@ class ExchangeMushroomsUseCaseTest {
 
         @Test
         fun `time-based exchange fails when period quota exceeded`() = runTest {
-            val config = buildTimeLimitConfig(unitMinutes = 30, maxMinutesPerPeriod = 120)
+            val config = buildTimeLimitConfig(unitMinutes = 30, maxTimesPerPeriod = 4)
             val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
             val periodStart = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 
             coEvery { rewardRepo.getRewardById(1L) } returns reward
-            // Already used 100 minutes, adding 30 would exceed 120
+            // Already used 4 times, at max
             coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns
-                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxMinutes = 120, usedMinutes = 100)
+                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxTimes = 4, usedTimes = 4)
 
             val result = useCase(1L, MushroomLevel.SMALL, 1)
 
@@ -234,7 +235,7 @@ class ExchangeMushroomsUseCaseTest {
 
         @Test
         fun `time-based exchange with null balance treats used as 0`() = runTest {
-            val config = buildTimeLimitConfig(unitMinutes = 30, maxMinutesPerPeriod = 120)
+            val config = buildTimeLimitConfig(unitMinutes = 30, maxTimesPerPeriod = 4)
             val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
 
             coEvery { rewardRepo.getRewardById(1L) } returns reward
@@ -253,13 +254,13 @@ class ExchangeMushroomsUseCaseTest {
 
         @Test
         fun `time-based exchange updates usage with correct new total`() = runTest {
-            val config = buildTimeLimitConfig(unitMinutes = 30, maxMinutesPerPeriod = 120)
+            val config = buildTimeLimitConfig(unitMinutes = 30, maxTimesPerPeriod = 4)
             val reward = buildReward(type = RewardType.TIME_BASED, timeLimitConfig = config)
             val periodStart = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
 
             coEvery { rewardRepo.getRewardById(1L) } returns reward
             coEvery { rewardRepo.getTimeRewardBalance(1L, any()) } returns
-                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxMinutes = 120, usedMinutes = 60)
+                TimeRewardBalance(rewardId = 1L, periodStart = periodStart, maxTimes = 4, usedTimes = 2)
             coEvery { rewardRepo.updateTimeRewardUsage(any(), any(), any()) } just Runs
             coEvery { rewardRepo.insertExchange(any()) } returns 1L
             every { mushroomRepo.getBalance() } returns flowOf(
@@ -269,8 +270,8 @@ class ExchangeMushroomsUseCaseTest {
 
             useCase(1L, MushroomLevel.SMALL, 1)
 
-            // 60 used + 30 unit = 90
-            coVerify { rewardRepo.updateTimeRewardUsage(1L, any(), 90) }
+            // 2 used + 1 = 3
+            coVerify { rewardRepo.updateTimeRewardUsage(1L, any(), 3) }
         }
 
         @Test
