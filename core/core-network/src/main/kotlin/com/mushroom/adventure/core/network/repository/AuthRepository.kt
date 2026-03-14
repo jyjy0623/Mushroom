@@ -67,6 +67,11 @@ class AuthRepository(
     suspend fun restoreSession() {
         if (tokenStore.getAccessToken() != null) {
             runCatching { fetchProfile() }
+                .onSuccess { result ->
+                    result.onSuccess { profile ->
+                        tokenStore.saveLastLogin(profile.phone, profile.nickname)
+                    }
+                }
         }
     }
 

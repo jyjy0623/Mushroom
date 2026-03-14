@@ -35,10 +35,15 @@ class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LoginUiState(
-        phone = authRepository.getLastPhone() ?: "",
-        nickname = authRepository.getLastNickname() ?: ""
-    ))
+    private val _uiState = MutableStateFlow(run {
+        val lastPhone = authRepository.getLastPhone()
+        val lastNickname = authRepository.getLastNickname()
+        val currentUser = authRepository.currentUser.value
+        LoginUiState(
+            phone = lastPhone ?: currentUser?.phone ?: "",
+            nickname = lastNickname ?: currentUser?.nickname ?: ""
+        )
+    })
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     private val _event = MutableSharedFlow<LoginEvent>()
