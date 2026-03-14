@@ -2,6 +2,8 @@ package com.mushroom.adventure.core.network.di
 
 import android.content.Context
 import com.mushroom.adventure.core.network.api.AuthApi
+import com.mushroom.adventure.core.network.api.FriendApi
+import com.mushroom.adventure.core.network.api.LeaderboardApi
 import com.mushroom.adventure.core.network.api.MushroomApi
 import com.mushroom.adventure.core.network.client.NetworkClientFactory
 import com.mushroom.adventure.core.network.config.DeviceIdProvider
@@ -10,6 +12,8 @@ import com.mushroom.adventure.core.network.interceptor.AuthInterceptor
 import com.mushroom.adventure.core.network.interceptor.TokenRefreshAuthenticator
 import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.adventure.core.network.repository.CloudBackupRepository
+import com.mushroom.adventure.core.network.repository.FriendRepository
+import com.mushroom.adventure.core.network.repository.LeaderboardRepository
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import com.mushroom.adventure.core.network.token.EncryptedTokenStore
 import com.mushroom.adventure.core.network.token.TokenStore
@@ -98,5 +102,39 @@ object NetworkModule {
     ): AuthRepository {
         val deviceId = DeviceIdProvider.getDeviceId(context)
         return AuthRepository(authApi, tokenStore, deviceId)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLeaderboardApi(
+        serverUrlManager: ServerUrlManager,
+        authInterceptor: AuthInterceptor,
+        authenticator: TokenRefreshAuthenticator
+    ): LeaderboardApi {
+        val retrofit = NetworkClientFactory.createAuthenticatedRetrofit(serverUrlManager, authInterceptor, authenticator)
+        return retrofit.create(LeaderboardApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLeaderboardRepository(api: LeaderboardApi): LeaderboardRepository {
+        return LeaderboardRepository(api)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendApi(
+        serverUrlManager: ServerUrlManager,
+        authInterceptor: AuthInterceptor,
+        authenticator: TokenRefreshAuthenticator
+    ): FriendApi {
+        val retrofit = NetworkClientFactory.createAuthenticatedRetrofit(serverUrlManager, authInterceptor, authenticator)
+        return retrofit.create(FriendApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFriendRepository(api: FriendApi): FriendRepository {
+        return FriendRepository(api)
     }
 }

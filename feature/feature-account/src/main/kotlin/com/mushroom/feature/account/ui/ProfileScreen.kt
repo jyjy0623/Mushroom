@@ -175,6 +175,7 @@ fun ProfileScreen(
                         supportingContent = { Text(state.nickname) }
                     )
                 }
+
             }
 
             Spacer(modifier = Modifier.weight(1f))

@@ -2,6 +2,12 @@ package com.mushroom.feature.game.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.adventure.core.network.data.LeaderboardEntry
+import com.mushroom.adventure.core.network.data.LeaderboardResponse
+import com.mushroom.adventure.core.network.data.FriendInfo
+import com.mushroom.adventure.core.network.repository.AuthRepository
+import com.mushroom.adventure.core.network.repository.FriendRepository
+import com.mushroom.adventure.core.network.repository.LeaderboardRepository
 import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomSource
@@ -11,6 +17,7 @@ import com.mushroom.feature.game.entity.GameScore
 import com.mushroom.feature.game.repository.GameRepository
 import com.mushroom.core.logging.MushroomLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,7 +33,6 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
-import kotlin.math.max
 import kotlin.random.Random
 
 private const val TAG = "GameViewModel"
@@ -68,14 +74,40 @@ data class GameUiState(
     val warmupMs: Long = 0L   // 游戏开始后的已运行时间，前2000ms不生成障碍物
 )
 
+data class GlobalLeaderboardState(
+    val isLoading: Boolean = false,
+    val entries: List<LeaderboardEntry> = emptyList(),
+    val myEntry: LeaderboardEntry? = null,
+    val error: String? = null
+)
+
+data class FriendsState(
+    val isLoading: Boolean = false,
+    val friends: List<FriendInfo> = emptyList(),
+    val addResult: String? = null,
+    val error: String? = null
+)
+
 @HiltViewModel
 class GameViewModel @Inject constructor(
     private val gameRepo: GameRepository,
-    private val mushroomRepo: MushroomRepository
+    private val mushroomRepo: MushroomRepository,
+    private val leaderboardRepo: LeaderboardRepository,
+    private val authRepo: AuthRepository,
+    private val friendRepo: FriendRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+
+    private val _globalLeaderboard = MutableStateFlow(GlobalLeaderboardState())
+    val globalLeaderboard: StateFlow<GlobalLeaderboardState> = _globalLeaderboard.asStateFlow()
+
+    private val _friendLeaderboard = MutableStateFlow(GlobalLeaderboardState())
+    val friendLeaderboard: StateFlow<GlobalLeaderboardState> = _friendLeaderboard.asStateFlow()
+
+    private val _friendsState = MutableStateFlow(FriendsState())
+    val friendsState: StateFlow<FriendsState> = _friendsState.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -93,25 +125,13 @@ class GameViewModel @Inject constructor(
     private var scoreJob: Job? = null
 
     // ── 物理参数（对标 Chrome T-Rex 原版，并针对手机触屏调整反应时间）────────────
-    //
-    // PC原版：键盘反应时间~150ms，障碍物警告时间~1.5s，体感合适
-    // 手机触屏：反应时间~300ms（约2倍），警告时间需相应延长到~2.5s
-    //
-    // 归一化换算（canvas宽600px基准，×60fps）：
-    //   PC原版 speedBase = 6px/frame × 60fps ÷ 600px = 0.0006/ms
-    //   手机调整：警告距离≈0.96，目标警告时间2.5s → speed = 0.96/2500 ≈ 0.0004/ms
-    //   speedMax：原版0.0012/ms，手机调整为0.0009/ms（避免后期过快无法反应）
-    //   加速：100s从初速到最高速，accel=(0.0009-0.0004)/100000=0.000005/ms
-    //
-    // 跳跃：顶点高≈0.25h，落地≈500ms（不变）
-
-    private val speedBase      = 0.0004f       // 手机初速（PC原版0.0006，降速留足2.5s反应时间）
-    private val speedMax       = 0.0009f       // 手机最高速（PC原版0.0012，降低避免后期过快）
-    private val speedAccel     = 0.000005f     // 加速度：100s从初速到最高速
+    private val speedBase      = 0.0004f
+    private val speedMax       = 0.0009f
+    private val speedAccel     = 0.000005f
     private val groundY        = 0.75f
-    private val jumpVelocity   = -0.002f       // 跳跃初速，顶点高≈0.25h，不出屏幕
-    private val gravity        = 0.000008f     // 重力，顶点时间≈250ms，落地≈500ms
-    private val gapCoefficient = 0.6f          // 原版GAP_COEFFICIENT=0.6
+    private val jumpVelocity   = -0.002f
+    private val gravity        = 0.000008f
+    private val gapCoefficient = 0.6f
 
     fun startGame() {
         MushroomLogger.w(TAG, "startGame() called, current state=${_uiState.value.state}")
@@ -160,7 +180,7 @@ class GameViewModel @Inject constructor(
         val state = _uiState.value
         val physics = state.physics
 
-        // 物理更新（先用旧速度更新位置，再更新速度，避免跳跃初帧被重力抵消）
+        // 物理更新
         var newY = physics.mushroomY + physics.velocityY * dtMs
         var newVY = physics.velocityY + gravity * dtMs
         val onGround: Boolean
@@ -172,7 +192,7 @@ class GameViewModel @Inject constructor(
             onGround = false
         }
 
-        // 障碍物更新（速度线性加速：speed = speedBase + speedAccel × t，对标原版累加加速）
+        // 障碍物更新
         val runningMs = state.warmupMs.toFloat()
         val speed = (speedBase + speedAccel * runningMs).coerceAtMost(speedMax)
         val newObstacles = physics.obstacles
@@ -180,12 +200,9 @@ class GameViewModel @Inject constructor(
             .filter { it.x + it.width > -0.05f }
             .toMutableList()
 
-        // 热身期（前3000ms）不生成障碍物；热身结束后第一个障碍物从 x=1.5 更远处生成
         val newWarmupMs = state.warmupMs + dtMs
         if (newWarmupMs >= 3000L) {
             val rightmostX = newObstacles.maxOfOrNull { it.x } ?: 0f
-            // 最小间距：对标原版 minGap = obstacleWidth * currentSpeed * GAP_COEFFICIENT
-            // 原版障碍物宽约 0.06（归一化），速度越快间距越大，保证可跳跃反应时间
             val minGap = 0.06f * speed / speedBase * gapCoefficient
             if (newObstacles.isEmpty() || rightmostX < minGap) {
                 if (newObstacles.isEmpty() || Random.nextFloat() < 0.005f * dtMs) {
@@ -200,13 +217,11 @@ class GameViewModel @Inject constructor(
             }
         }
 
-        // 碰撞检测（蘑菇 cx=0.1，u=h*0.0075，帽沿14u≈0.045w，总高12u≈0.09h）
-        // 用帽沿宽度的70%作为碰撞宽度（去掉帽沿边缘）
-        // 假设屏幕宽高比约2.3:1（横屏1080p），u/w ≈ 0.0075/2.3 ≈ 0.00326
-        val halfBrimNorm = 7f * 0.00326f * 0.7f  // 帽沿半宽 * 0.7 ≈ 0.016
-        val mushroomLeft  = 0.1f - halfBrimNorm   // ≈ 0.084
-        val mushroomRight = 0.1f + halfBrimNorm   // ≈ 0.116
-        val mushroomTop   = newY - 0.09f          // 总高约 9% 屏幕高
+        // 碰撞检测
+        val halfBrimNorm = 7f * 0.00326f * 0.7f
+        val mushroomLeft  = 0.1f - halfBrimNorm
+        val mushroomRight = 0.1f + halfBrimNorm
+        val mushroomTop   = newY - 0.09f
         val mushroomBottom = newY
 
         val collision = newObstacles.any { obs ->
@@ -226,14 +241,12 @@ class GameViewModel @Inject constructor(
             return
         }
 
-        // 跳跃首帧：velocityY < 0 时记录物理状态（确认跳跃已生效）
         if (physics.velocityY < 0f) {
             MushroomLogger.w(TAG, "tick() jump in progress: mushroomY=$newY velocityY=$newVY onGround=$onGround dtMs=$dtMs")
         }
 
         val newFrame = if (dtMs > 0) (physics.frameIndex + 1) % 2 else physics.frameIndex
 
-        // 云朵缓慢向左漂移，移出左边后从右侧重新进入
         val cloudSpeed = speed * 0.15f
         val newClouds = physics.clouds.map { cloud ->
             val nx = cloud.x - cloudSpeed * dtMs
@@ -285,7 +298,7 @@ class GameViewModel @Inject constructor(
             val highScore = gameRepo.getHighScore()
             val isNew = finalScore > highScore
 
-            // 插入排行榜
+            // 插入本地排行榜
             gameRepo.insertScore(GameScore(score = finalScore, playedAt = LocalDateTime.now()))
 
             _uiState.update {
@@ -295,6 +308,15 @@ class GameViewModel @Inject constructor(
                 )
             }
 
+            // 云端提交分数（仅已登录用户，静默失败）
+            if (authRepo.isLoggedIn.value) {
+                launch(Dispatchers.IO) {
+                    leaderboardRepo.submitScore("runner", finalScore).onFailure { e ->
+                        MushroomLogger.e(TAG, "Cloud score submit failed", e)
+                    }
+                }
+            }
+
             // 检查里程碑奖励
             checkMilestoneRewards(maxOf(finalScore, highScore))
 
@@ -302,6 +324,99 @@ class GameViewModel @Inject constructor(
             delay(2_000)
             _exitEvent.emit(Unit)
         }
+    }
+
+    fun loadGlobalLeaderboard() {
+        viewModelScope.launch {
+            _globalLeaderboard.update { it.copy(isLoading = true, error = null) }
+            leaderboardRepo.getLeaderboard("runner", 100)
+                .onSuccess { response ->
+                    _globalLeaderboard.update {
+                        it.copy(
+                            isLoading = false,
+                            entries = response.entries,
+                            myEntry = response.myEntry,
+                            error = null
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _globalLeaderboard.update {
+                        it.copy(isLoading = false, error = "加载失败: ${e.message}")
+                    }
+                }
+        }
+    }
+
+    fun loadFriendLeaderboard() {
+        viewModelScope.launch {
+            _friendLeaderboard.update { it.copy(isLoading = true, error = null) }
+            leaderboardRepo.getFriendLeaderboard("runner")
+                .onSuccess { response ->
+                    _friendLeaderboard.update {
+                        it.copy(
+                            isLoading = false,
+                            entries = response.entries,
+                            myEntry = response.myEntry,
+                            error = null
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _friendLeaderboard.update {
+                        it.copy(isLoading = false, error = "加载失败: ${e.message}")
+                    }
+                }
+        }
+    }
+
+    fun loadFriends() {
+        viewModelScope.launch {
+            _friendsState.update { it.copy(isLoading = true, error = null) }
+            friendRepo.getFriendList()
+                .onSuccess { list ->
+                    _friendsState.update {
+                        it.copy(
+                            isLoading = false,
+                            friends = list.friends,
+                            error = null
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _friendsState.update {
+                        it.copy(isLoading = false, error = "加载失败: ${e.message}")
+                    }
+                }
+        }
+    }
+
+    fun addFriend(phone: String) {
+        viewModelScope.launch {
+            _friendsState.update { it.copy(addResult = null) }
+            friendRepo.addFriend(phone)
+                .onSuccess { response ->
+                    _friendsState.update { it.copy(addResult = response.message) }
+                    if (response.success) loadFriends()
+                }
+                .onFailure { e ->
+                    _friendsState.update { it.copy(addResult = "操作失败: ${e.message}") }
+                }
+        }
+    }
+
+    fun removeFriend(userId: Int) {
+        viewModelScope.launch {
+            friendRepo.removeFriend(userId)
+                .onSuccess { loadFriends() }
+                .onFailure { e ->
+                    _friendsState.update { it.copy(error = "删除失败: ${e.message}") }
+                }
+        }
+    }
+
+    fun clearAddResult() {
+        _friendsState.update { it.copy(addResult = null) }
     }
 
     private suspend fun checkMilestoneRewards(highScore: Int) {

@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":core:core-domain"))
     implementation(project(":core:core-data"))
     implementation(project(":core:core-ui"))
+    implementation(project(":core:core-network"))
     implementation(project(":feature:feature-game"))
 
     implementation(libs.androidx.core.ktx)

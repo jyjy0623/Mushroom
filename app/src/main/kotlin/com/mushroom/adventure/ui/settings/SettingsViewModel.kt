@@ -224,6 +224,7 @@ class SettingsViewModel @Inject constructor(
                 .onFailure { e ->
                     _cloudBackupState.value = _cloudBackupState.value.copy(
                         isLoadingList = false,
+                        backupList = emptyList(),
                         error = e.message
                     )
                     MushroomLogger.e(TAG, "Cloud backup list failed", e)

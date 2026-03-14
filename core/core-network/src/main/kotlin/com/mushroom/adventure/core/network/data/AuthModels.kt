@@ -9,13 +9,14 @@ data class SendCodeRequest(val phone: String)
 data class SendCodeResponse(val success: Boolean, val message: String)
 
 @Serializable
-data class LoginRequest(val phone: String, val code: String, val deviceId: String)
+data class LoginRequest(val phone: String, val code: String, val deviceId: String, val nickname: String? = null)
 
 @Serializable
 data class LoginResponse(
     val accessToken: String,
     val refreshToken: String,
-    val user: UserProfile
+    val user: UserProfile,
+    val isNewUser: Boolean = false
 )
 
 @Serializable
@@ -32,7 +33,7 @@ data class UserProfile(
     val id: Int,
     val phone: String,
     val nickname: String,
-    val avatarUrl: String
+    val avatarUrl: String,
 )
 
 @Serializable

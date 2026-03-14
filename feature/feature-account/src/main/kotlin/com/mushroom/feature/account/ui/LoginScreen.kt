@@ -91,6 +91,18 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(48.dp))
 
             OutlinedTextField(
+                value = state.nickname,
+                onValueChange = viewModel::updateNickname,
+                label = { Text("昵称") },
+                placeholder = { Text("给自己取个名字吧") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                supportingText = { Text("不填则默认为「蘑菇冒险家」") }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
                 value = state.phone,
                 onValueChange = viewModel::updatePhone,
                 label = { Text("手机号") },

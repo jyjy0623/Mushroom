@@ -34,6 +34,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,8 @@ fun StatisticsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val topScores by gameViewModel.topScores.collectAsStateWithLifecycle()
+    val globalLeaderboard by gameViewModel.globalLeaderboard.collectAsStateWithLifecycle()
+    val friendLeaderboard by gameViewModel.friendLeaderboard.collectAsStateWithLifecycle()
     var tabIndex by remember { mutableStateOf(0) }
 
     Scaffold(
@@ -135,7 +138,13 @@ fun StatisticsScreen(
                     0 -> CheckInTab(stats = uiState.checkInStats)
                     1 -> MushroomTab(stats = uiState.mushroomStats)
                     2 -> ScoreTab(scoreStats = uiState.scoreStats, onNavigateToMilestoneList = onNavigateToMilestoneList)
-                    3 -> GameLeaderboardTab(scores = topScores)
+                    3 -> GameLeaderboardTab(
+                        scores = topScores,
+                        globalState = globalLeaderboard,
+                        friendState = friendLeaderboard,
+                        onLoadGlobal = { gameViewModel.loadGlobalLeaderboard() },
+                        onLoadFriend = { gameViewModel.loadFriendLeaderboard() }
+                    )
                 }
             }
         }
@@ -783,7 +792,56 @@ private fun ScorePointCard(point: MilestoneScorePoint) {
 private val GAME_DATE_FMT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
 
 @Composable
-private fun GameLeaderboardTab(scores: List<com.mushroom.feature.game.entity.GameScore>) {
+private fun GameLeaderboardTab(
+    scores: List<com.mushroom.feature.game.entity.GameScore>,
+    globalState: com.mushroom.feature.game.viewmodel.GlobalLeaderboardState,
+    friendState: com.mushroom.feature.game.viewmodel.GlobalLeaderboardState,
+    onLoadGlobal: () -> Unit,
+    onLoadFriend: () -> Unit
+) {
+    var subTab by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        onLoadGlobal()
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TabRow(selectedTabIndex = subTab) {
+            Tab(selected = subTab == 0, onClick = { subTab = 0 }, text = { Text("本地记录") })
+            Tab(
+                selected = subTab == 1,
+                onClick = {
+                    subTab = 1
+                    onLoadGlobal()
+                },
+                text = { Text("全球排行") }
+            )
+            Tab(
+                selected = subTab == 2,
+                onClick = {
+                    subTab = 2
+                    onLoadFriend()
+                },
+                text = { Text("好友排行") }
+            )
+        }
+
+        when (subTab) {
+            0 -> LocalGameScoresContent(scores)
+            1 -> com.mushroom.feature.game.ui.GlobalLeaderboardTab(
+                state = globalState,
+                onRetry = onLoadGlobal
+            )
+            2 -> com.mushroom.feature.game.ui.GlobalLeaderboardTab(
+                state = friendState,
+                onRetry = onLoadFriend
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocalGameScoresContent(scores: List<com.mushroom.feature.game.entity.GameScore>) {
     if (scores.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),

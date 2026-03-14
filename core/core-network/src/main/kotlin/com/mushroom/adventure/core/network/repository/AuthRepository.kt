@@ -22,8 +22,8 @@ class AuthRepository(
         authApi.sendCode(SendCodeRequest(phone))
     }
 
-    suspend fun login(phone: String, code: String): Result<UserProfile> = runCatching {
-        val response = authApi.login(LoginRequest(phone, code, deviceId))
+    suspend fun login(phone: String, code: String, nickname: String? = null): Result<UserProfile> = runCatching {
+        val response = authApi.login(LoginRequest(phone, code, deviceId, nickname))
         tokenStore.saveTokens(response.accessToken, response.refreshToken)
         tokenStore.saveUserId(response.user.id)
         _isLoggedIn.value = true

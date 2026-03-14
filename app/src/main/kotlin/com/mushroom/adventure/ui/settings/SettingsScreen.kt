@@ -556,6 +556,7 @@ private fun CloudRestoreDialog(
     onDelete: (Int) -> Unit
 ) {
     var confirmRestoreId by remember { mutableStateOf<Int?>(null) }
+    var confirmDeleteId by remember { mutableStateOf<Int?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -570,6 +571,8 @@ private fun CloudRestoreDialog(
                     Spacer(Modifier.height(8.dp))
                     Text("加载中...", style = MaterialTheme.typography.bodySmall)
                 }
+            } else if (state.error != null) {
+                Text("加载失败：${state.error}", color = MaterialTheme.colorScheme.error)
             } else if (state.backupList.isEmpty()) {
                 Text("暂无云端备份", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
@@ -594,7 +597,7 @@ private fun CloudRestoreDialog(
                                     TextButton(onClick = { confirmRestoreId = backup.id }) {
                                         Text("恢复")
                                     }
-                                    TextButton(onClick = { onDelete(backup.id) }) {
+                                    TextButton(onClick = { confirmDeleteId = backup.id }) {
                                         Text("删除", color = MaterialTheme.colorScheme.error)
                                     }
                                 }
@@ -623,6 +626,23 @@ private fun CloudRestoreDialog(
             },
             dismissButton = {
                 TextButton(onClick = { confirmRestoreId = null }) { Text("取消") }
+            }
+        )
+    }
+
+    confirmDeleteId?.let { id ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteId = null },
+            title = { Text("确认删除") },
+            text = { Text("删除后无法恢复，确定要删除这条云端备份吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteId = null
+                    onDelete(id)
+                }) { Text("确定删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteId = null }) { Text("取消") }
             }
         )
     }

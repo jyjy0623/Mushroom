@@ -18,6 +18,7 @@ import javax.inject.Inject
 data class LoginUiState(
     val phone: String = "",
     val code: String = "",
+    val nickname: String = "",
     val isSendingCode: Boolean = false,
     val isLoggingIn: Boolean = false,
     val codeSent: Boolean = false,
@@ -50,6 +51,11 @@ class LoginViewModel @Inject constructor(
         _uiState.update { it.copy(code = filtered, error = null) }
     }
 
+    fun updateNickname(nickname: String) {
+        val trimmed = nickname.take(16)
+        _uiState.update { it.copy(nickname = trimmed, error = null) }
+    }
+
     fun sendCode() {
         val phone = _uiState.value.phone
         if (phone.length != 11) {
@@ -77,7 +83,8 @@ class LoginViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoggingIn = true, error = null) }
-            authRepository.login(state.phone, state.code)
+            val nickname = state.nickname.takeIf { it.isNotBlank() }
+            authRepository.login(state.phone, state.code, nickname)
                 .onSuccess {
                     _uiState.update { it.copy(isLoggingIn = false) }
                     _event.emit(LoginEvent.LoginSuccess)
