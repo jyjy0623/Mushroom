@@ -11,6 +11,8 @@ import com.mushroom.adventure.ui.CreateScreen
 import com.mushroom.adventure.ui.settings.SettingsScreen
 import com.mushroom.adventure.update.UpdateViewModel
 import com.mushroom.core.logging.MushroomLogger
+import com.mushroom.feature.account.ui.LoginScreen
+import com.mushroom.feature.account.ui.ProfileScreen
 import com.mushroom.feature.checkin.ui.CheckInCalendarScreen
 // MilestoneEditScreen 已由 CreateScreen(Tab[1]) 取代，暂保留文件备用
 import com.mushroom.feature.milestone.ui.MilestoneEditScreen
@@ -28,6 +30,8 @@ import com.mushroom.feature.task.ui.DailyTaskListScreen
 import com.mushroom.feature.task.ui.TaskEditScreen
 import com.mushroom.feature.task.ui.TaskTemplateScreen
 import com.mushroom.feature.game.ui.GameScreen
+import com.mushroom.feature.account.ui.LoginScreen
+import com.mushroom.feature.account.ui.ProfileScreen
 import java.time.LocalDate
 
 private const val NAV_TAG = "AppNavGraph"
@@ -287,6 +291,12 @@ fun AppNavGraph(
                 },
                 onNavigateToTemplateManage = {
                     navController.safeNavigate(AppDestination.TaskTemplate.route)
+                },
+                onNavigateToLogin = {
+                    navController.safeNavigate(AppDestination.Login.route)
+                },
+                onNavigateToProfile = {
+                    navController.safeNavigate(AppDestination.Profile.route)
                 }
             )
         }
@@ -294,6 +304,20 @@ fun AppNavGraph(
         // ---- 游戏 ----
         composable(AppDestination.Game.route) {
             GameScreen(onExit = { navController.popBackStack() })
+        }
+
+        // ---- 账号 ----
+        composable(AppDestination.Login.route) {
+            LoginScreen(
+                onLoginSuccess = { navController.popBackStack() },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(AppDestination.Profile.route) {
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onLogout = { navController.popBackStack() }
+            )
         }
     }
 }

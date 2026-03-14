@@ -37,6 +37,8 @@ sealed class AppEvent {
     data class KeyDateReached(
         val keyDateId: Long
     ) : AppEvent()
+
+    object SessionExpired : AppEvent()
 }
 
 interface AppEventBus {

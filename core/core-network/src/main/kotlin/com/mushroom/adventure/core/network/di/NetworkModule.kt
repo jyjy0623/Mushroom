@@ -1,11 +1,18 @@
 package com.mushroom.adventure.core.network.di
 
 import android.content.Context
+import com.mushroom.adventure.core.network.api.AuthApi
 import com.mushroom.adventure.core.network.api.MushroomApi
 import com.mushroom.adventure.core.network.client.NetworkClientFactory
+import com.mushroom.adventure.core.network.config.DeviceIdProvider
 import com.mushroom.adventure.core.network.config.ServerUrlManager
+import com.mushroom.adventure.core.network.interceptor.AuthInterceptor
+import com.mushroom.adventure.core.network.interceptor.TokenRefreshAuthenticator
+import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.adventure.core.network.repository.CloudBackupRepository
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
+import com.mushroom.adventure.core.network.token.EncryptedTokenStore
+import com.mushroom.adventure.core.network.token.TokenStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,5 +52,51 @@ object NetworkModule {
     @Singleton
     fun provideCloudBackupRepository(api: MushroomApi): CloudBackupRepository {
         return CloudBackupRepository(api)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTokenStore(@ApplicationContext context: Context): TokenStore {
+        return EncryptedTokenStore(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthInterceptor(tokenStore: TokenStore): AuthInterceptor {
+        return AuthInterceptor(tokenStore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTokenRefreshAuthenticator(
+        tokenStore: TokenStore,
+        serverUrlManager: ServerUrlManager,
+        authRepository: dagger.Lazy<AuthRepository>
+    ): TokenRefreshAuthenticator {
+        val refreshClient = NetworkClientFactory.createRefreshOkHttpClient(serverUrlManager)
+        return TokenRefreshAuthenticator(
+            tokenStore = tokenStore,
+            refreshClient = refreshClient,
+            getBaseUrl = { serverUrlManager.currentUrl.value },
+            onSessionExpired = { authRepository.get().onSessionExpired() }
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(serverUrlManager: ServerUrlManager): AuthApi {
+        val retrofit = NetworkClientFactory.createRetrofit(serverUrlManager)
+        return retrofit.create(AuthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthRepository(
+        authApi: AuthApi,
+        tokenStore: TokenStore,
+        @ApplicationContext context: Context
+    ): AuthRepository {
+        val deviceId = DeviceIdProvider.getDeviceId(context)
+        return AuthRepository(authApi, tokenStore, deviceId)
     }
 }

@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.mushroom.adventure.core.network.config.DeviceIdProvider
 import com.mushroom.adventure.core.network.config.ServerUrlManager
 import com.mushroom.adventure.core.network.data.CloudBackupSummary
+import com.mushroom.adventure.core.network.data.UserProfile
+import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.adventure.core.network.repository.CloudBackupRepository
 import com.mushroom.adventure.core.network.repository.ServerHealthRepository
 import com.mushroom.core.data.backup.BackupPayload
@@ -60,6 +62,7 @@ class SettingsViewModel @Inject constructor(
     private val logExporter: LogExporter,
     private val serverHealthRepository: ServerHealthRepository,
     private val cloudBackupRepository: CloudBackupRepository,
+    private val authRepository: AuthRepository,
     val serverUrlManager: ServerUrlManager
 ) : ViewModel() {
 
@@ -73,6 +76,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _cloudBackupState = MutableStateFlow(CloudBackupState())
     val cloudBackupState: StateFlow<CloudBackupState> = _cloudBackupState.asStateFlow()
+
+    val isLoggedIn: StateFlow<Boolean> = authRepository.isLoggedIn
+    val currentUser: StateFlow<UserProfile?> = authRepository.currentUser
 
     private val backupJson = Json { ignoreUnknownKeys = true }
 

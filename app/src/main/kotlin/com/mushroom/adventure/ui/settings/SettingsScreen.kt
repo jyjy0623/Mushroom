@@ -66,6 +66,8 @@ fun SettingsScreen(
     onNavigateToKeyDateList: () -> Unit = {},
     onNavigateToGame: () -> Unit = {},
     onNavigateToTemplateManage: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -95,6 +97,27 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            // -------------------------------------------------------
+            // 账号
+            // -------------------------------------------------------
+            Text(
+                "账号",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                AccountItem(
+                    viewModel = viewModel,
+                    onNavigateToLogin = onNavigateToLogin,
+                    onNavigateToProfile = onNavigateToProfile
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
             // -------------------------------------------------------
             // 家长管理
             // -------------------------------------------------------
@@ -601,6 +624,50 @@ private fun CloudRestoreDialog(
             dismissButton = {
                 TextButton(onClick = { confirmRestoreId = null }) { Text("取消") }
             }
+        )
+    }
+}
+
+@Composable
+private fun AccountItem(
+    viewModel: SettingsViewModel,
+    onNavigateToLogin: () -> Unit,
+    onNavigateToProfile: () -> Unit
+) {
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { if (isLoggedIn) onNavigateToProfile() else onNavigateToLogin() }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                if (isLoggedIn) currentUser?.nickname ?: "已登录" else "点击登录",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                if (isLoggedIn) "管理账号信息" else "登录后可使用云备份和排行榜",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
         )
     }
 }

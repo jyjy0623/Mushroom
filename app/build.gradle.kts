@@ -28,7 +28,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
-        versionName = System.getenv("VERSION_NAME") ?: "1.0.0"
+        versionName = System.getenv("VERSION_NAME") ?: "1.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -99,6 +99,7 @@ dependencies {
     implementation(project(":feature:feature-milestone"))
     implementation(project(":feature:feature-statistics"))
     implementation(project(":feature:feature-game"))
+    implementation(project(":feature:feature-account"))
     implementation(project(":service:service-task-generator"))
     implementation(project(":service:service-notification"))
 

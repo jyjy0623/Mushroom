@@ -41,6 +41,9 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.serialization)
 
+    // Security
+    implementation(libs.androidx.security.crypto)
+
     // DI
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

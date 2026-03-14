@@ -41,6 +41,7 @@ include(":feature:feature-reward")
 include(":feature:feature-milestone")
 include(":feature:feature-statistics")
 include(":feature:feature-game")
+include(":feature:feature-account")
 
 // service modules
 include(":service:service-task-generator")
