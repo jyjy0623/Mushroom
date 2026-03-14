@@ -25,6 +25,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomRewardConfig
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import com.mushroom.core.domain.entity.ScoringRule
 import com.mushroom.core.domain.entity.ScoringRuleTemplate
 import com.mushroom.core.domain.entity.Subject
@@ -34,14 +36,6 @@ import com.mushroom.core.domain.entity.TemplateRewardConfig
 import com.mushroom.feature.task.viewmodel.ScoringRuleTemplateViewModel
 import com.mushroom.feature.task.viewmodel.TaskTemplateViewModel
 import kotlinx.coroutines.flow.collectLatest
-
-private fun mushroomEmoji(level: MushroomLevel) = when (level) {
-    MushroomLevel.SMALL -> "🍄"
-    MushroomLevel.MEDIUM -> "🍄‍🟫"
-    MushroomLevel.LARGE -> "🌟"
-    MushroomLevel.GOLD -> "✨"
-    MushroomLevel.LEGEND -> "👑"
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -288,13 +282,13 @@ private fun TaskTemplateManageCard(
             )
             val base = template.rewardConfig.baseReward
             Text(
-                "基础奖励：${mushroomEmoji(base.level)} ${base.level.displayName} × ${base.amount}",
+                "基础奖励：${base.level.themedEmoji()} ${base.level.themedDisplayName()} × ${base.amount}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
             template.rewardConfig.bonusReward?.let { bonus ->
                 Text(
-                    "额外奖励：${mushroomEmoji(bonus.level)} ${bonus.level.displayName} × ${bonus.amount}",
+                    "额外奖励：${bonus.level.themedEmoji()} ${bonus.level.themedDisplayName()} × ${bonus.amount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary
                 )
@@ -368,7 +362,7 @@ private fun ScoringRuleTemplateCard(
             Spacer(Modifier.height(4.dp))
             template.rules.forEach { rule ->
                 Text(
-                    "${rule.minScore}-${rule.maxScore}分：${mushroomEmoji(rule.rewardConfig.level)} ${rule.rewardConfig.level.displayName} × ${rule.rewardConfig.amount}",
+                    "${rule.minScore}-${rule.maxScore}分：${rule.rewardConfig.level.themedEmoji()} ${rule.rewardConfig.level.themedDisplayName()} × ${rule.rewardConfig.amount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -526,7 +520,7 @@ private fun MushroomLevelSelector(
             FilterChip(
                 selected = isSelected,
                 onClick = { onSelect(level) },
-                label = { Text("${mushroomEmoji(level)} ${level.displayName}") }
+                label = { Text("${level.themedEmoji()} ${level.themedDisplayName()}") }
             )
         }
     }

@@ -1,12 +1,13 @@
 name: Release
 
-# 触发条件：推送 v* 格式的 tag（如 v1.0.1、v1.2.0）
+# 触发条件：推送 v* 或 uk-v* 格式的 tag
+# v1.8.0 → 蘑菇大冒险, uk-v1.0.0 → 逐梦英伦
 on:
   push:
     tags:
       - 'v*'
+      - 'uk-v*'
 
-# 显式声明权限：允许创建 Release、上传 Assets、写 Issues
 permissions:
   contents: write
   issues: write
@@ -16,18 +17,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 检出代码
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. 设置 JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. 缓存 Gradle，加速后续构建
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -37,60 +35,69 @@ jobs:
           key: gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
-      # 4. 从 tag 名解析版本号（去掉 v 前缀），生成 versionCode
-      #    tag v1.2.3  →  VERSION_NAME=1.2.3，VERSION_CODE 由 GitHub run_number 自动递增
-      - name: Parse version from tag
+      - name: Determine flavor and version from tag
         id: version
         run: |
-          TAG="${GITHUB_REF_NAME}"          # e.g. v1.2.3
-          NAME="${TAG#v}"                   # e.g. 1.2.3
-          # versionCode: MAJOR*10000 + MINOR*100 + PATCH，确保单调递增
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == uk-v* ]]; then
+            FLAVOR="ukdream"
+            NAME="${TAG#uk-v}"
+            APP_LABEL="逐梦英伦"
+            APK_PREFIX="ukdream-adventure"
+          else
+            FLAVOR="mushroom"
+            NAME="${TAG#v}"
+            APP_LABEL="蘑菇大冒险"
+            APK_PREFIX="mushroom-adventure"
+          fi
           IFS='.' read -r MAJOR MINOR PATCH <<< "$NAME"
           CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
           echo "VERSION_NAME=$NAME" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
-          echo "TAG=$TAG"   >> "$GITHUB_OUTPUT"
-          echo "NAME=$NAME" >> "$GITHUB_OUTPUT"
+          echo "TAG=$TAG"             >> "$GITHUB_OUTPUT"
+          echo "NAME=$NAME"           >> "$GITHUB_OUTPUT"
+          echo "FLAVOR=$FLAVOR"       >> "$GITHUB_OUTPUT"
+          echo "APP_LABEL=$APP_LABEL" >> "$GITHUB_OUTPUT"
+          echo "APK_PREFIX=$APK_PREFIX" >> "$GITHUB_OUTPUT"
 
-      # 5. 将 Keystore Base64 还原为文件（存储在 GitHub Secrets 中）
       - name: Decode keystore
         run: |
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > app/mushroom-release.jks
 
-      # 6. 赋予 gradlew 执行权限
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 7. 构建 release APK（签名凭证通过环境变量传入，不落盘）
       - name: Build release APK
         env:
           RELEASE_STORE_FILE: mushroom-release.jks
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          FLAVOR="${{ steps.version.outputs.FLAVOR }}"
+          CAPITALIZED="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
+          ./gradlew ":app:assemble${CAPITALIZED}Release" --no-daemon
 
-      # 8. 重命名 APK，加上版本号
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk \
-             app/build/outputs/apk/release/mushroom-adventure-${{ steps.version.outputs.NAME }}.apk
+          FLAVOR="${{ steps.version.outputs.FLAVOR }}"
+          APK_PREFIX="${{ steps.version.outputs.APK_PREFIX }}"
+          NAME="${{ steps.version.outputs.NAME }}"
+          mv "app/build/outputs/apk/${FLAVOR}/release/app-${FLAVOR}-release.apk" \
+             "app/build/outputs/apk/${FLAVOR}/release/${APK_PREFIX}-${NAME}.apk"
 
-      # 9. 在 GitHub 上创建 Release，并上传 APK
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
-          name: "蘑菇大冒险 ${{ steps.version.outputs.TAG }}"
+          name: "${{ steps.version.outputs.APP_LABEL }} ${{ steps.version.outputs.TAG }}"
           draft: false
           prerelease: false
-          generate_release_notes: true        # 自动从 commit 生成更新日志
-          files: app/build/outputs/apk/release/mushroom-adventure-${{ steps.version.outputs.NAME }}.apk
+          generate_release_notes: true
+          files: app/build/outputs/apk/${{ steps.version.outputs.FLAVOR }}/release/${{ steps.version.outputs.APK_PREFIX }}-${{ steps.version.outputs.NAME }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 10. 在本次 Release 关联的 Bug Issue 上追加「已发版，等待回归」评论
-      #     识别规则：Release Notes 中出现 refs #N 且 Issue 带 bug label
       - name: Notify open bug issues of new release
         uses: actions/github-script@v7
         env:
@@ -99,9 +106,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tag = '${{ steps.version.outputs.TAG }}';
-            const name = '${{ steps.version.outputs.NAME }}';
+            const appLabel = '${{ steps.version.outputs.APP_LABEL }}';
 
-            // 从 Release Notes 提取 refs #N
             const { data: release } = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -113,7 +119,6 @@ jobs:
             const unique = [...new Set(issueNums)];
 
             for (const num of unique) {
-              // 只处理仍处于 open 状态的 Issue
               let issue;
               try {
                 ({ data: issue } = await github.rest.issues.get({
@@ -135,7 +140,7 @@ jobs:
                 body: [
                   `🚀 **${tag} 已发布，等待回归验收**`,
                   '',
-                  `修复已包含在 [蘑菇大冒险 ${tag}](${release.html_url}) 中。`,
+                  `修复已包含在 [${appLabel} ${tag}](${release.html_url}) 中。`,
                   '',
                   '**回归步骤**：',
                   '1. 从 Release 页面下载并安装 APK',

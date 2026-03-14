@@ -58,6 +58,8 @@ import coil.compose.AsyncImage
 import java.io.File
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RewardType
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardDetailViewModel
 import kotlinx.coroutines.delay
@@ -281,7 +283,7 @@ private fun PuzzleGrid(
             ) {
                 if (isUnlocked) {
                     val level = pieceEmojis.getOrNull(i) ?: MushroomLevel.SMALL
-                    Text(mushroomEmoji(level), fontSize = 14.sp)
+                    Text(level.themedEmoji(), fontSize = 14.sp)
                 }
             }
         }
@@ -341,7 +343,7 @@ private fun TimeRewardContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "消耗：${mushroomEmoji(config.costMushroomLevel)} ${config.costMushroomLevel.displayName} × ${config.costMushroomCount}",
+                    "消耗：${config.costMushroomLevel.themedEmoji()} ${config.costMushroomLevel.themedDisplayName()} × ${config.costMushroomCount}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -433,14 +435,14 @@ private fun ExchangeSection(
                             .clickable { selectedLevel = level },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(mushroomEmoji(level), fontSize = 20.sp)
+                        Text(level.themedEmoji(), fontSize = 20.sp)
                     }
                 }
             }
             Spacer(Modifier.height(4.dp))
             // 已选等级文字提示
             Text(
-                "已选：${mushroomEmoji(selectedLevel)} ${selectedLevel.displayName}（${selectedLevel.exchangePoints}分/个）",
+                "已选：${selectedLevel.themedEmoji()} ${selectedLevel.themedDisplayName()}（${selectedLevel.exchangePoints}分/个）",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -479,12 +481,4 @@ private fun ExchangeSection(
             }
         }
     }
-}
-
-private fun mushroomEmoji(level: MushroomLevel) = when (level) {
-    MushroomLevel.SMALL -> "🍄"
-    MushroomLevel.MEDIUM -> "🍄‍🟫"
-    MushroomLevel.LARGE -> "🌟"
-    MushroomLevel.GOLD -> "✨"
-    MushroomLevel.LEGEND -> "👑"
 }

@@ -1,5 +1,6 @@
 package com.mushroom.adventure.navigation
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
@@ -13,21 +14,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.mushroom.adventure.R
+import com.mushroom.core.ui.R as CoreUiR
 
 private data class BottomNavItem(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector,
     val destination: AppDestination
 )
 
 private val bottomNavItems = listOf(
-    BottomNavItem("任务", Icons.Default.CheckCircle, AppDestination.DailyTaskList),
-    BottomNavItem("蘑菇", Icons.Default.Home, AppDestination.MushroomLedger),
-    BottomNavItem("奖品", Icons.Default.ShoppingCart, AppDestination.RewardList),
-    BottomNavItem("统计", Icons.Default.Star, AppDestination.Statistics),
-    BottomNavItem("设置", Icons.Default.Settings, AppDestination.Settings),
+    BottomNavItem(R.string.tab_tasks, Icons.Default.CheckCircle, AppDestination.DailyTaskList),
+    BottomNavItem(CoreUiR.string.tab_ledger, Icons.Default.Home, AppDestination.MushroomLedger),
+    BottomNavItem(R.string.tab_rewards, Icons.Default.ShoppingCart, AppDestination.RewardList),
+    BottomNavItem(R.string.tab_statistics, Icons.Default.Star, AppDestination.Statistics),
+    BottomNavItem(R.string.tab_settings, Icons.Default.Settings, AppDestination.Settings),
 )
 
 @Composable
@@ -37,6 +41,7 @@ fun AppBottomNavigationBar(navController: NavController) {
 
     NavigationBar {
         bottomNavItems.forEach { item ->
+            val label = stringResource(item.labelRes)
             NavigationBarItem(
                 selected = currentRoute == item.destination.route,
                 onClick = {
@@ -46,8 +51,8 @@ fun AppBottomNavigationBar(navController: NavController) {
                         restoreState = true
                     }
                 },
-                icon = { Icon(imageVector = item.icon, contentDescription = item.label) },
-                label = { Text(item.label) }
+                icon = { Icon(imageVector = item.icon, contentDescription = label) },
+                label = { Text(label) }
             )
         }
     }

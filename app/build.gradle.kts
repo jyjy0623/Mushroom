@@ -24,7 +24,6 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.mushroom.adventure"
         minSdk = 26
         targetSdk = 34
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
@@ -35,12 +34,26 @@ android {
             useSupportLibrary = true
         }
 
-        // Version auto-update configuration (GitHub Releases API)
-        buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
-        buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
-        buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
-        // Server configuration
+        // Server configuration (shared across flavors)
         buildConfigField("String", "SERVER_URL", "\"http://192.168.31.174:8080\"")
+    }
+
+    flavorDimensions += "brand"
+    productFlavors {
+        create("mushroom") {
+            dimension = "brand"
+            applicationId = "com.mushroom.adventure"
+            buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
+            buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+        }
+        create("ukdream") {
+            dimension = "brand"
+            applicationId = "com.ukdream.adventure"
+            buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
+            buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
+        }
     }
 
     signingConfigs {

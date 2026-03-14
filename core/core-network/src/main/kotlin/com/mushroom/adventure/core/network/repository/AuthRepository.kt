@@ -1,6 +1,7 @@
 package com.mushroom.adventure.core.network.repository
 
 import com.mushroom.adventure.core.network.api.AuthApi
+import com.mushroom.adventure.core.network.api.UserApi
 import com.mushroom.adventure.core.network.data.*
 import com.mushroom.adventure.core.network.token.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class AuthRepository(
     private val authApi: AuthApi,
+    private val userApi: UserApi,
     private val tokenStore: TokenStore,
     private val deviceId: String
 ) {
@@ -42,13 +44,13 @@ class AuthRepository(
     }
 
     suspend fun fetchProfile(): Result<UserProfile> = runCatching {
-        val profile = authApi.getProfile()
+        val profile = userApi.getProfile()
         _currentUser.value = profile
         profile
     }
 
     suspend fun updateProfile(nickname: String?, avatarUrl: String?): Result<UserProfile> = runCatching {
-        val profile = authApi.updateProfile(UpdateProfileRequest(nickname, avatarUrl))
+        val profile = userApi.updateProfile(UpdateProfileRequest(nickname, avatarUrl))
         _currentUser.value = profile
         profile
     }

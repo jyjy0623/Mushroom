@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.MilestoneType
 import com.mushroom.core.domain.entity.ScoringRuleTemplate
 import com.mushroom.core.domain.entity.Subject
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewEvent
 import com.mushroom.feature.milestone.viewmodel.MilestoneEditViewModel
 import com.mushroom.feature.milestone.viewmodel.ScoringRuleTemplateViewModel
@@ -256,7 +257,7 @@ fun MilestoneEditScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "${rule.minScore}-${rule.maxScore}分 → ${rule.rewardConfig.level.displayName} ×",
+                                "${rule.minScore}-${rule.maxScore}分 → ${rule.rewardConfig.level.themedDisplayName()} ×",
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f)
                             )
@@ -343,7 +344,7 @@ private fun TemplatePickerDialog(
                             Text(template.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                             template.rules.forEach { rule ->
                                 Text(
-                                    "${rule.minScore}-${rule.maxScore}分：${rule.rewardConfig.level.displayName} × ${rule.rewardConfig.amount}",
+                                    "${rule.minScore}-${rule.maxScore}分：${rule.rewardConfig.level.themedDisplayName()} × ${rule.rewardConfig.amount}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">蘑菇大冒险</string>
+    <!-- app_name is defined per flavor in mushroom/ukdream strings.xml -->
+
+    <!-- 共享的底部导航标签 -->
+    <string name="tab_tasks">任务</string>
+    <string name="tab_rewards">奖品</string>
+    <string name="tab_statistics">统计</string>
+    <string name="tab_settings">设置</string>
 </resources>

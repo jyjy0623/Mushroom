@@ -52,6 +52,7 @@ import com.mushroom.core.domain.entity.KeyDate
 import com.mushroom.core.domain.entity.KeyDateCondition
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomRewardConfig
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.mushroom.viewmodel.KeyDateViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.Instant
@@ -164,7 +165,7 @@ private fun KeyDateCard(keyDate: KeyDate, onClick: () -> Unit, onDelete: () -> U
                     is KeyDateCondition.ManualTrigger -> "手动触发"
                 }
                 Text(
-                    "条件：$conditionLabel · 奖励：${keyDate.rewardConfig.level.displayName}×${keyDate.rewardConfig.amount}",
+                    "条件：$conditionLabel · 奖励：${keyDate.rewardConfig.level.themedDisplayName()}×${keyDate.rewardConfig.amount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -329,17 +330,17 @@ fun KeyDateEditScreen(
                 onExpandedChange = { levelExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = rewardLevel.displayName,
+                    value = rewardLevel.themedDisplayName(),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("奖励蘑菇") },
+                    label = { Text("奖励等级") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = levelExpanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(expanded = levelExpanded, onDismissRequest = { levelExpanded = false }) {
                     MushroomLevel.values().forEach { lvl ->
                         DropdownMenuItem(
-                            text = { Text(lvl.displayName) },
+                            text = { Text(lvl.themedDisplayName()) },
                             onClick = { rewardLevel = lvl; levelExpanded = false }
                         )
                     }

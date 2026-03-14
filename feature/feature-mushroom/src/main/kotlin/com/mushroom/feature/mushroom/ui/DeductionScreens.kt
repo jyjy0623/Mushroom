@@ -61,6 +61,7 @@ import com.mushroom.core.domain.entity.AppealStatus
 import com.mushroom.core.domain.entity.DeductionConfig
 import com.mushroom.core.domain.entity.DeductionRecord
 import com.mushroom.core.domain.entity.MushroomLevel
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.mushroom.viewmodel.DeductionViewEvent
 import com.mushroom.feature.mushroom.viewmodel.DeductionViewModel
 import kotlinx.coroutines.delay
@@ -116,7 +117,7 @@ fun DeductionRecordScreen(
                 title = { Text("确认扣除：${config.name}") },
                 text = {
                     Column {
-                        Text("扣除 ${config.mushroomLevel.displayName} × ${if (config.customAmount > 0) config.customAmount else config.defaultAmount}")
+                        Text("扣除 ${config.mushroomLevel.themedDisplayName()} × ${if (config.customAmount > 0) config.customAmount else config.defaultAmount}")
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = reasonText,
@@ -203,7 +204,7 @@ private fun DeductionConfigCard(config: DeductionConfig, onDeduct: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(config.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 Text(
-                    "${config.mushroomLevel.displayName} × $amount（每日上限 ${config.maxPerDay} 次）",
+                    "${config.mushroomLevel.themedDisplayName()} × $amount（每日上限 ${config.maxPerDay} 次）",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -311,7 +312,7 @@ private fun DeductionRecordCard(record: DeductionRecord, onAppeal: () -> Unit) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(record.reason, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Text(
-                        "${record.mushroomLevel.displayName} × ${record.amount}",
+                        "${record.mushroomLevel.themedDisplayName()} × ${record.amount}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -527,7 +528,7 @@ private fun ConfigCard(
                     }
                 }
                 Text(
-                    "${config.mushroomLevel.displayName} × $amount  每日上限 ${config.maxPerDay} 次",
+                    "${config.mushroomLevel.themedDisplayName()} × $amount  每日上限 ${config.maxPerDay} 次",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -552,13 +553,7 @@ private fun ConfigEditDialog(
     var levelExpanded by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
 
-    val levels = listOf(
-        MushroomLevel.SMALL to "小蘑菇",
-        MushroomLevel.MEDIUM to "中蘑菇",
-        MushroomLevel.LARGE to "大蘑菇",
-        MushroomLevel.GOLD to "金蘑菇",
-        MushroomLevel.LEGEND to "传说蘑菇"
-    )
+    val levels = MushroomLevel.values().map { it to it.themedDisplayName() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -584,7 +579,7 @@ private fun ConfigEditDialog(
                         value = levels.first { it.first == level }.second,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("蘑菇等级") },
+                        label = { Text("奖励等级") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(levelExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         singleLine = true

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 等级显示名（默认值，可被 app flavor 覆盖） -->
+    <string name="level_small">小蘑菇</string>
+    <string name="level_medium">中蘑菇</string>
+    <string name="level_large">大蘑菇</string>
+    <string name="level_gold">金蘑菇</string>
+    <string name="level_legend">传说蘑菇</string>
+
+    <!-- 等级 Emoji（默认值，可被 app flavor 覆盖） -->
+    <string name="level_emoji_small">🍄</string>
+    <string name="level_emoji_medium">🍄‍🟫</string>
+    <string name="level_emoji_large">🌟</string>
+    <string name="level_emoji_gold">✨</string>
+    <string name="level_emoji_legend">👑</string>
+
+    <!-- 页面标题（默认值，可被 app flavor 覆盖） -->
+    <string name="tab_ledger">蘑菇</string>
+    <string name="ledger_title">蘑菇账本</string>
+    <string name="deduction_title">扣蘑菇</string>
+</resources>

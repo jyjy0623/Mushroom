@@ -61,6 +61,8 @@ import com.mushroom.core.domain.entity.MilestoneScorePoint
 import com.mushroom.core.domain.entity.MilestoneType
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomStatistics
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import com.mushroom.core.domain.entity.ScoreStatistics
 import com.mushroom.core.domain.entity.ScoreTrend
 import com.mushroom.core.domain.entity.StatisticsPeriod
@@ -289,9 +291,9 @@ private fun MushroomTab(stats: MushroomStatistics?) {
                         MushroomLevel.values().forEach { level ->
                             val cnt = stats.currentBalance.get(level)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(mushroomEmoji(level), fontSize = 24.sp)
+                                Text(level.themedEmoji(), fontSize = 24.sp)
                                 Text(cnt.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+                                Text(level.themedDisplayName(), style = MaterialTheme.typography.labelSmall)
                                 Text(
                                     "${level.exchangePoints}积分",
                                     style = MaterialTheme.typography.labelSmall,
@@ -332,7 +334,7 @@ private fun MushroomTab(stats: MushroomStatistics?) {
                             val earned = stats.totalEarned[level] ?: 0
                             val spent = (stats.totalSpent[level] ?: 0) + (stats.totalDeducted[level] ?: 0)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(mushroomEmoji(level), fontSize = 24.sp)
+                                Text(level.themedEmoji(), fontSize = 24.sp)
                                 Text(
                                     "+$earned",
                                     style = MaterialTheme.typography.bodyMedium,
@@ -344,7 +346,7 @@ private fun MushroomTab(stats: MushroomStatistics?) {
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.error
                                 )
-                                Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+                                Text(level.themedDisplayName(), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -526,11 +528,6 @@ private fun subjectLabel(subject: Subject) = when (subject) {
 private fun milestoneTypeLabel(type: MilestoneType) = when (type) {
     MilestoneType.MINI_TEST -> "小测"; MilestoneType.WEEKLY_TEST -> "周测"
     MilestoneType.SCHOOL_EXAM -> "校测"; MilestoneType.MIDTERM -> "期中"; MilestoneType.FINAL -> "期末"
-}
-
-private fun mushroomEmoji(level: MushroomLevel) = when (level) {
-    MushroomLevel.SMALL -> "🍄"; MushroomLevel.MEDIUM -> "🍄‍🟫"; MushroomLevel.LARGE -> "🌟"
-    MushroomLevel.GOLD -> "✨"; MushroomLevel.LEGEND -> "👑"
 }
 
 // -----------------------------------------------------------------------

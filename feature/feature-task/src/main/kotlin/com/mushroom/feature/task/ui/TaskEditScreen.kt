@@ -61,6 +61,7 @@ import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RepeatRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.entity.TaskTemplate
+import com.mushroom.core.ui.themedDisplayName
 import java.time.DayOfWeek
 import com.mushroom.feature.task.viewmodel.TaskEditViewEvent
 import com.mushroom.feature.task.viewmodel.TaskEditViewModel
@@ -473,10 +474,10 @@ fun MushroomLevelDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selected.displayName,
+            value = selected.themedDisplayName(),
             onValueChange = {},
             readOnly = true,
-            label = { Text("蘑菇类型") },
+            label = { Text("奖励等级") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded && enabled) },
             modifier = Modifier.fillMaxWidth().menuAnchor(),
             enabled = enabled,
@@ -487,7 +488,7 @@ fun MushroomLevelDropdown(
                 listOf(MushroomLevel.SMALL, MushroomLevel.MEDIUM, MushroomLevel.LARGE, MushroomLevel.GOLD)
                     .forEach { level ->
                         DropdownMenuItem(
-                            text = { Text(level.displayName) },
+                            text = { Text(level.themedDisplayName()) },
                             onClick = { onSelect(level); expanded = false }
                         )
                     }

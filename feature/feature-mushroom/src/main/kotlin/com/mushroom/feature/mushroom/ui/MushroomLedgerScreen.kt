@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -42,6 +43,8 @@ import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomBalance
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomTransaction
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import com.mushroom.feature.mushroom.viewmodel.MushroomLedgerViewEvent
 import com.mushroom.feature.mushroom.viewmodel.MushroomLedgerViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -96,7 +99,7 @@ fun MushroomLedgerScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("蘑菇账本") })
+            CenterAlignedTopAppBar(title = { Text(stringResource(com.mushroom.core.ui.R.string.ledger_title)) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -333,7 +336,7 @@ private fun BalanceCard(balance: MushroomBalance) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "蘑菇余额",
+                    stringResource(com.mushroom.core.ui.R.string.ledger_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -360,13 +363,13 @@ private fun BalanceCard(balance: MushroomBalance) {
 @Composable
 private fun BalanceItem(level: MushroomLevel, count: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(mushroomEmoji(level), fontSize = 24.sp)
+        Text(level.themedEmoji(), fontSize = 24.sp)
         Text(
             count.toString(),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold
         )
-        Text(level.displayName, style = MaterialTheme.typography.labelSmall)
+        Text(level.themedDisplayName(), style = MaterialTheme.typography.labelSmall)
         Text(
             "${level.exchangePoints}积分",
             style = MaterialTheme.typography.labelSmall,
@@ -392,7 +395,7 @@ private fun TransactionCard(tx: MushroomTransaction) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(mushroomEmoji(tx.level), fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(tx.level.themedEmoji(), fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(tx.note ?: tx.sourceType.name, style = MaterialTheme.typography.bodyMedium)
                 Text(
@@ -402,19 +405,11 @@ private fun TransactionCard(tx: MushroomTransaction) {
                 )
             }
             Text(
-                "$sign${tx.amount} ${tx.level.displayName}",
+                "$sign${tx.amount} ${tx.level.themedDisplayName()}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = color
             )
         }
     }
-}
-
-private fun mushroomEmoji(level: MushroomLevel) = when (level) {
-    MushroomLevel.SMALL  -> "🍄"
-    MushroomLevel.MEDIUM -> "🍄‍🟫"
-    MushroomLevel.LARGE  -> "🌟"
-    MushroomLevel.GOLD   -> "✨"
-    MushroomLevel.LEGEND -> "👑"
 }

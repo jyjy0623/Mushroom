@@ -57,6 +57,8 @@ import coil.compose.AsyncImage
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.PeriodType
 import com.mushroom.core.domain.entity.RewardType
+import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.ui.themedEmoji
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewEvent
 import com.mushroom.feature.reward.viewmodel.RewardCreateViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -410,12 +412,12 @@ private fun TimeConfigSection(
                             .clickable { onCostMushroomLevelChange(level) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(mushroomEmojiForCreate(level), fontSize = 16.sp)
+                        Text(level.themedEmoji(), fontSize = 16.sp)
                     }
                 }
             }
             Text(
-                "已选：${mushroomEmojiForCreate(costMushroomLevel)} ${costMushroomLevel.displayName}",
+                "已选：${costMushroomLevel.themedEmoji()} ${costMushroomLevel.themedDisplayName()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -460,12 +462,4 @@ private fun TimeConfigSection(
             }
         }
     }
-}
-
-private fun mushroomEmojiForCreate(level: MushroomLevel) = when (level) {
-    MushroomLevel.SMALL -> "🍄"
-    MushroomLevel.MEDIUM -> "🍄‍🟫"
-    MushroomLevel.LARGE -> "🌟"
-    MushroomLevel.GOLD -> "✨"
-    MushroomLevel.LEGEND -> "👑"
 }

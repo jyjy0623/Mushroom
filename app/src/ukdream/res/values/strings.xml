@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">逐梦英伦</string>
+
+    <!-- 底部导航 -->
+    <string name="tab_ledger">成就</string>
+
+    <!-- 页面标题 -->
+    <string name="ledger_title">成就账本</string>
+    <string name="deduction_title">扣学分</string>
+
+    <!-- 等级显示名（英国留学经典元素） -->
+    <string name="level_small">英式茶</string>
+    <string name="level_medium">莎翁集</string>
+    <string name="level_large">学院章</string>
+    <string name="level_gold">骑士勋</string>
+    <string name="level_legend">皇家冠</string>
+
+    <!-- 等级 Emoji -->
+    <string name="level_emoji_small">🫖</string>
+    <string name="level_emoji_medium">📖</string>
+    <string name="level_emoji_large">🏛️</string>
+    <string name="level_emoji_gold">⚔️</string>
+    <string name="level_emoji_legend">👑</string>
+</resources>

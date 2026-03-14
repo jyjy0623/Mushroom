@@ -35,11 +35,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Compile
-        run: ./gradlew compileDebugKotlin --no-daemon
+      - name: Compile (both flavors)
+        run: ./gradlew compileMushroomDebugKotlin compileUkdreamDebugKotlin --no-daemon
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: ./gradlew testMushroomDebugUnitTest --no-daemon
 
       - name: Upload test reports
         if: always()

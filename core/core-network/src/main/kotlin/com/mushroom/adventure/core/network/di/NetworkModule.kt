@@ -5,6 +5,7 @@ import com.mushroom.adventure.core.network.api.AuthApi
 import com.mushroom.adventure.core.network.api.FriendApi
 import com.mushroom.adventure.core.network.api.LeaderboardApi
 import com.mushroom.adventure.core.network.api.MushroomApi
+import com.mushroom.adventure.core.network.api.UserApi
 import com.mushroom.adventure.core.network.client.NetworkClientFactory
 import com.mushroom.adventure.core.network.config.DeviceIdProvider
 import com.mushroom.adventure.core.network.config.ServerUrlManager
@@ -95,13 +96,25 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideUserApi(
+        serverUrlManager: ServerUrlManager,
+        authInterceptor: AuthInterceptor,
+        authenticator: TokenRefreshAuthenticator
+    ): UserApi {
+        val retrofit = NetworkClientFactory.createAuthenticatedRetrofit(serverUrlManager, authInterceptor, authenticator)
+        return retrofit.create(UserApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideAuthRepository(
         authApi: AuthApi,
+        userApi: UserApi,
         tokenStore: TokenStore,
         @ApplicationContext context: Context
     ): AuthRepository {
         val deviceId = DeviceIdProvider.getDeviceId(context)
-        return AuthRepository(authApi, tokenStore, deviceId)
+        return AuthRepository(authApi, userApi, tokenStore, deviceId)
     }
 
     @Provides
