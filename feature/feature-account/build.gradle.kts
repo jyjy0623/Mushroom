@@ -47,6 +47,7 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.coil.compose)
     ksp(libs.hilt.android.compiler)
 
     debugImplementation(libs.androidx.compose.ui.tooling)

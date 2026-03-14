@@ -1,8 +1,11 @@
 package com.mushroom.feature.account.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mushroom.adventure.core.network.repository.AuthRepository
+import com.mushroom.feature.account.util.ImageCompressor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +25,7 @@ data class ProfileUiState(
     val editingNickname: String = "",
     val isEditing: Boolean = false,
     val isSaving: Boolean = false,
+    val isUploadingAvatar: Boolean = false,
     val error: String? = null
 )
 
@@ -60,8 +64,10 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    // 网络失败时，尝试使用内存中已缓存的用户资料
+                    // 网络失败时，按优先级回退：内存缓存 → 持久化数据 → 错误页面
                     val cached = authRepository.currentUser.value
+                    val lastPhone = authRepository.getLastPhone()
+                    val lastNickname = authRepository.getLastNickname()
                     if (cached != null) {
                         _uiState.update {
                             it.copy(
@@ -70,7 +76,17 @@ class ProfileViewModel @Inject constructor(
                                 nickname = cached.nickname,
                                 avatarUrl = cached.avatarUrl,
                                 editingNickname = cached.nickname,
-                                error = null
+                                error = "网络不可用，显示的是缓存数据"
+                            )
+                        }
+                    } else if (lastPhone != null) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                phone = lastPhone,
+                                nickname = lastNickname ?: "",
+                                editingNickname = lastNickname ?: "",
+                                error = "网络不可用，显示的是缓存数据"
                             )
                         }
                     } else {
@@ -113,6 +129,31 @@ class ProfileViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isSaving = false, error = "保存失败: ${e.message}") }
+                }
+        }
+    }
+
+    fun uploadAvatar(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploadingAvatar = true, error = null) }
+
+            val bytes = ImageCompressor.compressAvatar(context, uri)
+            if (bytes == null) {
+                _uiState.update { it.copy(isUploadingAvatar = false, error = "图片处理失败") }
+                return@launch
+            }
+
+            val fileName = "avatar_${System.currentTimeMillis()}.jpg"
+            authRepository.uploadAvatar(bytes, fileName)
+                .onSuccess { profile ->
+                    _uiState.update {
+                        it.copy(isUploadingAvatar = false, avatarUrl = profile.avatarUrl)
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(isUploadingAvatar = false, error = "上传失败: ${e.message}")
+                    }
                 }
         }
     }

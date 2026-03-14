@@ -1,6 +1,9 @@
 package com.mushroom.feature.account.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,10 +37,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.mushroom.feature.account.viewmodel.ProfileEvent
 import com.mushroom.feature.account.viewmodel.ProfileViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -50,6 +56,15 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.uploadAvatar(context, uri)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.event.collectLatest { event ->
@@ -118,22 +133,56 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // 网络不可用提示（有缓存数据时在页面顶部显示）
+            if (state.error != null && !state.isEditing && state.phone.isNotEmpty()) {
+                Text(
+                    text = state.error!!,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                        .padding(8.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Avatar placeholder
+            // Avatar — 点击更换头像
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable { photoPicker.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = state.nickname.take(1).ifEmpty { "?" },
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                if (state.isUploadingAvatar) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp
+                    )
+                } else if (state.avatarUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = state.avatarUrl,
+                        contentDescription = "头像",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = state.nickname.take(1).ifEmpty { "?" },
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
+            Text(
+                text = "点击更换头像",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

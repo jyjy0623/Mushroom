@@ -7,6 +7,9 @@ import com.mushroom.adventure.core.network.token.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class AuthRepository(
     private val authApi: AuthApi,
@@ -52,6 +55,14 @@ class AuthRepository(
 
     suspend fun updateProfile(nickname: String?, avatarUrl: String?): Result<UserProfile> = runCatching {
         val profile = userApi.updateProfile(UpdateProfileRequest(nickname, avatarUrl))
+        _currentUser.value = profile
+        profile
+    }
+
+    suspend fun uploadAvatar(avatarBytes: ByteArray, fileName: String): Result<UserProfile> = runCatching {
+        val requestBody = avatarBytes.toRequestBody("image/*".toMediaType())
+        val part = MultipartBody.Part.createFormData("avatar", fileName, requestBody)
+        val profile = userApi.uploadAvatar(part)
         _currentUser.value = profile
         profile
     }
