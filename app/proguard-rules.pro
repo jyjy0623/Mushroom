@@ -52,3 +52,6 @@
 # OkHttp / HttpURLConnection (no extra rules needed for HttpURLConnection)
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Google Tink / Error Prone annotations (referenced by tink via DataStore)
+-dontwarn com.google.errorprone.annotations.**
