@@ -301,6 +301,9 @@ interface BackupDao {
     @Query("DELETE FROM reward_exchanges")
     suspend fun clearExchanges()
 
+    @Query("DELETE FROM time_reward_usage")
+    suspend fun clearTimeRewardUsage()
+
     @Query("DELETE FROM milestones")
     suspend fun clearMilestones()
 
