@@ -64,10 +64,11 @@ class BackupService @Inject constructor(
             "不支持的备份版本 ${payload.schemaVersion}，当前版本 ${BackupPayload.SCHEMA_VERSION}"
         }
 
-        // 清除可恢复的用户数据
+        // 清除可恢复的用户数据（先子表后父表）
         dao.clearCheckIns()
         dao.clearLedger()
         dao.clearDeductionRecords()
+        dao.clearDeductionConfigs()
         dao.clearExchanges()
         dao.clearScoringRules()
         dao.clearMilestones()
@@ -75,10 +76,11 @@ class BackupService @Inject constructor(
         dao.clearRewards()
         dao.clearTasks()
 
-        // 插入备份数据
+        // 插入备份数据（先父表后子表）
         if (payload.tasks.isNotEmpty()) dao.insertTasks(payload.tasks.map { it.toEntity() })
         if (payload.checkIns.isNotEmpty()) dao.insertCheckIns(payload.checkIns.map { it.toEntity() })
         if (payload.mushroomLedger.isNotEmpty()) dao.insertLedger(payload.mushroomLedger.map { it.toEntity() })
+        if (payload.deductionConfigs.isNotEmpty()) dao.insertDeductionConfigs(payload.deductionConfigs.map { it.toEntity() })
         if (payload.deductionRecords.isNotEmpty()) dao.insertDeductionRecords(payload.deductionRecords.map { it.toEntity() })
         if (payload.rewards.isNotEmpty()) dao.insertRewards(payload.rewards.map { it.toEntity() })
         if (payload.rewardExchanges.isNotEmpty()) dao.insertExchanges(payload.rewardExchanges.map { it.toEntity() })
@@ -98,6 +100,7 @@ class BackupService @Inject constructor(
         dao.clearCheckIns()
         dao.clearLedger()
         dao.clearDeductionRecords()
+        dao.clearDeductionConfigs()
         dao.clearExchanges()
         dao.clearScoringRules()
         dao.clearMilestones()
@@ -108,6 +111,7 @@ class BackupService @Inject constructor(
         if (payload.tasks.isNotEmpty()) dao.insertTasks(payload.tasks.map { it.toEntity() })
         if (payload.checkIns.isNotEmpty()) dao.insertCheckIns(payload.checkIns.map { it.toEntity() })
         if (payload.mushroomLedger.isNotEmpty()) dao.insertLedger(payload.mushroomLedger.map { it.toEntity() })
+        if (payload.deductionConfigs.isNotEmpty()) dao.insertDeductionConfigs(payload.deductionConfigs.map { it.toEntity() })
         if (payload.deductionRecords.isNotEmpty()) dao.insertDeductionRecords(payload.deductionRecords.map { it.toEntity() })
         if (payload.rewards.isNotEmpty()) dao.insertRewards(payload.rewards.map { it.toEntity() })
         if (payload.rewardExchanges.isNotEmpty()) dao.insertExchanges(payload.rewardExchanges.map { it.toEntity() })
@@ -164,6 +168,9 @@ class BackupService @Inject constructor(
 
     private fun LedgerBackup.toEntity() = MushroomLedgerEntity(id, level, action, amount,
         sourceType, sourceId, note, createdAt)
+
+    private fun DeductionConfigBackup.toEntity() = DeductionConfigEntity(id, name,
+        mushroomLevel, defaultAmount, customAmount, isEnabled, isBuiltIn, maxPerDay)
 
     private fun DeductionRecordBackup.toEntity() = DeductionRecordEntity(id, configId,
         mushroomLevel, amount, reason, recordedAt, appealStatus, appealNote)

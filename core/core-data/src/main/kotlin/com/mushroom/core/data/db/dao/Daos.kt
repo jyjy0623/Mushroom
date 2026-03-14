@@ -292,6 +292,9 @@ interface BackupDao {
     @Query("DELETE FROM deduction_records")
     suspend fun clearDeductionRecords()
 
+    @Query("DELETE FROM deduction_config")
+    suspend fun clearDeductionConfigs()
+
     @Query("DELETE FROM rewards")
     suspend fun clearRewards()
 
@@ -315,6 +318,9 @@ interface BackupDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLedger(entries: List<MushroomLedgerEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDeductionConfigs(configs: List<DeductionConfigEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDeductionRecords(records: List<DeductionRecordEntity>)
