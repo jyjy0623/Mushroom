@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -94,6 +95,7 @@ fun DailyTaskListScreen(
     onNavigateToCheckInHistory: () -> Unit = {},
     onNavigateToMilestoneList: () -> Unit = {},
     onNavigateToGame: () -> Unit = {},
+    onNavigateToFriendManagement: () -> Unit = {},
     viewModel: DailyTaskViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -168,6 +170,11 @@ fun DailyTaskListScreen(
         topBar = {
             val date = uiState.date
             CenterAlignedTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateToFriendManagement) {
+                        Icon(Icons.Filled.Person, contentDescription = "好友管理")
+                    }
+                },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { viewModel.navigatePreviousDay() }) {

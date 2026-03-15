@@ -51,6 +51,9 @@ sealed class AppDestination(val route: String) {
     // 设置
     object Settings : AppDestination("settings")
 
+    // 好友管理
+    object FriendManagement : AppDestination("friend_management")
+
     // 游戏
     object Game : AppDestination("game")
 

@@ -30,6 +30,7 @@ import com.mushroom.feature.task.ui.DailyTaskListScreen
 import com.mushroom.feature.task.ui.TaskEditScreen
 import com.mushroom.feature.task.ui.TaskTemplateScreen
 import com.mushroom.feature.game.ui.GameScreen
+import com.mushroom.feature.game.ui.FriendManagementScreen
 import com.mushroom.feature.account.ui.LoginScreen
 import com.mushroom.feature.account.ui.ProfileScreen
 import java.time.LocalDate
@@ -93,6 +94,9 @@ fun AppNavGraph(
                 },
                 onNavigateToGame = {
                     navController.safeNavigate(AppDestination.Game.route)
+                },
+                onNavigateToFriendManagement = {
+                    navController.safeNavigate(AppDestination.FriendManagement.route)
                 }
             )
         }
@@ -299,6 +303,11 @@ fun AppNavGraph(
                     navController.safeNavigate(AppDestination.Profile.route)
                 }
             )
+        }
+
+        // ---- 好友管理 ----
+        composable(AppDestination.FriendManagement.route) {
+            FriendManagementScreen(onBack = { navController.popBackStack() })
         }
 
         // ---- 游戏 ----
