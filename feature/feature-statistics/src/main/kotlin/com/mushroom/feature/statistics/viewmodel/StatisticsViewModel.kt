@@ -10,8 +10,10 @@ import com.mushroom.core.domain.entity.Subject
 import com.mushroom.feature.statistics.usecase.GetCheckInStatisticsUseCase
 import com.mushroom.feature.statistics.usecase.GetMushroomStatisticsUseCase
 import com.mushroom.feature.statistics.usecase.GetScoreStatisticsUseCase
+import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.core.logging.MushroomLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "StatisticsViewModel"
@@ -39,7 +42,8 @@ data class StatisticsUiState(
 class StatisticsViewModel @Inject constructor(
     private val checkInStatsUseCase: GetCheckInStatisticsUseCase,
     private val mushroomStatsUseCase: GetMushroomStatisticsUseCase,
-    private val scoreStatsUseCase: GetScoreStatisticsUseCase
+    private val scoreStatsUseCase: GetScoreStatisticsUseCase,
+    private val authRepo: AuthRepository
 ) : ViewModel() {
 
     private val _period = MutableStateFlow(StatisticsPeriod.THIS_WEEK)
@@ -67,6 +71,21 @@ class StatisticsViewModel @Inject constructor(
             allScoreStatsFlow
         ) { checkIn, mushroom, scores ->
             MushroomLogger.i(TAG, "combine emitted: period=$period scoreCount=${scores.size}")
+
+            // 同步统计数据到服务端（fire-and-forget）
+            if (checkIn != null && mushroom != null && authRepo.isLoggedIn.value) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    authRepo.syncStats(
+                        currentStreak = checkIn.currentStreak,
+                        longestStreak = checkIn.longestStreak,
+                        totalCheckins = checkIn.totalCheckins,
+                        totalMushroomPoints = mushroom.currentBalance.totalPoints()
+                    ).onFailure { e ->
+                        MushroomLogger.w(TAG, "Stats sync failed (silent)", e)
+                    }
+                }
+            }
+
             StatisticsUiState(
                 period = period,
                 checkInStats = checkIn,

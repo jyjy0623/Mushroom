@@ -117,6 +117,22 @@ class AuthRepository(
         _currentUser.value = null
     }
 
+    suspend fun syncStats(
+        currentStreak: Int,
+        longestStreak: Int,
+        totalCheckins: Int,
+        totalMushroomPoints: Int
+    ): Result<Unit> = runCatching {
+        userApi.syncStats(
+            SyncStatsRequest(
+                currentStreak = currentStreak,
+                longestStreak = longestStreak,
+                totalCheckins = totalCheckins,
+                totalMushroomPoints = totalMushroomPoints
+            )
+        )
+    }
+
     fun getLastPhone(): String? = tokenStore.getLastPhone()
 
     fun getLastNickname(): String? = tokenStore.getLastNickname()

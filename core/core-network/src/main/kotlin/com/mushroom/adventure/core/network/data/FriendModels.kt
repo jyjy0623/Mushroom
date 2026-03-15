@@ -20,5 +20,17 @@ data class FriendStatsResponse(
     val nickname: String,
     val bestScore: Int? = null,
     val globalRank: Int? = null,
-    val gameType: String = "runner"
+    val gameType: String = "runner",
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0,
+    val totalCheckins: Int = 0,
+    val totalMushroomPoints: Int = 0
+)
+
+@Serializable
+data class SyncStatsRequest(
+    val currentStreak: Int,
+    val longestStreak: Int,
+    val totalCheckins: Int,
+    val totalMushroomPoints: Int
 )

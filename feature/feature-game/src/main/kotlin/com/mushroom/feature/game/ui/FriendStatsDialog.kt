@@ -1,6 +1,8 @@
 package com.mushroom.feature.game.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -51,40 +53,33 @@ fun FriendStatsDialog(
                 }
                 state.stats != null -> {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "跑酷最高分",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = if (state.stats.bestScore != null)
-                                "${state.stats.bestScore} 分"
-                            else
-                                "暂无记录",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        // 学习情况
+                        SectionTitle("学习情况")
+                        StatRow("当前连续打卡", "${state.stats.currentStreak} 天")
+                        StatRow("最长连续打卡", "${state.stats.longestStreak} 天")
+                        StatRow("总打卡次数", "${state.stats.totalCheckins} 次")
 
                         Spacer(Modifier.height(12.dp))
                         HorizontalDivider()
                         Spacer(Modifier.height(12.dp))
 
-                        Text(
-                            text = "全球排名",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        // 蘑菇积分
+                        SectionTitle("蘑菇积分")
+                        StatRow("总积分", "${state.stats.totalMushroomPoints} 分")
+
+                        Spacer(Modifier.height(12.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(12.dp))
+
+                        // 游戏数据
+                        SectionTitle("跑酷游戏")
+                        StatRow(
+                            "最高分",
+                            state.stats.bestScore?.let { "$it 分" } ?: "暂无记录"
                         )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = if (state.stats.globalRank != null)
-                                "第 ${state.stats.globalRank} 名"
-                            else
-                                "暂无排名",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                        StatRow(
+                            "全球排名",
+                            state.stats.globalRank?.let { "第 $it 名" } ?: "暂无排名"
                         )
                     }
                 }
@@ -96,4 +91,36 @@ fun FriendStatsDialog(
             }
         }
     )
+}
+
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }

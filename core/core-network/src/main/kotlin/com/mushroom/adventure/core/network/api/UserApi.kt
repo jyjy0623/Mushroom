@@ -1,5 +1,6 @@
 package com.mushroom.adventure.core.network.api
 
+import com.mushroom.adventure.core.network.data.SyncStatsRequest
 import com.mushroom.adventure.core.network.data.UpdateProfileRequest
 import com.mushroom.adventure.core.network.data.UserProfile
 import okhttp3.MultipartBody
@@ -25,4 +26,7 @@ interface UserApi {
     @Multipart
     @POST("/user/avatar")
     suspend fun uploadAvatar(@Part avatar: MultipartBody.Part): UserProfile
+
+    @POST("/user/stats")
+    suspend fun syncStats(@Body request: SyncStatsRequest)
 }
