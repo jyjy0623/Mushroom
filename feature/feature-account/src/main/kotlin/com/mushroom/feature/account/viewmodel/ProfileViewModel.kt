@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mushroom.adventure.core.network.repository.AuthRepository
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.account.util.ImageCompressor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "ProfileVM"
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
@@ -135,22 +138,27 @@ class ProfileViewModel @Inject constructor(
 
     fun uploadAvatar(context: Context, uri: Uri) {
         viewModelScope.launch {
+            MushroomLogger.i(TAG, "uploadAvatar: start, uri=$uri")
             _uiState.update { it.copy(isUploadingAvatar = true, error = null) }
 
             val bytes = ImageCompressor.compressAvatar(context, uri)
             if (bytes == null) {
+                MushroomLogger.w(TAG, "uploadAvatar: ImageCompressor returned null, uri=$uri")
                 _uiState.update { it.copy(isUploadingAvatar = false, error = "图片处理失败") }
                 return@launch
             }
 
             val fileName = "avatar_${System.currentTimeMillis()}.jpg"
+            MushroomLogger.i(TAG, "uploadAvatar: compressed, bytes=${bytes.size}, fileName=$fileName")
             authRepository.uploadAvatar(bytes, fileName)
                 .onSuccess { profile ->
+                    MushroomLogger.i(TAG, "uploadAvatar: success, avatarUrl=${profile.avatarUrl}")
                     _uiState.update {
                         it.copy(isUploadingAvatar = false, avatarUrl = profile.avatarUrl)
                     }
                 }
                 .onFailure { e ->
+                    MushroomLogger.e(TAG, "uploadAvatar: failed", e)
                     _uiState.update {
                         it.copy(isUploadingAvatar = false, error = "上传失败: ${e.message}")
                     }

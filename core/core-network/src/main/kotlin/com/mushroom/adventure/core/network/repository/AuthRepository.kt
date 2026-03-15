@@ -4,12 +4,15 @@ import com.mushroom.adventure.core.network.api.AuthApi
 import com.mushroom.adventure.core.network.api.UserApi
 import com.mushroom.adventure.core.network.data.*
 import com.mushroom.adventure.core.network.token.TokenStore
+import com.mushroom.core.logging.MushroomLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+
+private const val TAG = "AuthRepo"
 
 class AuthRepository(
     private val authApi: AuthApi,
@@ -60,9 +63,11 @@ class AuthRepository(
     }
 
     suspend fun uploadAvatar(avatarBytes: ByteArray, fileName: String): Result<UserProfile> = runCatching {
+        MushroomLogger.i(TAG, "uploadAvatar: fileName=$fileName, bytes=${avatarBytes.size}")
         val requestBody = avatarBytes.toRequestBody("image/*".toMediaType())
         val part = MultipartBody.Part.createFormData("avatar", fileName, requestBody)
         val profile = userApi.uploadAvatar(part)
+        MushroomLogger.i(TAG, "uploadAvatar: server returned avatarUrl=${profile.avatarUrl}")
         _currentUser.value = profile
         profile
     }

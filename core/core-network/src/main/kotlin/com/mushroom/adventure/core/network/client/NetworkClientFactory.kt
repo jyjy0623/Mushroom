@@ -24,6 +24,7 @@ object NetworkClientFactory {
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .addInterceptor(dynamicUrlInterceptor(serverUrlManager))
+            .addInterceptor(requestIdInterceptor())
             .addInterceptor(loggingInterceptor())
             .build()
     }
@@ -38,6 +39,7 @@ object NetworkClientFactory {
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .addInterceptor(dynamicUrlInterceptor(serverUrlManager))
+            .addInterceptor(requestIdInterceptor())
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor())
             .authenticator(authenticator)
@@ -87,16 +89,25 @@ object NetworkClientFactory {
             chain.proceed(originalRequest.newBuilder().url(newUrl).build())
         }
 
+    private fun requestIdInterceptor() = okhttp3.Interceptor { chain ->
+        val requestId = java.util.UUID.randomUUID().toString().take(8)
+        val newRequest = chain.request().newBuilder()
+            .header("X-Request-ID", requestId)
+            .build()
+        chain.proceed(newRequest)
+    }
+
     private fun loggingInterceptor() = okhttp3.Interceptor { chain ->
         val request = chain.request()
+        val reqId = request.header("X-Request-ID") ?: "-"
         try {
             val startTime = System.currentTimeMillis()
             val response = chain.proceed(request)
             val duration = System.currentTimeMillis() - startTime
-            MushroomLogger.d(TAG, "${request.method} ${request.url} -> ${response.code} (${duration}ms)")
+            MushroomLogger.d(TAG, "[$reqId] ${request.method} ${request.url.encodedPath} -> ${response.code} (${duration}ms)")
             response
         } catch (e: Exception) {
-            MushroomLogger.e(TAG, "Request failed: ${request.method} ${request.url}", e)
+            MushroomLogger.e(TAG, "[$reqId] Request failed: ${request.method} ${request.url.encodedPath}", e)
             throw e
         }
     }
