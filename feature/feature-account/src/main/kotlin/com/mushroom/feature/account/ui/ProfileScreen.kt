@@ -168,8 +168,13 @@ fun ProfileScreen(
                         strokeWidth = 3.dp
                     )
                 } else if (state.avatarUrl.isNotEmpty()) {
+                    val avatarModel: Any = if (state.avatarUrl.startsWith("/")) {
+                        java.io.File(state.avatarUrl)
+                    } else {
+                        state.avatarUrl
+                    }
                     SubcomposeAsyncImage(
-                        model = state.avatarUrl,
+                        model = avatarModel,
                         contentDescription = "头像",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),

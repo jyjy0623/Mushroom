@@ -56,12 +56,13 @@ class ProfileViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             authRepository.fetchProfile()
                 .onSuccess { profile ->
+                    val localAvatar = authRepository.getLocalAvatarPath()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             phone = profile.phone,
                             nickname = profile.nickname,
-                            avatarUrl = profile.avatarUrl,
+                            avatarUrl = localAvatar ?: profile.avatarUrl,
                             editingNickname = profile.nickname
                         )
                     }
@@ -72,12 +73,13 @@ class ProfileViewModel @Inject constructor(
                     val lastPhone = authRepository.getLastPhone()
                     val lastNickname = authRepository.getLastNickname()
                     if (cached != null) {
+                        val localAvatar = authRepository.getLocalAvatarPath()
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 phone = cached.phone,
                                 nickname = cached.nickname,
-                                avatarUrl = cached.avatarUrl,
+                                avatarUrl = localAvatar ?: cached.avatarUrl,
                                 editingNickname = cached.nickname,
                                 error = "网络不可用，显示的是缓存数据"
                             )
@@ -152,9 +154,10 @@ class ProfileViewModel @Inject constructor(
             MushroomLogger.i(TAG, "uploadAvatar: compressed, bytes=${bytes.size}, fileName=$fileName")
             authRepository.uploadAvatar(bytes, fileName)
                 .onSuccess { profile ->
-                    MushroomLogger.i(TAG, "uploadAvatar: success, avatarUrl=${profile.avatarUrl}")
+                    val localAvatar = authRepository.getLocalAvatarPath()
+                    MushroomLogger.i(TAG, "uploadAvatar: success, avatarUrl=${profile.avatarUrl}, localAvatar=$localAvatar")
                     _uiState.update {
-                        it.copy(isUploadingAvatar = false, avatarUrl = profile.avatarUrl)
+                        it.copy(isUploadingAvatar = false, avatarUrl = localAvatar ?: profile.avatarUrl)
                     }
                 }
                 .onFailure { e ->

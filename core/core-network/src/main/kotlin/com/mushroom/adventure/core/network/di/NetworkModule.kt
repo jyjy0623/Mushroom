@@ -23,6 +23,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.io.File
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -114,7 +115,8 @@ object NetworkModule {
         @ApplicationContext context: Context
     ): AuthRepository {
         val deviceId = DeviceIdProvider.getDeviceId(context)
-        return AuthRepository(authApi, userApi, tokenStore, deviceId)
+        val avatarDir = File(context.filesDir, "avatars")
+        return AuthRepository(authApi, userApi, tokenStore, deviceId, avatarDir)
     }
 
     @Provides
