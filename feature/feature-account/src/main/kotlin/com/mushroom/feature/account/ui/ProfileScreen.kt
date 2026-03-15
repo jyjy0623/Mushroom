@@ -44,6 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.feature.account.viewmodel.ProfileEvent
 import com.mushroom.feature.account.viewmodel.ProfileViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -164,11 +168,27 @@ fun ProfileScreen(
                         strokeWidth = 3.dp
                     )
                 } else if (state.avatarUrl.isNotEmpty()) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = state.avatarUrl,
                         contentDescription = "头像",
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        loading = {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        },
+                        error = {
+                            LaunchedEffect(state.avatarUrl) {
+                                MushroomLogger.w("ProfileScreen", "Avatar load failed: url=${state.avatarUrl}, error=${it.result.throwable.message}")
+                            }
+                            Text(
+                                text = state.nickname.take(1).ifEmpty { "?" },
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     )
                 } else {
                     Text(
