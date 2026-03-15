@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -43,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
@@ -53,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -100,6 +105,7 @@ fun DailyTaskListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val canTriggerGame by viewModel.canTriggerGame.collectAsStateWithLifecycle()
+    val timerStates by viewModel.timerStates.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
@@ -115,6 +121,9 @@ fun DailyTaskListScreen(
     // 删除已完成任务确认框（含扣回奖励提示）
     var pendingDeleteCompleted by remember { mutableStateOf<TaskUiModel?>(null) }
     var pendingDeleteCompletedReward by remember { mutableStateOf("") }
+
+    // 倒计时设置弹窗
+    var timerSetupTask by remember { mutableStateOf<TaskUiModel?>(null) }
 
     // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
@@ -241,8 +250,17 @@ fun DailyTaskListScreen(
                     items(state.tasks, key = { it.id }) { task ->
                         TaskCard(
                             task = task,
+                            timerSeconds = timerStates[task.id],
                             onEdit = if (task.isDone) null else { { onNavigateToEditTask(task.id) } },
                             onCheckIn = { viewModel.checkIn(task.id) },
+                            onTimerClick = {
+                                val seconds = timerStates[task.id]
+                                if (seconds != null) {
+                                    viewModel.stopTimer(task.id)
+                                } else {
+                                    timerSetupTask = task
+                                }
+                            },
                             onDelete = {
                                 if (task.isDone) {
                                     // 已完成任务：弹确认框并预加载扣回奖励描述
@@ -410,6 +428,18 @@ fun DailyTaskListScreen(
             DatePicker(state = datePickerState)
         }
     }
+
+    // 倒计时设置弹窗
+    timerSetupTask?.let { task ->
+        TimerSetupDialog(
+            estimatedMinutes = task.estimatedMinutes,
+            onStart = { minutes ->
+                viewModel.startTimer(task.id, minutes)
+                timerSetupTask = null
+            },
+            onDismiss = { timerSetupTask = null }
+        )
+    }
 }
 
 @Composable
@@ -575,8 +605,10 @@ private fun TaskProgressCard(completed: Int, total: Int, currentStreak: Int, mem
 @Composable
 private fun TaskCard(
     task: TaskUiModel,
+    timerSeconds: Int?,
     onEdit: (() -> Unit)?,
     onCheckIn: () -> Unit,
+    onTimerClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     val containerColor = when {
@@ -593,13 +625,15 @@ private fun TaskCard(
             ),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) { TaskCardContent(task, onCheckIn) }
+    ) { TaskCardContent(task, timerSeconds, onCheckIn, onTimerClick) }
 }
 
 @Composable
 private fun TaskCardContent(
     task: TaskUiModel,
-    onCheckIn: () -> Unit
+    timerSeconds: Int?,
+    onCheckIn: () -> Unit,
+    onTimerClick: () -> Unit
 ) {
     // 完成时图标做一个缩放弹跳动画
     val iconScale by animateFloatAsState(
@@ -635,8 +669,31 @@ private fun TaskCardContent(
                     task.deadlineDisplay?.let { SubjectChip(it) }
                 }
             }
-            // 打卡按钮（仅未完成任务显示）
+            // 倒计时按钮（仅未完成任务显示）
             if (!task.isDone) {
+                if (timerSeconds != null) {
+                    // 计时中：显示倒计时文字，点击取消
+                    TextButton(onClick = onTimerClick) {
+                        val mm = timerSeconds / 60
+                        val ss = timerSeconds % 60
+                        Text(
+                            text = if (timerSeconds > 0) "%d:%02d".format(mm, ss) else "时间到",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (timerSeconds > 0) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    // 未计时：显示开始图标
+                    IconButton(onClick = onTimerClick) {
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = "开始专注",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                // 打卡按钮
                 IconButton(onClick = onCheckIn) {
                     Icon(
                         Icons.Filled.CheckCircle,
@@ -681,4 +738,50 @@ private fun EmptyTasksPlaceholder(onAdd: (String) -> Unit) {
         Spacer(Modifier.height(16.dp))
         FilledTonalButton(onClick = { onAdd(java.time.LocalDate.now().toString()) }) { Text("添加任务") }
     }
+}
+
+@Composable
+private fun TimerSetupDialog(
+    estimatedMinutes: Int,
+    onStart: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var minutes by remember { mutableIntStateOf(maxOf(estimatedMinutes, 5)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设定专注时长") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("选择倒计时时长（分钟）", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = { minutes = maxOf(5, minutes - 5) },
+                        enabled = minutes > 5
+                    ) { Text("-5") }
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = "$minutes",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    OutlinedButton(
+                        onClick = { minutes += 5 }
+                    ) { Text("+5") }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onStart(minutes) }) { Text("开始") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }

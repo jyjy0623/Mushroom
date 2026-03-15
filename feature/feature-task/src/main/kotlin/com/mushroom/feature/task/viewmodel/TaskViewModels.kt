@@ -41,8 +41,11 @@ import com.mushroom.core.domain.entity.MushroomAction
 import com.mushroom.core.domain.entity.MushroomSource
 import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.core.ui.themedDisplayName
+import com.mushroom.core.domain.service.NotificationService
 import com.mushroom.feature.game.repository.GameRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -100,6 +103,7 @@ class DailyTaskViewModel @Inject constructor(
     private val milestoneRepository: MilestoneRepository,
     private val gameRepo: GameRepository,
     private val mushroomRepo: MushroomRepository,
+    private val notificationService: NotificationService,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -113,6 +117,11 @@ class DailyTaskViewModel @Inject constructor(
     // 是否可以触发游戏（全勤 AND 今日未玩过）
     private val _canTriggerGame = MutableStateFlow(false)
     val canTriggerGame: StateFlow<Boolean> = _canTriggerGame
+
+    // 倒计时状态：taskId → 剩余秒数（null=未计时，0=已结束）
+    private val _timerStates = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val timerStates: StateFlow<Map<Long, Int>> = _timerStates
+    private val timerJobs = mutableMapOf<Long, Job>()
 
     init {
         // 初始化时加载连续打卡天数和备忘录连续天数
@@ -315,6 +324,35 @@ class DailyTaskViewModel @Inject constructor(
                     _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("复制失败，请重试"))
                 }
         }
+    }
+
+    // ── 倒计时 ──────────────────────────────────────────────
+
+    fun startTimer(taskId: Long, minutes: Int) {
+        stopTimer(taskId)
+        val totalSeconds = minutes * 60
+        _timerStates.value = _timerStates.value + (taskId to totalSeconds)
+        val task = uiState.value.domainTasks.find { it.id == taskId }
+        timerJobs[taskId] = viewModelScope.launch {
+            var remaining = totalSeconds
+            while (remaining > 0) {
+                delay(1_000)
+                remaining--
+                _timerStates.value = _timerStates.value + (taskId to remaining)
+            }
+            // 时间到
+            notificationService.sendImmediateNotification(
+                title = "专注时间到！",
+                body = "「${task?.title ?: "任务"}」的专注时间已结束"
+            )
+            timerJobs.remove(taskId)
+        }
+    }
+
+    fun stopTimer(taskId: Long) {
+        timerJobs[taskId]?.cancel()
+        timerJobs.remove(taskId)
+        _timerStates.value = _timerStates.value - taskId
     }
 
     fun applyTemplate(template: TaskTemplate) {
