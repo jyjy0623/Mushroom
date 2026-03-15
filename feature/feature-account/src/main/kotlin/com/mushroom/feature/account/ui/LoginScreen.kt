@@ -29,8 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mushroom.core.ui.R as CoreUiR
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.feature.account.viewmodel.LoginEvent
 import com.mushroom.feature.account.viewmodel.LoginViewModel
@@ -75,7 +77,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "蘑菇冒险",
+                text = stringResource(CoreUiR.string.login_brand_title),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -97,7 +99,7 @@ fun LoginScreen(
                 placeholder = { Text("给自己取个名字吧") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                supportingText = { Text("不填则默认为「蘑菇冒险家」") }
+                supportingText = { Text(stringResource(CoreUiR.string.login_nickname_hint)) }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

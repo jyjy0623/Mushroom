@@ -35,4 +35,11 @@
     <string name="empty_tasks_placeholder">今天还没有任务 🍄</string>
     <string name="tab_currency_flow">蘑菇\n收支</string>
     <string name="no_currency_data">暂无蘑菇数据</string>
+
+    <!-- 登录页品牌文案（默认值=蘑菇品牌，可被 app flavor 覆盖） -->
+    <string name="login_brand_title">蘑菇冒险</string>
+    <string name="login_nickname_hint">不填则默认为「蘑菇冒险家」</string>
+
+    <!-- 游戏页品牌文案（默认值=蘑菇品牌，可被 app flavor 覆盖） -->
+    <string name="game_title">MUSHROOM  ADVENTURE</string>
 </resources>

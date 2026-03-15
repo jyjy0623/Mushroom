@@ -15,7 +15,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "NotificationService"
-private const val CHANNEL_ID = "mushroom_task_reminder"
+private const val CHANNEL_ID = "task_reminder"
 private const val CHANNEL_NAME = "任务提醒"
 private const val NOTIF_ID_BASE = 10000
 
@@ -82,7 +82,8 @@ class NotificationServiceImpl @Inject constructor(
             CHANNEL_NAME,
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "蘑菇大冒险任务截止前提醒"
+            val appName = context.applicationInfo.loadLabel(context.packageManager)
+            description = "$appName 任务截止前提醒"
         }
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)

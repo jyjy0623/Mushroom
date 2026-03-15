@@ -23,7 +23,7 @@ class LogExporter(
      */
     fun export(): File {
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
-        val zipFile = File(context.cacheDir, "mushroom_diagnostics_$timestamp.zip")
+        val zipFile = File(context.cacheDir, "diagnostics_$timestamp.zip")
 
         ZipOutputStream(zipFile.outputStream().buffered()).use { zos ->
             val logDir = File(context.filesDir, "logs")
@@ -96,7 +96,8 @@ class LogExporter(
 
     private fun buildDiagnosticSummary(): String {
         return buildString {
-            appendLine("=== 蘑菇大冒险 诊断摘要 ===")
+            val appName = context.applicationInfo.loadLabel(context.packageManager)
+            appendLine("=== $appName 诊断摘要 ===")
             appendLine("导出时间: ${LocalDateTime.now()}")
             appendLine()
             appendLine("--- 设备信息 ---")
@@ -118,7 +119,8 @@ class LogExporter(
     private fun buildClaudeAnalysisBrief(logFiles: List<File>, crashFiles: List<File>, errorIndex: String): String {
         return buildString {
             appendLine("# CLAUDE_ANALYSIS_BRIEF.md")
-            appendLine("# 蘑菇大冒险 - Claude 分析入口")
+            val appName = context.applicationInfo.loadLabel(context.packageManager)
+            appendLine("# $appName - Claude 分析入口")
             appendLine()
             appendLine("## 如何开始分析")
             appendLine()

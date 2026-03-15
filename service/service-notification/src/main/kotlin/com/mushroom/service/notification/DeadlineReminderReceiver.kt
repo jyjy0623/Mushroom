@@ -8,7 +8,7 @@ import androidx.core.app.NotificationCompat
 import com.mushroom.core.logging.MushroomLogger
 
 private const val TAG = "DeadlineReminderReceiver"
-private const val CHANNEL_ID = "mushroom_task_reminder"
+private const val CHANNEL_ID = "task_reminder"
 
 /**
  * 接收 AlarmManager 触发的任务截止提醒，并发送通知。

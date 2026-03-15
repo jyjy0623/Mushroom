@@ -3,6 +3,7 @@ package com.mushroom.adventure.ui.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.mushroom.adventure.BuildConfig
+import com.mushroom.adventure.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -226,7 +228,7 @@ fun SettingsScreen(
                     var tapCount by remember { mutableIntStateOf(0) }
                     var lastTapMs by remember { mutableLongStateOf(0L) }
                     Text(
-                        "蘑菇大冒险",
+                        stringResource(R.string.app_name),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {

@@ -25,7 +25,7 @@ class LogFileWriterPurgeTest {
 
     private fun createFakeLogFile(date: LocalDate, sizeBytes: Int = 100): File {
         val fmt = DateTimeFormatter.ofPattern("yyyyMMdd")
-        return File(tempDir, "mushroom_log_${date.format(fmt)}.txt")
+        return File(tempDir, "app_log_${date.format(fmt)}.txt")
             .also { it.writeText("A".repeat(sizeBytes)) }
     }
 
@@ -59,7 +59,7 @@ class LogFileWriterPurgeTest {
         makeWriter().purgeAndRotate()
 
         val totalSize = tempDir.listFiles()
-            ?.filter { it.name.startsWith("mushroom_log_") }
+            ?.filter { it.name.startsWith("app_log_") }
             ?.sumOf { it.length() } ?: 0L
         assertTrue(
             totalSize <= LogFileWriter.MAX_TOTAL_SIZE_KB * 1024,

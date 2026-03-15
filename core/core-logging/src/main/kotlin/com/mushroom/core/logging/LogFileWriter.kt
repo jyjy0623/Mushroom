@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
  * - 总大小上限：512 KB（MAX_TOTAL_SIZE_KB）
  * - 保留天数：最近 2 天（MAX_RETAIN_DAYS）
  * - 每次写入前检查并滚动/清理
- * - 文件名格式：mushroom_log_yyyyMMdd.txt
+ * - 文件名格式：app_log_yyyyMMdd.txt
  */
 open class LogFileWriter(private val context: Context) {
 
@@ -27,7 +27,7 @@ open class LogFileWriter(private val context: Context) {
         get() = File(context.filesDir, "logs").also { it.mkdirs() }
 
     private val todayFile: File
-        get() = File(logDir, "mushroom_log_${LocalDate.now().format(DATE_FORMAT)}.txt")
+        get() = File(logDir, "app_log_${LocalDate.now().format(DATE_FORMAT)}.txt")
 
     /**
      * 写入一行日志到当日文件。
@@ -71,7 +71,7 @@ open class LogFileWriter(private val context: Context) {
         try {
             val today = LocalDate.now()
             val files = logDir.listFiles()
-                ?.filter { it.name.startsWith("mushroom_log_") && it.name.endsWith(".txt") }
+                ?.filter { it.name.startsWith("app_log_") && it.name.endsWith(".txt") }
                 ?.sortedBy { it.name }
                 ?: return
 
@@ -79,7 +79,7 @@ open class LogFileWriter(private val context: Context) {
             val retentionThreshold = today.minusDays(MAX_RETAIN_DAYS)
             files.filter { file ->
                 try {
-                    val dateStr = file.name.removePrefix("mushroom_log_").removeSuffix(".txt")
+                    val dateStr = file.name.removePrefix("app_log_").removeSuffix(".txt")
                     val fileDate = LocalDate.parse(dateStr, DATE_FORMAT)
                     fileDate.isBefore(retentionThreshold)
                 } catch (_: Exception) {
@@ -89,7 +89,7 @@ open class LogFileWriter(private val context: Context) {
 
             // Step 2: 总大小超限则删除最旧文件
             val remaining = logDir.listFiles()
-                ?.filter { it.name.startsWith("mushroom_log_") && it.name.endsWith(".txt") }
+                ?.filter { it.name.startsWith("app_log_") && it.name.endsWith(".txt") }
                 ?.sortedBy { it.name }
                 ?.toMutableList()
                 ?: return
