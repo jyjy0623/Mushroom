@@ -27,7 +27,7 @@ import javax.inject.Inject
 private const val TAG = "StatisticsViewModel"
 
 data class StatisticsUiState(
-    val period: StatisticsPeriod = StatisticsPeriod.LAST_7_DAYS,
+    val period: StatisticsPeriod = StatisticsPeriod.THIS_WEEK,
     val checkInStats: CheckInStatistics? = null,
     val mushroomStats: MushroomStatistics? = null,
     val scoreStats: Map<Subject, ScoreStatistics> = emptyMap(),
@@ -42,7 +42,7 @@ class StatisticsViewModel @Inject constructor(
     private val scoreStatsUseCase: GetScoreStatisticsUseCase
 ) : ViewModel() {
 
-    private val _period = MutableStateFlow(StatisticsPeriod.LAST_7_DAYS)
+    private val _period = MutableStateFlow(StatisticsPeriod.THIS_WEEK)
 
     // Score stats don't depend on period — create once and share
     private val allScoreStatsFlow: Flow<Map<Subject, ScoreStatistics>> = run {

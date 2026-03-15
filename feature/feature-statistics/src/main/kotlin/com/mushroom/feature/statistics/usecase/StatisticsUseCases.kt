@@ -20,6 +20,7 @@ import com.mushroom.core.logging.MushroomLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.Month
 import java.time.temporal.ChronoUnit
@@ -216,8 +217,8 @@ class GetScoreStatisticsUseCase @Inject constructor(
 private fun dateRange(period: StatisticsPeriod): Pair<LocalDate, LocalDate> {
     val today = LocalDate.now()
     return when (period) {
-        StatisticsPeriod.LAST_7_DAYS  -> today.minusDays(6) to today
-        StatisticsPeriod.LAST_30_DAYS -> today.minusDays(29) to today
+        StatisticsPeriod.THIS_WEEK -> today.with(DayOfWeek.MONDAY) to today
+        StatisticsPeriod.THIS_MONTH -> today.withDayOfMonth(1) to today
         StatisticsPeriod.THIS_SEMESTER -> {
             // 修复：1月未覆盖导致 from > to 崩溃
             // 2-7月：春季学期（本年2月1日）；8-12月：秋季学期（本年9月1日）；1月：秋季学期（上一年9月1日）

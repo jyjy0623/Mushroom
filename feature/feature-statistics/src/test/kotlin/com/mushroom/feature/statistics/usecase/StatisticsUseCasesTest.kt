@@ -203,7 +203,7 @@ class StatisticsUseCasesTest {
             every { mushroomRepo.getLedgerByDateRange(any(), any()) } returns flowOf(ledger)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.MushroomStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             val stats = results[0]
             assertEquals(5, stats.totalEarned[MushroomLevel.SMALL])  // 3+2
@@ -223,7 +223,7 @@ class StatisticsUseCasesTest {
             every { mushroomRepo.getLedgerByDateRange(any(), any()) } returns flowOf(ledger)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.MushroomStatistics>()
-            useCase(StatisticsPeriod.LAST_30_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_MONTH).collect { results.add(it) }
 
             val stats = results[0]
             assertEquals(2, stats.totalEarned[MushroomLevel.GOLD])
@@ -238,7 +238,7 @@ class StatisticsUseCasesTest {
             every { mushroomRepo.getLedgerByDateRange(any(), any()) } returns flowOf(emptyList())
 
             val results = mutableListOf<com.mushroom.core.domain.entity.MushroomStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             val stats = results[0]
             assertTrue(stats.totalEarned.values.all { it == 0 })
@@ -257,7 +257,7 @@ class StatisticsUseCasesTest {
             every { mushroomRepo.getLedgerByDateRange(any(), any()) } returns flowOf(ledger)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.MushroomStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             val stats = results[0]
             assertEquals(2, stats.sourceBreakdown[MushroomSource.TASK])
@@ -308,7 +308,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(tasks)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(3, results[0].currentStreak)
         }
@@ -326,7 +326,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(tasks)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(0, results[0].currentStreak)
         }
@@ -348,7 +348,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(tasks)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(3, results[0].longestStreak)
         }
@@ -360,7 +360,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(emptyList())
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(0, results[0].longestStreak)
             assertEquals(0, results[0].currentStreak)
@@ -380,7 +380,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(tasks)
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(3, results[0].totalCheckins)
         }
@@ -395,7 +395,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(listOf(mathTask))
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(1.0f, results[0].subjectBreakdown[Subject.MATH])
         }
@@ -410,7 +410,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(listOf(mathTask))
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             assertEquals(0f, results[0].subjectBreakdown[Subject.ENGLISH])
         }
@@ -427,7 +427,7 @@ class StatisticsUseCasesTest {
             every { taskRepo.getTasksByDateRange(any(), any()) } returns flowOf(listOf(task1, task2))
 
             val results = mutableListOf<com.mushroom.core.domain.entity.CheckInStatistics>()
-            useCase(StatisticsPeriod.LAST_7_DAYS).collect { results.add(it) }
+            useCase(StatisticsPeriod.THIS_WEEK).collect { results.add(it) }
 
             val todayRate = results[0].dailyCompletionRates.find { it.date == today }
             assertEquals(0.5f, todayRate?.completionRate)

@@ -14,7 +14,7 @@ data class DailyMushroomEarning(
     val totalPoints: Int get() = amounts.entries.sumOf { (level, cnt) -> level.exchangePoints * cnt }
 }
 
-enum class StatisticsPeriod { LAST_7_DAYS, LAST_30_DAYS, THIS_SEMESTER }
+enum class StatisticsPeriod { THIS_WEEK, THIS_MONTH, THIS_SEMESTER }
 
 enum class ScoreTrend { IMPROVING, STABLE, DECLINING }
 

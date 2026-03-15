@@ -103,16 +103,16 @@ fun StatisticsScreen(
                 ) {
                     item {
                         FilterChip(
-                            selected = uiState.period == StatisticsPeriod.LAST_7_DAYS,
-                            onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_7_DAYS) },
-                            label = { Text("近7天") }
+                            selected = uiState.period == StatisticsPeriod.THIS_WEEK,
+                            onClick = { viewModel.selectPeriod(StatisticsPeriod.THIS_WEEK) },
+                            label = { Text("本周") }
                         )
                     }
                     item {
                         FilterChip(
-                            selected = uiState.period == StatisticsPeriod.LAST_30_DAYS,
-                            onClick = { viewModel.selectPeriod(StatisticsPeriod.LAST_30_DAYS) },
-                            label = { Text("近30天") }
+                            selected = uiState.period == StatisticsPeriod.THIS_MONTH,
+                            onClick = { viewModel.selectPeriod(StatisticsPeriod.THIS_MONTH) },
+                            label = { Text("本月") }
                         )
                     }
                     item {
