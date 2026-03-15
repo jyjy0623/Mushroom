@@ -1,5 +1,6 @@
 package com.mushroom.feature.game.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mushroom.adventure.core.network.data.FriendRequestInfo
 import com.mushroom.feature.game.viewmodel.FriendViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,7 +51,9 @@ fun FriendManagementScreen(
 ) {
     val friendsState by viewModel.friendsState.collectAsStateWithLifecycle()
     val friendStatsState by viewModel.friendStats.collectAsStateWithLifecycle()
+    val pendingRequests by viewModel.pendingRequests.collectAsStateWithLifecycle()
     var inputPhone by remember { mutableStateOf("") }
+    var inputMessage by remember { mutableStateOf("") }
     var showFriendStatsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -90,13 +95,21 @@ fun FriendManagementScreen(
                     OutlinedButton(
                         onClick = {
                             viewModel.clearAddResult()
-                            viewModel.addFriend(inputPhone)
+                            viewModel.addFriend(inputPhone, inputMessage)
                         },
                         enabled = inputPhone.length == 11
                     ) {
-                        Text("添加")
+                        Text("申请")
                     }
                 }
+                Spacer(Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = inputMessage,
+                    onValueChange = { inputMessage = it.take(128) },
+                    label = { Text("留言（可选）") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 if (friendsState.addResult != null) {
                     Spacer(Modifier.height(4.dp))
@@ -108,7 +121,31 @@ fun FriendManagementScreen(
                 }
             }
 
-            // 分割线
+            // 待处理的好友申请
+            if (pendingRequests.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "待处理申请 (${pendingRequests.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                items(pendingRequests, key = { it.id }) { request ->
+                    FriendRequestRow(
+                        request = request,
+                        onAccept = { viewModel.acceptRequest(request.id) },
+                        onReject = { viewModel.rejectRequest(request.id) }
+                    )
+                }
+            }
+
+            // 好友列表
             item {
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider()
@@ -121,7 +158,6 @@ fun FriendManagementScreen(
                 Spacer(Modifier.height(8.dp))
             }
 
-            // 好友列表
             if (friendsState.isLoading) {
                 item {
                     CircularProgressIndicator(modifier = Modifier.padding(16.dp))
@@ -158,6 +194,61 @@ fun FriendManagementScreen(
             state = friendStatsState,
             onDismiss = { showFriendStatsDialog = false }
         )
+    }
+}
+
+@Composable
+private fun FriendRequestRow(
+    request: FriendRequestInfo,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = request.nickname.ifBlank { "匿名" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = request.maskedPhone,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (request.message.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "留言: ${request.message}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onReject) {
+                    Text("拒绝")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onAccept) {
+                    Text("同意")
+                }
+            }
+        }
     }
 }
 

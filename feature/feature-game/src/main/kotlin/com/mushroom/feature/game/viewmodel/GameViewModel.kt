@@ -401,10 +401,10 @@ class GameViewModel @Inject constructor(
         }
     }
 
-    fun addFriend(phone: String) {
+    fun addFriend(phone: String, message: String = "") {
         viewModelScope.launch {
             _friendsState.update { it.copy(addResult = null) }
-            friendRepo.addFriend(phone)
+            friendRepo.addFriend(phone, message)
                 .onSuccess { response ->
                     _friendsState.update { it.copy(addResult = response.message) }
                     if (response.success) loadFriends()

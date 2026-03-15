@@ -39,12 +39,13 @@ import com.mushroom.feature.game.viewmodel.FriendsState
 fun FriendManagementDialog(
     friendsState: FriendsState,
     onDismiss: () -> Unit,
-    onAddFriend: (String) -> Unit,
+    onAddFriend: (String, String) -> Unit,
     onRemoveFriend: (Int) -> Unit,
     onClearAddResult: () -> Unit,
     onFriendClick: (Int) -> Unit = {}
 ) {
     var inputPhone by remember { mutableStateOf("") }
+    var inputMessage by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -71,13 +72,21 @@ fun FriendManagementDialog(
                         OutlinedButton(
                             onClick = {
                                 onClearAddResult()
-                                onAddFriend(inputPhone)
+                                onAddFriend(inputPhone, inputMessage)
                             },
                             enabled = inputPhone.length == 11
                         ) {
-                            Text("添加")
+                            Text("申请")
                         }
                     }
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = inputMessage,
+                        onValueChange = { inputMessage = it.take(128) },
+                        label = { Text("留言（可选）") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     if (friendsState.addResult != null) {
                         Spacer(Modifier.height(4.dp))

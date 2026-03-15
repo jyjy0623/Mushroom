@@ -2,6 +2,7 @@ package com.mushroom.feature.game.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mushroom.adventure.core.network.data.FriendRequestInfo
 import com.mushroom.adventure.core.network.repository.FriendRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +23,15 @@ class FriendViewModel @Inject constructor(
     private val _friendStats = MutableStateFlow(FriendStatsState())
     val friendStats: StateFlow<FriendStatsState> = _friendStats.asStateFlow()
 
+    private val _pendingRequests = MutableStateFlow<List<FriendRequestInfo>>(emptyList())
+    val pendingRequests: StateFlow<List<FriendRequestInfo>> = _pendingRequests.asStateFlow()
+
+    private val _pendingCount = MutableStateFlow(0)
+    val pendingCount: StateFlow<Int> = _pendingCount.asStateFlow()
+
     init {
         loadFriends()
+        loadPendingRequests()
     }
 
     fun loadFriends() {
@@ -43,13 +51,16 @@ class FriendViewModel @Inject constructor(
         }
     }
 
-    fun addFriend(phone: String) {
+    fun addFriend(phone: String, message: String = "") {
         viewModelScope.launch {
             _friendsState.update { it.copy(addResult = null) }
-            friendRepo.addFriend(phone)
+            friendRepo.addFriend(phone, message)
                 .onSuccess { response ->
                     _friendsState.update { it.copy(addResult = response.message) }
-                    if (response.success) loadFriends()
+                    if (response.success) {
+                        loadFriends()
+                        loadPendingRequests()
+                    }
                 }
                 .onFailure { e ->
                     _friendsState.update { it.copy(addResult = "操作失败: ${e.message}") }
@@ -80,6 +91,41 @@ class FriendViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _friendStats.update { FriendStatsState(error = "加载失败: ${e.message}") }
+                }
+        }
+    }
+
+    fun loadPendingRequests() {
+        viewModelScope.launch {
+            friendRepo.getFriendRequests()
+                .onSuccess { response ->
+                    _pendingRequests.value = response.requests
+                    _pendingCount.value = response.total
+                }
+        }
+    }
+
+    fun acceptRequest(requestId: Int) {
+        viewModelScope.launch {
+            friendRepo.acceptFriendRequest(requestId)
+                .onSuccess {
+                    loadPendingRequests()
+                    loadFriends()
+                }
+                .onFailure { e ->
+                    _friendsState.update { it.copy(error = "操作失败: ${e.message}") }
+                }
+        }
+    }
+
+    fun rejectRequest(requestId: Int) {
+        viewModelScope.launch {
+            friendRepo.rejectFriendRequest(requestId)
+                .onSuccess {
+                    loadPendingRequests()
+                }
+                .onFailure { e ->
+                    _friendsState.update { it.copy(error = "操作失败: ${e.message}") }
                 }
         }
     }
