@@ -125,6 +125,9 @@ fun DailyTaskListScreen(
     // 倒计时设置弹窗
     var timerSetupTask by remember { mutableStateOf<TaskUiModel?>(null) }
 
+    // 倒计时结束提醒弹窗
+    var timerFinishedTaskTitle by remember { mutableStateOf<String?>(null) }
+
     // 庆祝横幅：全部完成且当天未展示过才显示，3 秒后自动消失
     var showCelebration by remember { mutableStateOf(false) }
     // 游戏解锁弹窗
@@ -171,6 +174,7 @@ fun DailyTaskListScreen(
                 is DailyTaskViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
                 is DailyTaskViewEvent.ShowRewardDialog -> rewardDialogText = event.rewardSummary
                 is DailyTaskViewEvent.NavigateToAddTask -> onNavigateToAddTask(uiState.date.toString())
+                is DailyTaskViewEvent.TimerFinished -> timerFinishedTaskTitle = event.taskTitle
             }
         }
     }
@@ -438,6 +442,20 @@ fun DailyTaskListScreen(
                 timerSetupTask = null
             },
             onDismiss = { timerSetupTask = null }
+        )
+    }
+
+    // 倒计时结束提醒弹窗
+    timerFinishedTaskTitle?.let { title ->
+        AlertDialog(
+            onDismissRequest = { timerFinishedTaskTitle = null },
+            title = { Text("专注时间到！") },
+            text = { Text("「$title」的专注时间已结束，辛苦了！") },
+            confirmButton = {
+                TextButton(onClick = { timerFinishedTaskTitle = null }) {
+                    Text("知道了")
+                }
+            }
         )
     }
 }

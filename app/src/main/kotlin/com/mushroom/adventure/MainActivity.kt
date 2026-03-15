@@ -1,12 +1,17 @@
 package com.mushroom.adventure
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +49,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // 强制状态栏图标为深色（App 始终使用浅色背景，不随系统深色模式改变）
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
+        requestNotificationPermissionIfNeeded()
         setContent {
             MushroomAdventureTheme {
                 val navController = rememberNavController()
@@ -86,5 +92,23 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_NOTIFICATION_PERMISSION
+                )
+            }
+        }
+    }
+
+    companion object {
+        private const val REQUEST_NOTIFICATION_PERMISSION = 1001
     }
 }

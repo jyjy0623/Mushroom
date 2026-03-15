@@ -89,6 +89,7 @@ sealed class DailyTaskViewEvent {
     data class ShowSnackbar(val message: String) : DailyTaskViewEvent()
     data class ShowRewardDialog(val rewardSummary: String) : DailyTaskViewEvent()
     object NavigateToAddTask : DailyTaskViewEvent()
+    data class TimerFinished(val taskTitle: String) : DailyTaskViewEvent()
 }
 
 @HiltViewModel
@@ -349,6 +350,7 @@ class DailyTaskViewModel @Inject constructor(
                     _timerStates.value = _timerStates.value + (taskId to 0)
                     timerJobs.remove(taskId)
                     timerEndTimes.remove(taskId)
+                    _viewEvent.emit(DailyTaskViewEvent.TimerFinished(taskTitle))
                     break
                 }
                 _timerStates.value = _timerStates.value + (taskId to remaining)
