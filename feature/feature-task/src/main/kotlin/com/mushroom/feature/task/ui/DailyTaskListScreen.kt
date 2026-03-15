@@ -670,7 +670,7 @@ private fun EmptyTasksPlaceholder(onAdd: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("今天还没有任务 🍄", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(CoreUiR.string.empty_tasks_placeholder), style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.height(16.dp))
         FilledTonalButton(onClick = { onAdd(java.time.LocalDate.now().toString()) }) { Text("添加任务") }
     }

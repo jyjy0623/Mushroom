@@ -36,4 +36,7 @@
     <string name="task_reward_default_hint">默认：由规则引擎自动计算（%1$s×1）</string>
     <string name="task_early_default_hint">默认：截止前完成得%1$s×1</string>
     <string name="early_bonus_hint">设置截止时间后，提前完成可获得额外奖励 ⚡</string>
+    <string name="empty_tasks_placeholder">今天还没有任务 🫖</string>
+    <string name="tab_currency_flow">奖励\n收支</string>
+    <string name="no_currency_data">暂无奖励数据</string>
 </resources>
