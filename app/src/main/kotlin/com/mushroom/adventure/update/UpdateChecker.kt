@@ -4,18 +4,21 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Checks GitHub Releases API for a newer app version.
+ * Checks GitHub for a newer app version.
+ *
+ * Uses the Git matching-refs API to find tags by prefix, then fetches the
+ * corresponding release details. This avoids pagination issues caused by
+ * multiple flavors' releases being interleaved in the releases API.
  *
  * Version strings must follow semantic versioning: MAJOR.MINOR.PATCH (e.g. "1.2.0").
- * Each flavor specifies a tag prefix (e.g. "v" for mushroom, "uk-v" for ukdream) —
- * only releases matching that prefix are considered.
- *
+ * Each flavor specifies a tag prefix (e.g. "v" for mushroom, "uk-v" for ukdream).
  * On any network or parse error the checker returns null (silent failure).
  */
 @Singleton
@@ -29,15 +32,13 @@ class UpdateChecker @Inject constructor() {
     }
 
     /**
-     * Fetches releases from GitHub and finds the latest release matching [tagPrefix]
-     * to compare against [currentVersion].
+     * Checks for a newer version by:
+     * 1. Fetching all tags matching [tagPrefix] via Git matching-refs API
+     * 2. Finding the highest semantic version among them
+     * 3. If newer than [currentVersion], fetching the release details
      *
-     * @param owner GitHub repository owner.
-     * @param repo GitHub repository name.
-     * @param currentVersion The app's current version string (e.g. "1.0.0").
-     * @param tagPrefix Tag prefix to match (e.g. "v" for mushroom, "uk-v" for ukdream).
-     * @param enabled If false, immediately returns null without making a network call.
-     * @return [UpdateInfo] if a newer version is available, null otherwise.
+     * This approach is immune to release ordering/pagination issues because
+     * matching-refs returns only tags with the exact prefix.
      */
     suspend fun checkForUpdate(
         owner: String,
@@ -49,52 +50,71 @@ class UpdateChecker @Inject constructor() {
         if (!enabled || owner.isBlank() || repo.isBlank()) return@withContext null
 
         runCatching {
-            // Use per_page=10 to limit payload; releases are sorted newest-first by default
-            val apiUrl = "https://api.github.com/repos/$owner/$repo/releases?per_page=10"
-            val connection = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
-                connectTimeout = CONNECT_TIMEOUT_MS
-                readTimeout = READ_TIMEOUT_MS
-                requestMethod = "GET"
-                setRequestProperty("Accept", "application/vnd.github+json")
-            }
+            // Step 1: Fetch all tags matching the prefix
+            val refsUrl = "https://api.github.com/repos/$owner/$repo/git/matching-refs/tags/$tagPrefix"
+            val refsBody = fetchJson(refsUrl) ?: return@runCatching null
+            val refs = JSONArray(refsBody)
 
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.d(TAG, "GitHub API returned $responseCode — skipping update check")
-                return@runCatching null
-            }
+            // Step 2: Find the tag with the highest version
+            var latestTag: String? = null
+            var latestVersion: Triple<Int, Int, Int>? = null
 
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            connection.disconnect()
-
-            val releases = JSONArray(body)
-            for (i in 0 until releases.length()) {
-                val release = releases.getJSONObject(i)
-                val tag = release.optString("tag_name", "")
-                // Only match releases whose tag starts with this flavor's prefix
+            for (i in 0 until refs.length()) {
+                val ref = refs.getJSONObject(i).optString("ref", "")
+                // ref format: "refs/tags/v1.2.3" or "refs/tags/uk-v1.2.3"
+                val tag = ref.removePrefix("refs/tags/")
                 if (!tag.startsWith(tagPrefix)) continue
-                // For "v" prefix, skip "uk-v" etc. by checking the char after prefix is a digit
+                // For "v" prefix, skip "uk-v" etc.
                 if (tagPrefix == "v" && tag.length > 1 && !tag[1].isDigit()) continue
 
-                val remoteVersion = tag.removePrefix(tagPrefix)
-                if (parseVersion(remoteVersion) == null) continue
+                val versionStr = tag.removePrefix(tagPrefix)
+                val version = parseVersion(versionStr) ?: continue
 
-                if (isNewerVersion(remoteVersion, currentVersion)) {
-                    val htmlUrl = release.optString("html_url", "")
-                    val notes = release.optString("body", "").take(MAX_NOTES_LENGTH)
-                    return@runCatching UpdateInfo(
-                        remoteVersion = remoteVersion,
-                        releaseNotes = notes,
-                        downloadUrl = htmlUrl,
-                    )
-                } else {
-                    return@runCatching null
+                if (latestVersion == null || version > latestVersion) {
+                    latestVersion = version
+                    latestTag = tag
                 }
             }
-            null
+
+            if (latestTag == null || latestVersion == null) return@runCatching null
+
+            val remoteVersion = latestTag.removePrefix(tagPrefix)
+            if (!isNewerVersion(remoteVersion, currentVersion)) return@runCatching null
+
+            // Step 3: Fetch release details for the latest tag
+            val releaseUrl = "https://api.github.com/repos/$owner/$repo/releases/tags/$latestTag"
+            val releaseBody = fetchJson(releaseUrl) ?: return@runCatching UpdateInfo(
+                remoteVersion = remoteVersion,
+                releaseNotes = "",
+                downloadUrl = "",
+            )
+            val release = JSONObject(releaseBody)
+            UpdateInfo(
+                remoteVersion = remoteVersion,
+                releaseNotes = release.optString("body", "").take(MAX_NOTES_LENGTH),
+                downloadUrl = release.optString("html_url", ""),
+            )
         }.onFailure { e ->
             Log.d(TAG, "Update check failed silently: ${e.message}")
         }.getOrNull()
+    }
+
+    private fun fetchJson(url: String): String? {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = READ_TIMEOUT_MS
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/vnd.github+json")
+        }
+        val responseCode = connection.responseCode
+        if (responseCode != HttpURLConnection.HTTP_OK) {
+            Log.d(TAG, "GitHub API returned $responseCode for $url")
+            connection.disconnect()
+            return null
+        }
+        val body = connection.inputStream.bufferedReader().use { it.readText() }
+        connection.disconnect()
+        return body
     }
 
     /**
