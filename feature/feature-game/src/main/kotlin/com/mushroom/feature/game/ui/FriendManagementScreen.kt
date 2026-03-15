@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,12 @@ fun FriendManagementScreen(
     var inputPhone by remember { mutableStateOf("") }
     var inputMessage by remember { mutableStateOf("") }
     var showFriendStatsDialog by remember { mutableStateOf(false) }
+
+    // 每次进入页面时刷新好友列表和待处理请求
+    LaunchedEffect(Unit) {
+        viewModel.loadFriends()
+        viewModel.loadPendingRequests()
+    }
 
     Scaffold(
         topBar = {
