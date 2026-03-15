@@ -7,6 +7,7 @@ import com.mushroom.adventure.core.network.data.FriendListResponse
 import com.mushroom.adventure.core.network.data.FriendRequestListResponse
 import com.mushroom.adventure.core.network.data.FriendStatsResponse
 import com.mushroom.adventure.core.network.data.HandleRequestBody
+import com.mushroom.adventure.core.network.data.HandleRequestResponse
 import com.mushroom.adventure.core.network.data.PendingCountResponse
 
 class FriendRepository(
@@ -36,11 +37,11 @@ class FriendRepository(
         api.getPendingRequestCount()
     }
 
-    suspend fun acceptFriendRequest(requestId: Int): Result<Unit> = runCatching {
+    suspend fun acceptFriendRequest(requestId: Int): Result<HandleRequestResponse> = runCatching {
         api.handleFriendRequest(requestId, HandleRequestBody("accept"))
     }
 
-    suspend fun rejectFriendRequest(requestId: Int): Result<Unit> = runCatching {
+    suspend fun rejectFriendRequest(requestId: Int): Result<HandleRequestResponse> = runCatching {
         api.handleFriendRequest(requestId, HandleRequestBody("reject"))
     }
 }

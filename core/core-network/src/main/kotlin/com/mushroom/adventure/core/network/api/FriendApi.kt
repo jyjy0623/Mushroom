@@ -6,6 +6,7 @@ import com.mushroom.adventure.core.network.data.FriendListResponse
 import com.mushroom.adventure.core.network.data.FriendRequestListResponse
 import com.mushroom.adventure.core.network.data.FriendStatsResponse
 import com.mushroom.adventure.core.network.data.HandleRequestBody
+import com.mushroom.adventure.core.network.data.HandleRequestResponse
 import com.mushroom.adventure.core.network.data.PendingCountResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -33,5 +34,5 @@ interface FriendApi {
     suspend fun getPendingRequestCount(): PendingCountResponse
 
     @POST("/friend/requests/{id}/handle")
-    suspend fun handleFriendRequest(@Path("id") requestId: Int, @Body body: HandleRequestBody)
+    suspend fun handleFriendRequest(@Path("id") requestId: Int, @Body body: HandleRequestBody): HandleRequestResponse
 }

@@ -34,6 +34,9 @@ data class FriendRequestListResponse(
 data class HandleRequestBody(val action: String)
 
 @Serializable
+data class HandleRequestResponse(val success: Boolean, val message: String)
+
+@Serializable
 data class PendingCountResponse(val count: Int)
 
 @Serializable
