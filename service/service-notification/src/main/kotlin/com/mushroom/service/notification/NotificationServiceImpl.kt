@@ -18,6 +18,7 @@ private const val TAG = "NotificationService"
 private const val CHANNEL_ID = "task_reminder"
 private const val CHANNEL_NAME = "任务提醒"
 private const val NOTIF_ID_BASE = 10000
+private const val TIMER_NOTIF_ID_BASE = 20000
 
 /**
  * 通知服务实现。
@@ -70,6 +71,42 @@ class NotificationServiceImpl @Inject constructor(
         val notifId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         sendNotification(notifId, title, body)
         MushroomLogger.i(TAG, "sent immediate notification: $title")
+    }
+
+    override suspend fun scheduleTimerNotification(taskId: Long, taskTitle: String, triggerAtMs: Long) {
+        val intent = android.content.Intent(context, DeadlineReminderReceiver::class.java).apply {
+            putExtra(DeadlineReminderReceiver.EXTRA_TASK_ID, taskId)
+            putExtra(DeadlineReminderReceiver.EXTRA_TASK_TITLE, taskTitle)
+            putExtra(DeadlineReminderReceiver.EXTRA_NOTIF_TITLE, "专注时间到！")
+            putExtra(DeadlineReminderReceiver.EXTRA_NOTIF_BODY, "「$taskTitle」的专注时间已结束")
+        }
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            context,
+            (TIMER_NOTIF_ID_BASE + taskId).toInt(),
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(android.app.AlarmManager::class.java)
+        alarmManager.setWindow(
+            android.app.AlarmManager.RTC_WAKEUP,
+            triggerAtMs,
+            60 * 1000,
+            pendingIntent
+        )
+        MushroomLogger.i(TAG, "scheduled timer notification for task '$taskTitle' at $triggerAtMs")
+    }
+
+    override suspend fun cancelTimerNotification(taskId: Long) {
+        val intent = android.content.Intent(context, DeadlineReminderReceiver::class.java)
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            context,
+            (TIMER_NOTIF_ID_BASE + taskId).toInt(),
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(android.app.AlarmManager::class.java)
+        alarmManager.cancel(pendingIntent)
+        MushroomLogger.i(TAG, "cancelled timer notification for task $taskId")
     }
 
     // -----------------------------------------------------------------------

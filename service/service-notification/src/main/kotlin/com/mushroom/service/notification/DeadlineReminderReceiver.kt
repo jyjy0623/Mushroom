@@ -18,18 +18,25 @@ class DeadlineReminderReceiver : BroadcastReceiver() {
     companion object {
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_TASK_TITLE = "task_title"
+        const val EXTRA_NOTIF_TITLE = "notif_title"
+        const val EXTRA_NOTIF_BODY = "notif_body"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
         val taskTitle = intent.getStringExtra(EXTRA_TASK_TITLE) ?: "任务"
+        val notifTitle = intent.getStringExtra(EXTRA_NOTIF_TITLE)
+        val notifBody = intent.getStringExtra(EXTRA_NOTIF_BODY)
 
-        MushroomLogger.i(TAG, "deadline reminder triggered for task $taskId: $taskTitle")
+        val title = notifTitle ?: "任务快到截止时间了"
+        val body = notifBody ?: "「$taskTitle」还有 30 分钟截止，加油！"
+
+        MushroomLogger.i(TAG, "reminder triggered for task $taskId: $taskTitle")
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("任务快到截止时间了")
-            .setContentText("「$taskTitle」还有 30 分钟截止，加油！")
+            .setContentTitle(title)
+            .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

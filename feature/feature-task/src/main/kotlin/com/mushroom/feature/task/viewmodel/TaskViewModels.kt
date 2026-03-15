@@ -122,6 +122,7 @@ class DailyTaskViewModel @Inject constructor(
     private val _timerStates = MutableStateFlow<Map<Long, Int>>(emptyMap())
     val timerStates: StateFlow<Map<Long, Int>> = _timerStates
     private val timerJobs = mutableMapOf<Long, Job>()
+    private val timerEndTimes = mutableMapOf<Long, Long>()
 
     init {
         // 初始化时加载连续打卡天数和备忘录连续天数
@@ -330,29 +331,39 @@ class DailyTaskViewModel @Inject constructor(
 
     fun startTimer(taskId: Long, minutes: Int) {
         stopTimer(taskId)
+        val endTimeMillis = System.currentTimeMillis() + minutes * 60 * 1000L
+        timerEndTimes[taskId] = endTimeMillis
         val totalSeconds = minutes * 60
         _timerStates.value = _timerStates.value + (taskId to totalSeconds)
         val task = uiState.value.domainTasks.find { it.id == taskId }
+        val taskTitle = task?.title ?: "任务"
+        // 调度系统级闹钟，确保后台也能提醒
+        viewModelScope.launch {
+            notificationService.scheduleTimerNotification(taskId, taskTitle, endTimeMillis)
+        }
         timerJobs[taskId] = viewModelScope.launch {
-            var remaining = totalSeconds
-            while (remaining > 0) {
+            while (true) {
                 delay(1_000)
-                remaining--
+                val remaining = ((endTimeMillis - System.currentTimeMillis()) / 1000).toInt()
+                if (remaining <= 0) {
+                    _timerStates.value = _timerStates.value + (taskId to 0)
+                    timerJobs.remove(taskId)
+                    timerEndTimes.remove(taskId)
+                    break
+                }
                 _timerStates.value = _timerStates.value + (taskId to remaining)
             }
-            // 时间到
-            notificationService.sendImmediateNotification(
-                title = "专注时间到！",
-                body = "「${task?.title ?: "任务"}」的专注时间已结束"
-            )
-            timerJobs.remove(taskId)
         }
     }
 
     fun stopTimer(taskId: Long) {
         timerJobs[taskId]?.cancel()
         timerJobs.remove(taskId)
+        timerEndTimes.remove(taskId)
         _timerStates.value = _timerStates.value - taskId
+        viewModelScope.launch {
+            notificationService.cancelTimerNotification(taskId)
+        }
     }
 
     fun applyTemplate(template: TaskTemplate) {

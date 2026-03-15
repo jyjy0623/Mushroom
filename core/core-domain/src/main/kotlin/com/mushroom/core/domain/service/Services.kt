@@ -33,6 +33,8 @@ interface NotificationService {
     suspend fun scheduleDeadlineReminder(task: Task)
     suspend fun cancelDeadlineReminder(taskId: Long)
     suspend fun sendImmediateNotification(title: String, body: String)
+    suspend fun scheduleTimerNotification(taskId: Long, taskTitle: String, triggerAtMs: Long)
+    suspend fun cancelTimerNotification(taskId: Long)
 }
 
 interface ParentGateway {
