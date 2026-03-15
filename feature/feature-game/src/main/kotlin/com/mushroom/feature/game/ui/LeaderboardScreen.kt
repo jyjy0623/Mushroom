@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -405,7 +406,16 @@ private fun FriendLeaderboardTab(
                         isMe = state.myEntry?.userId == entry.userId
                     )
                 }
-                item { Spacer(Modifier.height(16.dp)) }
+                item {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onManageFriends,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("好友管理")
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
             }
         }
     }
