@@ -41,7 +41,8 @@ fun FriendManagementDialog(
     onDismiss: () -> Unit,
     onAddFriend: (String) -> Unit,
     onRemoveFriend: (Int) -> Unit,
-    onClearAddResult: () -> Unit
+    onClearAddResult: () -> Unit,
+    onFriendClick: (Int) -> Unit = {}
 ) {
     var inputPhone by remember { mutableStateOf("") }
 
@@ -119,7 +120,8 @@ fun FriendManagementDialog(
                         FriendRow(
                             nickname = friend.nickname,
                             maskedPhone = friend.maskedPhone,
-                            onRemove = { onRemoveFriend(friend.userId) }
+                            onRemove = { onRemoveFriend(friend.userId) },
+                            onClick = { onFriendClick(friend.userId) }
                         )
                     }
                 }
@@ -137,9 +139,11 @@ fun FriendManagementDialog(
 private fun FriendRow(
     nickname: String,
     maskedPhone: String,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp)

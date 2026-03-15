@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.adventure.core.network.data.LeaderboardEntry
 import com.mushroom.feature.game.entity.GameScore
+import com.mushroom.feature.game.viewmodel.FriendStatsState
 import com.mushroom.feature.game.viewmodel.FriendsState
 import com.mushroom.feature.game.viewmodel.GameViewModel
 import com.mushroom.feature.game.viewmodel.GlobalLeaderboardState
@@ -61,8 +62,10 @@ fun LeaderboardScreen(
     val globalState by viewModel.globalLeaderboard.collectAsStateWithLifecycle()
     val friendState by viewModel.friendLeaderboard.collectAsStateWithLifecycle()
     val friendsState by viewModel.friendsState.collectAsStateWithLifecycle()
+    val friendStatsState by viewModel.friendStats.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var showFriendDialog by remember { mutableStateOf(false) }
+    var showFriendStatsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.loadGlobalLeaderboard()
@@ -74,7 +77,18 @@ fun LeaderboardScreen(
             onDismiss = { showFriendDialog = false },
             onAddFriend = viewModel::addFriend,
             onRemoveFriend = viewModel::removeFriend,
-            onClearAddResult = viewModel::clearAddResult
+            onClearAddResult = viewModel::clearAddResult,
+            onFriendClick = { userId ->
+                viewModel.loadFriendStats(userId)
+                showFriendStatsDialog = true
+            }
+        )
+    }
+
+    if (showFriendStatsDialog) {
+        FriendStatsDialog(
+            state = friendStatsState,
+            onDismiss = { showFriendStatsDialog = false }
         )
     }
 

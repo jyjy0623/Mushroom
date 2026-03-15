@@ -3,6 +3,7 @@ package com.mushroom.adventure.core.network.api
 import com.mushroom.adventure.core.network.data.AddFriendRequest
 import com.mushroom.adventure.core.network.data.AddFriendResponse
 import com.mushroom.adventure.core.network.data.FriendListResponse
+import com.mushroom.adventure.core.network.data.FriendStatsResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -18,4 +19,7 @@ interface FriendApi {
 
     @DELETE("/friend/{userId}")
     suspend fun removeFriend(@Path("userId") userId: Int)
+
+    @GET("/friend/{userId}/stats")
+    suspend fun getFriendStats(@Path("userId") userId: Int): FriendStatsResponse
 }

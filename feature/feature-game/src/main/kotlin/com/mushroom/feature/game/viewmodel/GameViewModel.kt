@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mushroom.adventure.core.network.data.LeaderboardEntry
 import com.mushroom.adventure.core.network.data.LeaderboardResponse
 import com.mushroom.adventure.core.network.data.FriendInfo
+import com.mushroom.adventure.core.network.data.FriendStatsResponse
 import com.mushroom.adventure.core.network.repository.AuthRepository
 import com.mushroom.adventure.core.network.repository.FriendRepository
 import com.mushroom.adventure.core.network.repository.LeaderboardRepository
@@ -88,6 +89,12 @@ data class FriendsState(
     val error: String? = null
 )
 
+data class FriendStatsState(
+    val isLoading: Boolean = false,
+    val stats: FriendStatsResponse? = null,
+    val error: String? = null
+)
+
 @HiltViewModel
 class GameViewModel @Inject constructor(
     private val gameRepo: GameRepository,
@@ -108,6 +115,9 @@ class GameViewModel @Inject constructor(
 
     private val _friendsState = MutableStateFlow(FriendsState())
     val friendsState: StateFlow<FriendsState> = _friendsState.asStateFlow()
+
+    private val _friendStats = MutableStateFlow(FriendStatsState())
+    val friendStats: StateFlow<FriendStatsState> = _friendStats.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -417,6 +427,19 @@ class GameViewModel @Inject constructor(
 
     fun clearAddResult() {
         _friendsState.update { it.copy(addResult = null) }
+    }
+
+    fun loadFriendStats(userId: Int) {
+        viewModelScope.launch {
+            _friendStats.update { FriendStatsState(isLoading = true) }
+            friendRepo.getFriendStats(userId)
+                .onSuccess { stats ->
+                    _friendStats.update { FriendStatsState(stats = stats) }
+                }
+                .onFailure { e ->
+                    _friendStats.update { FriendStatsState(error = "加载失败: ${e.message}") }
+                }
+        }
     }
 
     private suspend fun checkMilestoneRewards(highScore: Int) {

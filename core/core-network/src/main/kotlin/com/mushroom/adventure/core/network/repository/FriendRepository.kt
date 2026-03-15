@@ -4,6 +4,7 @@ import com.mushroom.adventure.core.network.api.FriendApi
 import com.mushroom.adventure.core.network.data.AddFriendRequest
 import com.mushroom.adventure.core.network.data.AddFriendResponse
 import com.mushroom.adventure.core.network.data.FriendListResponse
+import com.mushroom.adventure.core.network.data.FriendStatsResponse
 
 class FriendRepository(
     private val api: FriendApi
@@ -18,5 +19,9 @@ class FriendRepository(
 
     suspend fun removeFriend(userId: Int): Result<Unit> = runCatching {
         api.removeFriend(userId)
+    }
+
+    suspend fun getFriendStats(userId: Int): Result<FriendStatsResponse> = runCatching {
+        api.getFriendStats(userId)
     }
 }

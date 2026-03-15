@@ -13,3 +13,12 @@ data class FriendInfo(val userId: Int, val nickname: String, val maskedPhone: St
 
 @Serializable
 data class FriendListResponse(val friends: List<FriendInfo>)
+
+@Serializable
+data class FriendStatsResponse(
+    val userId: Int,
+    val nickname: String,
+    val bestScore: Int? = null,
+    val globalRank: Int? = null,
+    val gameType: String = "runner"
+)
