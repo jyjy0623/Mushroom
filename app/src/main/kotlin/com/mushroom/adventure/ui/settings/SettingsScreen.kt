@@ -206,9 +206,9 @@ fun SettingsScreen(
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 ServerUrlItem(viewModel = viewModel)
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                CloudBackupItem(viewModel = viewModel)
+                CloudBackupItem(viewModel = viewModel, onNavigateToLogin = onNavigateToLogin)
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                CloudRestoreItem(viewModel = viewModel)
+                CloudRestoreItem(viewModel = viewModel, onNavigateToLogin = onNavigateToLogin)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -450,13 +450,16 @@ private fun ServerUrlEditDialog(
 }
 
 @Composable
-private fun CloudBackupItem(viewModel: SettingsViewModel) {
+private fun CloudBackupItem(viewModel: SettingsViewModel, onNavigateToLogin: () -> Unit) {
     val state by viewModel.cloudBackupState.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !state.isUploading) { viewModel.uploadCloudBackup() }
+            .clickable(enabled = !state.isUploading) {
+                if (isLoggedIn) viewModel.uploadCloudBackup() else onNavigateToLogin()
+            }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -466,7 +469,8 @@ private fun CloudBackupItem(viewModel: SettingsViewModel) {
             Icon(
                 imageVector = Icons.Default.Share,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -475,10 +479,13 @@ private fun CloudBackupItem(viewModel: SettingsViewModel) {
             Text(
                 "云端备份",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                if (state.isUploading) "正在上传..."
+                if (!isLoggedIn) "请先登录"
+                else if (state.isUploading) "正在上传..."
                 else if (state.lastUploadTime != null) "上次备份：${state.lastUploadTime}"
                 else "将数据备份到云端服务器",
                 style = MaterialTheme.typography.bodySmall,
@@ -489,16 +496,21 @@ private fun CloudBackupItem(viewModel: SettingsViewModel) {
 }
 
 @Composable
-private fun CloudRestoreItem(viewModel: SettingsViewModel) {
+private fun CloudRestoreItem(viewModel: SettingsViewModel, onNavigateToLogin: () -> Unit) {
     val state by viewModel.cloudBackupState.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
     var showRestoreDialog by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                viewModel.loadCloudBackupList()
-                showRestoreDialog = true
+                if (isLoggedIn) {
+                    viewModel.loadCloudBackupList()
+                    showRestoreDialog = true
+                } else {
+                    onNavigateToLogin()
+                }
             }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -509,7 +521,8 @@ private fun CloudRestoreItem(viewModel: SettingsViewModel) {
             Icon(
                 imageVector = Icons.Default.Refresh,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (isLoggedIn) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -518,10 +531,13 @@ private fun CloudRestoreItem(viewModel: SettingsViewModel) {
             Text(
                 "云端恢复",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = if (isLoggedIn) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                if (state.isDownloading) "正在恢复..."
+                if (!isLoggedIn) "请先登录"
+                else if (state.isDownloading) "正在恢复..."
                 else "从云端备份恢复数据",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -46,13 +46,15 @@ android {
             buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
             buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
             buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+            buildConfigField("String", "UPDATE_CHECK_TAG_PREFIX", "\"v\"")
         }
         create("ukdream") {
             dimension = "brand"
             applicationId = "com.ukdream.adventure"
             buildConfigField("String", "UPDATE_CHECK_OWNER", "\"jyjy0623\"")
             buildConfigField("String", "UPDATE_CHECK_REPO", "\"Mushroom\"")
-            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "false")
+            buildConfigField("boolean", "UPDATE_CHECK_ENABLED", "true")
+            buildConfigField("String", "UPDATE_CHECK_TAG_PREFIX", "\"uk-v\"")
         }
     }
 

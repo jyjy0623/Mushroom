@@ -26,6 +26,7 @@ class UpdateViewModel @Inject constructor(
                 owner = BuildConfig.UPDATE_CHECK_OWNER,
                 repo = BuildConfig.UPDATE_CHECK_REPO,
                 currentVersion = BuildConfig.VERSION_NAME,
+                tagPrefix = BuildConfig.UPDATE_CHECK_TAG_PREFIX,
                 enabled = BuildConfig.UPDATE_CHECK_ENABLED,
             ) ?: return@launch
 
