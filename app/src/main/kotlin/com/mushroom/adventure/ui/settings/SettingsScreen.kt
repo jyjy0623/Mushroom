@@ -68,6 +68,7 @@ fun SettingsScreen(
     onNavigateToKeyDateList: () -> Unit = {},
     onNavigateToGame: () -> Unit = {},
     onNavigateToTemplateManage: () -> Unit = {},
+    onNavigateToMilestoneList: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
@@ -158,6 +159,13 @@ fun SettingsScreen(
                     title = "模板配置管理",
                     subtitle = "编辑任务模板奖励，管理里程碑评分规则套餐",
                     onClick = onNavigateToTemplateManage
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.Star,
+                    title = "里程碑管理",
+                    subtitle = "查看、编辑考试成绩与小测验记录",
+                    onClick = onNavigateToMilestoneList
                 )
             }
 

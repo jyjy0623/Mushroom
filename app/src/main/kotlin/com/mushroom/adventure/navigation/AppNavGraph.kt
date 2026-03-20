@@ -296,6 +296,9 @@ fun AppNavGraph(
                 onNavigateToTemplateManage = {
                     navController.safeNavigate(AppDestination.TaskTemplate.route)
                 },
+                onNavigateToMilestoneList = {
+                    navController.safeNavigate(AppDestination.MilestoneList.route)
+                },
                 onNavigateToLogin = {
                     navController.safeNavigate(AppDestination.Login.route)
                 },
