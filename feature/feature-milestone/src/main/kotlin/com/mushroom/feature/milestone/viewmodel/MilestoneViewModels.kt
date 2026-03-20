@@ -268,6 +268,7 @@ class MilestoneEditViewModel @Inject constructor(
         }
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
+            val existing = state.milestoneId?.let { milestoneRepository.getMilestoneById(it) }
             val milestone = Milestone(
                 id = state.milestoneId ?: 0L,
                 name = state.name.trim(),
@@ -275,8 +276,8 @@ class MilestoneEditViewModel @Inject constructor(
                 subject = state.subject,
                 scheduledDate = state.scheduledDate,
                 scoringRules = state.scoringRules,
-                actualScore = null,
-                status = MilestoneStatus.PENDING
+                actualScore = existing?.actualScore,
+                status = existing?.status ?: MilestoneStatus.PENDING
             )
             val result = if (state.milestoneId == null) {
                 createMilestoneUseCase(milestone).map { }
