@@ -58,6 +58,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
@@ -199,8 +201,12 @@ class DailyTaskViewModel @Inject constructor(
 
     fun deleteTask(taskId: Long, mode: DeleteMode) {
         viewModelScope.launch {
-            deleteTaskUseCase(taskId, mode).onFailure {
-                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+            // 使用 NonCancellable 确保删除操作即使在 coroutine 取消时也能完成
+            // 防止用户删除后立即退出 App 导致删除未持久化
+            withContext(NonCancellable) {
+                deleteTaskUseCase(taskId, mode).onFailure {
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+                }
             }
         }
     }
@@ -211,35 +217,38 @@ class DailyTaskViewModel @Inject constructor(
      */
     fun deleteCompletedTask(taskId: Long, mode: DeleteMode) {
         viewModelScope.launch {
-            val task = taskRepo.getTaskById(taskId) ?: run {
-                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
-                return@launch
-            }
-            val checkIn = checkInRepo.getLatestCheckInForTask(taskId)
-            val rewards = calcTaskRewards(task, checkIn?.isEarly == true)
+            // 使用 NonCancellable 确保删除操作即使在 coroutine 取消时也能完成
+            withContext(NonCancellable) {
+                val task = taskRepo.getTaskById(taskId) ?: run {
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+                    return@withContext
+                }
+                val checkIn = checkInRepo.getLatestCheckInForTask(taskId)
+                val rewards = calcTaskRewards(task, checkIn?.isEarly == true)
 
-            deleteTaskUseCase(taskId, mode).onFailure {
-                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
-                return@launch
-            }
+                deleteTaskUseCase(taskId, mode).onFailure {
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("删除失败"))
+                    return@withContext
+                }
 
-            if (rewards.isNotEmpty()) {
-                val now = LocalDateTime.now()
-                mushroomRepo.recordTransactions(rewards.map { (level, amount) ->
-                    MushroomTransaction(
-                        level = level,
-                        action = MushroomAction.DEDUCT,
-                        amount = amount,
-                        sourceType = MushroomSource.TASK,
-                        sourceId = null,
-                        note = "删除已完成任务「${task.title}」扣回",
-                        createdAt = now
-                    )
-                })
-                val summary = rewards.joinToString("、") { (level, amount) -> "${level.themedDisplayName(appContext)}×$amount" }
-                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除并扣回奖励：$summary"))
-            } else {
-                _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除"))
+                if (rewards.isNotEmpty()) {
+                    val now = LocalDateTime.now()
+                    mushroomRepo.recordTransactions(rewards.map { (level, amount) ->
+                        MushroomTransaction(
+                            level = level,
+                            action = MushroomAction.DEDUCT,
+                            amount = amount,
+                            sourceType = MushroomSource.TASK,
+                            sourceId = null,
+                            note = "删除已完成任务「${task.title}」扣回",
+                            createdAt = now
+                        )
+                    })
+                    val summary = rewards.joinToString("、") { (level, amount) -> "${level.themedDisplayName(appContext)}×$amount" }
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除并扣回奖励：$summary"))
+                } else {
+                    _viewEvent.emit(DailyTaskViewEvent.ShowSnackbar("已删除"))
+                }
             }
         }
     }
