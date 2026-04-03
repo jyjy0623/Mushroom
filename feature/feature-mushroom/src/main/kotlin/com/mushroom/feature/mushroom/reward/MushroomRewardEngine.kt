@@ -1,6 +1,7 @@
 package com.mushroom.feature.mushroom.reward
 
 import com.mushroom.core.domain.entity.MushroomAction
+import com.mushroom.core.domain.entity.MushroomSource
 import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.core.domain.event.AppEvent
 import com.mushroom.core.domain.event.AppEventBus
@@ -51,7 +52,7 @@ class MushroomRewardEngine @Inject constructor(
         if (event.taskId == -1L) {
             val date = event.checkInTime.toLocalDate()
             val rewardEvent = RewardEvent.AllDailyTasksDone(date)
-            dispatchRewards(ruleEngine.calculate(rewardEvent))
+            dispatchRewards(ruleEngine.calculate(rewardEvent), null)
             return
         }
 
@@ -60,7 +61,7 @@ class MushroomRewardEngine @Inject constructor(
 
         val rewardEvent = RewardEvent.TaskCompleted(task = task, checkIn = checkIn)
         val rewards = ruleEngine.calculate(rewardEvent)
-        dispatchRewards(rewards)
+        dispatchRewards(rewards, null)
 
         MushroomLogger.i(TAG, "Dispatched ${rewards.size} rewards for task ${event.taskId}")
     }
@@ -68,13 +69,56 @@ class MushroomRewardEngine @Inject constructor(
     private suspend fun handleMilestoneScored(event: AppEvent.MilestoneScored) {
         val milestone = milestoneRepo.getAllMilestones().first()
             .firstOrNull { it.id == event.milestoneId } ?: return
+
+        // 获取旧的奖励记录（如有）
+        val oldTransactions = mushroomRepo.getTransactionsBySource(MushroomSource.MILESTONE, event.milestoneId)
+        val oldReward = if (oldTransactions.isNotEmpty()) {
+            MushroomReward(
+                level = oldTransactions.first().level,
+                amount = oldTransactions.sumOf { it.amount },
+                reason = "",
+                sourceType = MushroomSource.MILESTONE,
+                sourceId = event.milestoneId
+            )
+        } else null
+
+        // 计算新奖励
         val rewardEvent = RewardEvent.MilestoneAchieved(milestone)
-        val rewards = ruleEngine.calculate(rewardEvent)
-        dispatchRewards(rewards)
-        MushroomLogger.i(TAG, "Dispatched ${rewards.size} rewards for milestone ${event.milestoneId} score=${event.score}")
+        val newRewards = ruleEngine.calculate(rewardEvent)
+        val newReward = newRewards.firstOrNull()
+
+        // 扣除旧奖励
+        if (oldTransactions.isNotEmpty()) {
+            val now = LocalDateTime.now()
+            val deductTransactions = oldTransactions.map { old ->
+                MushroomTransaction(
+                    level = old.level,
+                    action = MushroomAction.DEDUCT,
+                    amount = old.amount,
+                    sourceType = MushroomSource.MILESTONE,
+                    sourceId = event.milestoneId,
+                    note = "成绩更新，扣除旧奖励",
+                    createdAt = now
+                )
+            }
+            mushroomRepo.recordTransactions(deductTransactions)
+        }
+
+        // 发放新奖励
+        dispatchRewards(newRewards, newReward)
+
+        // 发送奖励调整事件（供 UI 显示）
+        eventBus.emit(AppEvent.MilestoneRewardAdjusted(
+            milestoneId = event.milestoneId,
+            milestoneName = milestone.name,
+            oldReward = oldReward,
+            newReward = newReward
+        ))
+
+        MushroomLogger.i(TAG, "Milestone ${event.milestoneId} reward adjusted: old=$oldReward, new=$newReward")
     }
 
-    private suspend fun dispatchRewards(rewards: List<MushroomReward>) {
+    private suspend fun dispatchRewards(rewards: List<MushroomReward>, primaryReward: MushroomReward?) {
         if (rewards.isEmpty()) return
         val now = LocalDateTime.now()
         val transactions = rewards.map { reward ->
@@ -83,7 +127,7 @@ class MushroomRewardEngine @Inject constructor(
                 action = MushroomAction.EARN,
                 amount = reward.amount,
                 sourceType = reward.sourceType,
-                sourceId = null,
+                sourceId = reward.sourceId,
                 note = reward.reason,
                 createdAt = now
             )

@@ -15,5 +15,6 @@ data class MushroomReward(
     val level: MushroomLevel,
     val amount: Int,
     val reason: String,
-    val sourceType: MushroomSource
+    val sourceType: MushroomSource,
+    val sourceId: Long? = null
 )

@@ -34,6 +34,9 @@ class MushroomRepositoryImpl @Inject constructor(
         ledgerDao.getLedgerByDateRange(from.toString(), to.toString())
             .map { list -> list.map(MushroomLedgerMapper::toDomain) }
 
+    override suspend fun getTransactionsBySource(sourceType: MushroomSource, sourceId: Long): List<MushroomTransaction> =
+        ledgerDao.getBySource(sourceType.name, sourceId).map(MushroomLedgerMapper::toDomain)
+
     override suspend fun recordTransaction(transaction: MushroomTransaction) {
         ledgerDao.insert(MushroomLedgerMapper.toDb(transaction))
     }

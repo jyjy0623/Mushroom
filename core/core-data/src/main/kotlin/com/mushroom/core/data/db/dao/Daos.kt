@@ -89,6 +89,9 @@ interface MushroomLedgerDao {
     @Query("SELECT * FROM mushroom_ledger WHERE date(created_at) >= :from AND date(created_at) <= :to ORDER BY created_at ASC")
     fun getLedgerByDateRange(from: String, to: String): Flow<List<MushroomLedgerEntity>>
 
+    @Query("SELECT * FROM mushroom_ledger WHERE source_type = :sourceType AND source_id = :sourceId ORDER BY created_at ASC")
+    suspend fun getBySource(sourceType: String, sourceId: Long): List<MushroomLedgerEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: MushroomLedgerEntity)
 

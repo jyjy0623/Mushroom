@@ -8,6 +8,9 @@ import com.mushroom.core.domain.entity.MilestoneStatus
 import com.mushroom.core.domain.entity.MilestoneType
 import com.mushroom.core.domain.entity.ScoringRule
 import com.mushroom.core.domain.entity.Subject
+import com.mushroom.core.domain.event.AppEvent
+import com.mushroom.core.domain.event.AppEventBus
+import com.mushroom.core.domain.event.MushroomReward
 import com.mushroom.feature.milestone.usecase.CreateMilestoneUseCase
 import com.mushroom.feature.milestone.usecase.DefaultScoringRules
 import com.mushroom.feature.milestone.usecase.GetMilestonesUseCase
@@ -44,6 +47,11 @@ data class MilestoneListUiState(
 
 sealed class MilestoneListViewEvent {
     data class ShowSnackbar(val message: String) : MilestoneListViewEvent()
+    data class ShowRewardAdjustedDialog(
+        val milestoneName: String,
+        val oldReward: MushroomReward?,
+        val newReward: MushroomReward?
+    ) : MilestoneListViewEvent()
 }
 
 @HiltViewModel
@@ -51,6 +59,7 @@ class MilestoneListViewModel @Inject constructor(
     private val getMilestonesUseCase: GetMilestonesUseCase,
     private val recordScoreUseCase: RecordMilestoneScoreUseCase,
     private val milestoneRepository: com.mushroom.core.domain.repository.MilestoneRepository,
+    private val eventBus: AppEventBus,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -77,6 +86,21 @@ class MilestoneListViewModel @Inject constructor(
     private val _viewEvent = MutableSharedFlow<MilestoneListViewEvent>()
     val viewEvent: SharedFlow<MilestoneListViewEvent> = _viewEvent.asSharedFlow()
 
+    init {
+        // 监听奖励调整事件
+        viewModelScope.launch {
+            eventBus.events.collect { event ->
+                if (event is AppEvent.MilestoneRewardAdjusted) {
+                    _viewEvent.emit(MilestoneListViewEvent.ShowRewardAdjustedDialog(
+                        milestoneName = event.milestoneName,
+                        oldReward = event.oldReward,
+                        newReward = event.newReward
+                    ))
+                }
+            }
+        }
+    }
+
     fun selectSubject(subject: Subject?) {
         _selectedSubject.value = subject
     }
@@ -84,9 +108,6 @@ class MilestoneListViewModel @Inject constructor(
     fun recordScore(milestoneId: Long, score: Int) {
         viewModelScope.launch {
             recordScoreUseCase(milestoneId, score)
-                .onSuccess {
-                    _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(appContext.getString(CoreUiR.string.milestone_reward_earned)))
-                }
                 .onFailure { e ->
                     _viewEvent.emit(MilestoneListViewEvent.ShowSnackbar(e.message ?: "录入失败"))
                 }

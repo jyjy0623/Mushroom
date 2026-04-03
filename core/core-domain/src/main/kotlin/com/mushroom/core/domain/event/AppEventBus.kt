@@ -21,6 +21,13 @@ sealed class AppEvent {
         val score: Int
     ) : AppEvent()
 
+    data class MilestoneRewardAdjusted(
+        val milestoneId: Long,
+        val milestoneName: String,
+        val oldReward: MushroomReward?,
+        val newReward: MushroomReward?
+    ) : AppEvent()
+
     data class MushroomEarned(
         val transactions: List<MushroomTransaction>
     ) : AppEvent()

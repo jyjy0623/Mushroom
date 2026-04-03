@@ -50,7 +50,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.Milestone
 import com.mushroom.core.domain.entity.MilestoneStatus
+import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.Subject
+import com.mushroom.core.domain.event.MushroomReward
 import com.mushroom.feature.milestone.viewmodel.MilestoneListViewEvent
 import com.mushroom.feature.milestone.viewmodel.MilestoneListViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -79,10 +81,18 @@ fun MilestoneListScreen(
     // 删除确认弹窗
     var pendingDeleteMilestone by remember { mutableStateOf<Milestone?>(null) }
 
+    // 奖励调整弹窗
+    var showRewardAdjustedDialog by remember { mutableStateOf(false) }
+    var rewardAdjustedInfo by remember { mutableStateOf<Triple<String, MushroomReward?, MushroomReward?>?>(null) }
+
     LaunchedEffect(Unit) {
         viewModel.viewEvent.collectLatest { event ->
             when (event) {
                 is MilestoneListViewEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is MilestoneListViewEvent.ShowRewardAdjustedDialog -> {
+                    rewardAdjustedInfo = Triple(event.milestoneName, event.oldReward, event.newReward)
+                    showRewardAdjustedDialog = true
+                }
             }
         }
     }
@@ -121,6 +131,28 @@ fun MilestoneListScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDeleteMilestone = null }) { Text("取消") }
+            }
+        )
+    }
+
+    // 奖励调整弹窗
+    if (showRewardAdjustedDialog && rewardAdjustedInfo != null) {
+        val (milestoneName, oldReward, newReward) = rewardAdjustedInfo!!
+        val oldText = oldReward?.let { "${it.level.displayName} ×${it.amount}" } ?: "无"
+        val newText = newReward?.let { "${it.level.displayName} ×${it.amount}" } ?: "无"
+        val message = buildString {
+            append("「$milestoneName」成绩已更新\n")
+            if (oldReward != null) {
+                append("旧奖励：$oldText（已扣除）\n")
+            }
+            append("新奖励：$newText")
+        }
+        AlertDialog(
+            onDismissRequest = { showRewardAdjustedDialog = false },
+            title = { Text("奖励已调整") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { showRewardAdjustedDialog = false }) { Text("确定") }
             }
         )
     }

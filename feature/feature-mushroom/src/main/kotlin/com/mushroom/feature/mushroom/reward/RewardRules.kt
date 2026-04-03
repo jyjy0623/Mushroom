@@ -209,7 +209,8 @@ class MilestoneScoreRule : RewardRule {
                 level = rule.rewardConfig.level,
                 amount = rule.rewardConfig.amount,
                 reason = "里程碑「${e.milestone.name}」得分 $score",
-                sourceType = MushroomSource.MILESTONE
+                sourceType = MushroomSource.MILESTONE,
+                sourceId = e.milestone.id
             )
         )
     }
