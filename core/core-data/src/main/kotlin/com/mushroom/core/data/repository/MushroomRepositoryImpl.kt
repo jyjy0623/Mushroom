@@ -4,6 +4,7 @@ import com.mushroom.core.data.db.dao.MushroomLedgerDao
 import com.mushroom.core.data.mapper.MushroomLedgerMapper
 import com.mushroom.core.domain.entity.MushroomBalance
 import com.mushroom.core.domain.entity.MushroomLevel
+import com.mushroom.core.domain.entity.MushroomSource
 import com.mushroom.core.domain.entity.MushroomTransaction
 import com.mushroom.core.domain.repository.MushroomRepository
 import kotlinx.coroutines.flow.Flow
