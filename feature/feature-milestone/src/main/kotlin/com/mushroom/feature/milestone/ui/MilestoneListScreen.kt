@@ -180,15 +180,11 @@ fun MilestoneListScreen(
                         val today = LocalDate.now()
                         val isOverdue = milestone.status == MilestoneStatus.PENDING &&
                                 milestone.scheduledDate.isBefore(today)
-                        // Tab 0: 全部 PENDING 可点击录入成绩；Tab 1: 已关闭可点击编辑
-                        val onClick: (() -> Unit)? = if (tabIndex == 0) {
-                            {
-                                scoringMilestone = milestone
-                                scoreInputText = milestone.actualScore?.toString() ?: ""
-                                showScoreDialog = true
-                            }
-                        } else {
-                            { onNavigateToEdit(milestone.id) }
+                        // Tab 0 和 Tab 1 都点击录入/修改成绩
+                        val onClick: (() -> Unit)? = {
+                            scoringMilestone = milestone
+                            scoreInputText = milestone.actualScore?.toString() ?: ""
+                            showScoreDialog = true
                         }
                         val onLongClick: (() -> Unit)? = if (tabIndex == 0) {
                             { pendingDeleteMilestone = milestone }
