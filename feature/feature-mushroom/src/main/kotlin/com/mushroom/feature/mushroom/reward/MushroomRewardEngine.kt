@@ -71,8 +71,9 @@ class MushroomRewardEngine @Inject constructor(
             .firstOrNull { it.id == event.milestoneId } ?: return
 
         // 获取旧的奖励记录（如有）
-        val oldTransactions = mushroomRepo.getTransactionsBySource(MushroomSource.MILESTONE, event.milestoneId)
-        MushroomLogger.i(TAG, ">>> handleMilestoneScored: milestoneId=${event.milestoneId}, score=${event.score}, oldTransactions.size=${oldTransactions.size}, oldTransactions=$oldTransactions")
+        val notePattern = "里程碑「${milestone.name}」得分"
+        val oldTransactions = mushroomRepo.getTransactionsBySource(MushroomSource.MILESTONE, event.milestoneId, notePattern)
+        MushroomLogger.i(TAG, ">>> handleMilestoneScored: milestoneId=${event.milestoneId}, score=${event.score}, notePattern=$notePattern, oldTransactions.size=${oldTransactions.size}, oldTransactions=$oldTransactions")
 
         val oldReward = if (oldTransactions.isNotEmpty()) {
             val reward = MushroomReward(

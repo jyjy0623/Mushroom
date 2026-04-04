@@ -92,6 +92,10 @@ interface MushroomLedgerDao {
     @Query("SELECT * FROM mushroom_ledger WHERE source_type = :sourceType AND source_id = :sourceId ORDER BY created_at ASC")
     suspend fun getBySource(sourceType: String, sourceId: Long): List<MushroomLedgerEntity>
 
+    /** Fallback query for legacy records where source_id IS NULL, filtered by note pattern */
+    @Query("SELECT * FROM mushroom_ledger WHERE source_type = :sourceType AND source_id IS NULL AND note LIKE '%' || :notePattern || '%' ORDER BY created_at ASC")
+    suspend fun getBySourceWithNullSourceIdAndNote(sourceType: String, notePattern: String): List<MushroomLedgerEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: MushroomLedgerEntity)
 

@@ -35,8 +35,20 @@ class MushroomRepositoryImpl @Inject constructor(
         ledgerDao.getLedgerByDateRange(from.toString(), to.toString())
             .map { list -> list.map(MushroomLedgerMapper::toDomain) }
 
-    override suspend fun getTransactionsBySource(sourceType: MushroomSource, sourceId: Long): List<MushroomTransaction> =
-        ledgerDao.getBySource(sourceType.name, sourceId).map(MushroomLedgerMapper::toDomain)
+    override suspend fun getTransactionsBySource(sourceType: MushroomSource, sourceId: Long, milestoneNotePattern: String?): List<MushroomTransaction> {
+        val exactMatch = ledgerDao.getBySource(sourceType.name, sourceId).map(MushroomLedgerMapper::toDomain)
+        if (exactMatch.isNotEmpty()) return exactMatch
+
+        // Fallback for legacy data where source_id was NULL
+        if (milestoneNotePattern != null && sourceType == MushroomSource.MILESTONE) {
+            val fallback = ledgerDao.getBySourceWithNullSourceIdAndNote(sourceType.name, milestoneNotePattern)
+                .map(MushroomLedgerMapper::toDomain)
+            if (fallback.isNotEmpty()) {
+                return fallback
+            }
+        }
+        return exactMatch
+    }
 
     override suspend fun recordTransaction(transaction: MushroomTransaction) {
         ledgerDao.insert(MushroomLedgerMapper.toDb(transaction))
