@@ -73,7 +73,7 @@ class MushroomRewardEngine @Inject constructor(
         // 获取旧的奖励记录（如有）
         val notePattern = "里程碑「${milestone.name}」得分"
         val oldTransactions = mushroomRepo.getTransactionsBySource(MushroomSource.MILESTONE, event.milestoneId, notePattern)
-        MushroomLogger.i(TAG, ">>> handleMilestoneScored: milestoneId=${event.milestoneId}, score=${event.score}, notePattern=$notePattern, oldTransactions.size=${oldTransactions.size}, oldTransactions=$oldTransactions")
+        MushroomLogger.w(TAG, ">>> handleMilestoneScored: milestoneId=${event.milestoneId}, score=${event.score}, notePattern=$notePattern, oldTransactions.size=${oldTransactions.size}, oldTransactions=$oldTransactions")
 
         val oldReward = if (oldTransactions.isNotEmpty()) {
             val reward = MushroomReward(
@@ -83,10 +83,10 @@ class MushroomRewardEngine @Inject constructor(
                 sourceType = MushroomSource.MILESTONE,
                 sourceId = event.milestoneId
             )
-            MushroomLogger.i(TAG, ">>> oldReward calculated: $reward")
+            MushroomLogger.w(TAG, ">>> oldReward calculated: $reward")
             reward
         } else {
-            MushroomLogger.i(TAG, ">>> oldReward is null (no transactions found)")
+            MushroomLogger.w(TAG, ">>> oldReward is null (no transactions found)")
             null
         }
 
@@ -94,17 +94,17 @@ class MushroomRewardEngine @Inject constructor(
         val rewardEvent = RewardEvent.MilestoneAchieved(milestone)
         val newRewards = ruleEngine.calculate(rewardEvent)
         val newReward = newRewards.firstOrNull()
-        MushroomLogger.i(TAG, ">>> newReward: $newReward")
+        MushroomLogger.w(TAG, ">>> newReward: $newReward")
 
         // 如果新旧奖励完全相同（包括都是 null 或都是同等级/同数量），跳过调整
         if (oldReward == newReward) {
-            MushroomLogger.i(TAG, ">>> reward unchanged, skipping adjustment")
+            MushroomLogger.w(TAG, ">>> reward unchanged, skipping adjustment")
             return
         }
 
         // 扣除旧奖励
         if (oldTransactions.isNotEmpty()) {
-            MushroomLogger.i(TAG, ">>> deducting ${oldTransactions.size} old transactions, total amount=${oldTransactions.sumOf { it.amount }}")
+            MushroomLogger.w(TAG, ">>> deducting ${oldTransactions.size} old transactions, total amount=${oldTransactions.sumOf { it.amount }}")
             val now = LocalDateTime.now()
             val deductTransactions = oldTransactions.map { old ->
                 MushroomTransaction(
@@ -119,11 +119,11 @@ class MushroomRewardEngine @Inject constructor(
             }
             mushroomRepo.recordTransactions(deductTransactions)
         } else {
-            MushroomLogger.i(TAG, ">>> no old transactions to deduct")
+            MushroomLogger.w(TAG, ">>> no old transactions to deduct")
         }
 
         // 发放新奖励
-        MushroomLogger.i(TAG, ">>> dispatching new rewards: $newRewards")
+        MushroomLogger.w(TAG, ">>> dispatching new rewards: $newRewards")
         dispatchRewards(newRewards, newReward)
 
         // 发送奖励调整事件（供 UI 显示）
@@ -134,7 +134,7 @@ class MushroomRewardEngine @Inject constructor(
             newReward = newReward
         ))
 
-        MushroomLogger.i(TAG, ">>> Milestone ${event.milestoneId} reward adjustment completed")
+        MushroomLogger.w(TAG, ">>> Milestone ${event.milestoneId} reward adjustment completed")
     }
 
     private suspend fun dispatchRewards(rewards: List<MushroomReward>, primaryReward: MushroomReward?) {
