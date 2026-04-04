@@ -79,8 +79,6 @@ class MushroomRewardEngine @Inject constructor(
             .filter { it.action == MushroomAction.EARN }
             .maxByOrNull { it.createdAt }
 
-        MushroomLogger.w(TAG, ">>> handleMilestoneScored: milestoneId=${event.milestoneId}, score=${event.score}, notePattern=$notePattern, oldEarn=$oldEarn")
-
         val oldReward = oldEarn?.let {
             MushroomReward(
                 level = it.level,
@@ -95,11 +93,9 @@ class MushroomRewardEngine @Inject constructor(
         val rewardEvent = RewardEvent.MilestoneAchieved(milestone)
         val newRewards = ruleEngine.calculate(rewardEvent)
         val newReward = newRewards.firstOrNull()
-        MushroomLogger.w(TAG, ">>> newReward: $newReward")
 
         // 如果新旧奖励完全相同（包括都是 null 或都是同等级/同数量），跳过调整
         if (oldReward == newReward) {
-            MushroomLogger.w(TAG, ">>> reward unchanged, skipping adjustment")
             return
         }
 
@@ -107,26 +103,21 @@ class MushroomRewardEngine @Inject constructor(
 
         // 扣除旧奖励（只扣最近一条 EARN 记录的 amount）
         if (oldEarn != null) {
-            val deductAmount = oldEarn.amount
-            MushroomLogger.w(TAG, ">>> deducting old earn: level=${oldEarn.level}, amount=$deductAmount")
             mushroomRepo.recordTransaction(
                 MushroomTransaction(
                     level = oldEarn.level,
                     action = MushroomAction.DEDUCT,
-                    amount = deductAmount,
+                    amount = oldEarn.amount,
                     sourceType = MushroomSource.MILESTONE,
                     sourceId = event.milestoneId,
                     note = "成绩更新，扣除旧奖励",
                     createdAt = now
                 )
             )
-        } else {
-            MushroomLogger.w(TAG, ">>> no old earn to deduct")
         }
 
         // 发放新奖励
         if (newReward != null) {
-            MushroomLogger.w(TAG, ">>> dispatching new reward: $newReward")
             dispatchRewards(newRewards, newReward)
         }
 
@@ -137,8 +128,6 @@ class MushroomRewardEngine @Inject constructor(
             oldReward = oldReward,
             newReward = newReward
         ))
-
-        MushroomLogger.w(TAG, ">>> Milestone ${event.milestoneId} reward adjustment completed")
     }
 
     private suspend fun dispatchRewards(rewards: List<MushroomReward>, primaryReward: MushroomReward?) {
