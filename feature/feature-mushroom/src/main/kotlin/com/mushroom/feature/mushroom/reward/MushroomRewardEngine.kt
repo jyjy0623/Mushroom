@@ -87,6 +87,12 @@ class MushroomRewardEngine @Inject constructor(
         val newRewards = ruleEngine.calculate(rewardEvent)
         val newReward = newRewards.firstOrNull()
 
+        // 如果新旧奖励完全相同（包括都是 null 或都是同等级/同数量），跳过调整
+        if (oldReward == newReward) {
+            MushroomLogger.i(TAG, "Milestone ${event.milestoneId} reward unchanged (old=$oldReward, new=$newReward), skipping adjustment")
+            return
+        }
+
         // 扣除旧奖励
         if (oldTransactions.isNotEmpty()) {
             val now = LocalDateTime.now()
