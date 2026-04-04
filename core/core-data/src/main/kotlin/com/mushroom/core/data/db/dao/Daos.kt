@@ -96,6 +96,10 @@ interface MushroomLedgerDao {
     @Query("SELECT * FROM mushroom_ledger WHERE source_type = :sourceType AND source_id IS NULL AND note LIKE '%' || :notePattern || '%' ORDER BY created_at ASC")
     suspend fun getBySourceWithNullSourceIdAndNote(sourceType: String, notePattern: String): List<MushroomLedgerEntity>
 
+    /** 查询指定里程碑最近一条 EARN 记录（按时间倒序取第一条） */
+    @Query("SELECT * FROM mushroom_ledger WHERE source_type = :sourceType AND source_id = :sourceId AND action = 'EARN' ORDER BY created_at DESC LIMIT 1")
+    suspend fun getLatestEarnBySource(sourceType: String, sourceId: Long): MushroomLedgerEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: MushroomLedgerEntity)
 

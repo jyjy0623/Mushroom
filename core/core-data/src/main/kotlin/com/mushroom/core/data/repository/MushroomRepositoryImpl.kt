@@ -57,4 +57,7 @@ class MushroomRepositoryImpl @Inject constructor(
     override suspend fun recordTransactions(transactions: List<MushroomTransaction>) {
         ledgerDao.insertAll(transactions.map(MushroomLedgerMapper::toDb))
     }
+
+    override suspend fun getLatestEarnBySource(sourceType: MushroomSource, sourceId: Long): MushroomTransaction? =
+        ledgerDao.getLatestEarnBySource(sourceType.name, sourceId)?.let(MushroomLedgerMapper::toDomain)
 }
