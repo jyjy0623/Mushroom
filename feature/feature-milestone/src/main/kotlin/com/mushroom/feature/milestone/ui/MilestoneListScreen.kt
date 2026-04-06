@@ -51,8 +51,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mushroom.core.domain.entity.Milestone
 import com.mushroom.core.domain.entity.MilestoneStatus
 import com.mushroom.core.domain.entity.MushroomLevel
+import com.mushroom.core.domain.entity.ScoringRule
 import com.mushroom.core.domain.entity.Subject
 import com.mushroom.core.domain.event.MushroomReward
+import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.feature.milestone.viewmodel.MilestoneListViewEvent
 import com.mushroom.feature.milestone.viewmodel.MilestoneListViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -100,6 +102,7 @@ fun MilestoneListScreen(
     if (showScoreDialog && scoringMilestone != null) {
         ScoreInputDialog(
             milestoneName = scoringMilestone!!.name,
+            scoringRules = scoringMilestone!!.scoringRules,
             scoreText = scoreInputText,
             onScoreChange = { scoreInputText = it },
             onConfirm = {
@@ -237,23 +240,87 @@ fun MilestoneListScreen(
 @Composable
 private fun ScoreInputDialog(
     milestoneName: String,
+    scoringRules: List<ScoringRule>,
     scoreText: String,
     onScoreChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val isValid = scoreText.toIntOrNull()?.let { it in 0..100 } == true
+    val score = scoreText.toIntOrNull()
+    val isValid = score?.let { it in 0..100 } == true
+
+    // 根据输入分数计算预期奖励
+    val expectedReward = scoringRules.firstOrNull { rule ->
+        score != null && score in rule.minScore..rule.maxScore
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("录入成绩 — $milestoneName") },
         text = {
-            OutlinedTextField(
-                value = scoreText,
-                onValueChange = { onScoreChange(it.filter { c -> c.isDigit() }) },
-                label = { Text("分数（0～100）") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = scoreText,
+                    onValueChange = { onScoreChange(it.filter { c -> c.isDigit() }) },
+                    label = { Text("分数（0～100）") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // 显示奖励机制
+                if (scoringRules.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "奖励机制",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            scoringRules.sortedBy { it.minScore }.reversed().forEach { rule ->
+                                val isCurrentTier = score != null && score in rule.minScore..rule.maxScore
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "${rule.minScore}-${rule.maxScore}分",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isCurrentTier)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = if (isCurrentTier) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                    Text(
+                                        "${rule.rewardConfig.level.themedDisplayName()} ×${rule.rewardConfig.amount}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isCurrentTier)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = if (isCurrentTier) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                            if (expectedReward != null) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "预期奖励：${expectedReward.rewardConfig.level.themedDisplayName()} ×${expectedReward.rewardConfig.amount}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = isValid) {
