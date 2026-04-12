@@ -153,7 +153,7 @@ fun RewardDetailScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⏰", fontSize = 48.sp)
+                    Text(if (reward.type == RewardType.PHYSICAL) "🎁" else "⭐", fontSize = 48.sp)
                 }
             }
 
@@ -339,7 +339,7 @@ private fun TimeRewardContent(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("兑换时长", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("兑换积分", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -349,7 +349,7 @@ private fun TimeRewardContent(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "获得：⏱ ${config.unitMinutes} 分钟",
+                    "获得：⭐ ${config.unitMinutes} 积分",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold

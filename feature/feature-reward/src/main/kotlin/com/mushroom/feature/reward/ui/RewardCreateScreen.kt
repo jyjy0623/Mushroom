@@ -238,7 +238,7 @@ private fun CoverImagePicker(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    if (rewardType == RewardType.PHYSICAL) "🎁" else "⏰",
+                    if (rewardType == RewardType.PHYSICAL) "🎁" else "⭐",
                     fontSize = 32.sp
                 )
             }
@@ -253,7 +253,7 @@ private fun RewardTypeSection(selected: RewardType, onSelect: (RewardType) -> Un
         Spacer(Modifier.height(8.dp))
         listOf(
             RewardType.PHYSICAL to "实物奖品（拼图解锁）",
-            RewardType.TIME_BASED to "时长奖品（游戏/视频时间）"
+            RewardType.TIME_BASED to "积分奖品"
         ).forEach { (type, label) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(
@@ -371,16 +371,16 @@ private fun TimeConfigSection(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "时长设置",
+                "积分设置",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
 
-            // 每次获得时长
+            // 每次获得积分
             OutlinedTextField(
                 value = unitMinutesText,
                 onValueChange = onUnitMinutesChange,
-                label = { Text("每次兑换获得（分钟）*") },
+                label = { Text("每次兑换获得积分 *") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = unitMinutesError != null,
