@@ -52,12 +52,38 @@ class MushroomRepositoryImpl @Inject constructor(
     }
 
     override suspend fun recordTransaction(transaction: MushroomTransaction) {
+        // SPEND/DEDUCT 前检查余额，不允许扣成负数
+        if (transaction.action == com.mushroom.core.domain.entity.MushroomAction.SPEND ||
+            transaction.action == com.mushroom.core.domain.entity.MushroomAction.DEDUCT) {
+            val rows = ledgerDao.getBalanceByLevelSnapshot()
+            val currentBalance = rows.find { row ->
+                runCatching { com.mushroom.core.domain.entity.MushroomLevel.valueOf(row.level) }.getOrNull() == transaction.level
+            }?.balance ?: 0
+            val newBalance = currentBalance - transaction.amount
+            check(newBalance >= 0) {
+                "${transaction.level.name} 余额不足（需要 ${transaction.amount}，当前 $currentBalance）"
+            }
+        }
         val entity = MushroomLedgerMapper.toDb(transaction)
         MushroomLogger.w("MushroomRepo", "recordTransaction: level=${entity.level} action=${entity.action} amount=${entity.amount}")
         ledgerDao.insert(entity)
     }
 
     override suspend fun recordTransactions(transactions: List<MushroomTransaction>) {
+        // 逐条检查 SPEND/DEDUCT，平衡了再一起写入
+        for (tx in transactions) {
+            if (tx.action == com.mushroom.core.domain.entity.MushroomAction.SPEND ||
+                tx.action == com.mushroom.core.domain.entity.MushroomAction.DEDUCT) {
+                val rows = ledgerDao.getBalanceByLevelSnapshot()
+                val currentBalance = rows.find { row ->
+                    runCatching { com.mushroom.core.domain.entity.MushroomLevel.valueOf(row.level) }.getOrNull() == tx.level
+                }?.balance ?: 0
+                val newBalance = currentBalance - tx.amount
+                check(newBalance >= 0) {
+                    "${tx.level.name} 余额不足（需要 ${tx.amount}，当前 $currentBalance）"
+                }
+            }
+        }
         val entities = transactions.map { MushroomLedgerMapper.toDb(it) }
         entities.forEach { e ->
             MushroomLogger.w("MushroomRepo", "recordTransactions: level=${e.level} action=${e.action} amount=${e.amount}")
