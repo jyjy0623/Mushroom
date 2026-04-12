@@ -226,6 +226,7 @@ class RewardDetailViewModel @Inject constructor(
     }
 
     private suspend fun refreshMushroomBalance() {
+        kotlinx.coroutines.delay(100)
         val balance = mushroomRepo.getBalance().first()
         _uiState.update { it.copy(currentBalance = balance) }
     }
