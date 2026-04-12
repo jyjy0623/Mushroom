@@ -66,7 +66,9 @@ class MushroomRepositoryImpl @Inject constructor(
         val balanceMap = MushroomLevel.values().associateWith { 0 }.toMutableMap()
         rows.forEach { row ->
             val level = runCatching { MushroomLevel.valueOf(row.level) }.getOrNull() ?: return@forEach
-            balanceMap[level] = maxOf(0, row.balance)
+            val bal = maxOf(0, row.balance)
+            balanceMap[level] = bal
+            com.mushroom.core.logging.MushroomLogger.w("MushroomRepo", "getBalanceSnapshot: level=${row.level} rawBalance=${row.balance} finalBalance=$bal")
         }
         return MushroomBalance(balanceMap)
     }
