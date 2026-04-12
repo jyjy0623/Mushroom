@@ -233,7 +233,7 @@ class RewardDetailViewModel @Inject constructor(
         kotlinx.coroutines.delay(500)
         kotlinx.coroutines.yield()
         val balance = mushroomRepo.getBalance().first()
-        MushroomLogger.i(TAG, "refreshMushroomBalance: SMALL=${balance.get(MushroomLevel.SMALL)} MEDIUM=${balance.get(MushroomLevel.MEDIUM)}")
+        MushroomLogger.w(TAG, "refreshMushroomBalance: SMALL=${balance.get(MushroomLevel.SMALL)} MEDIUM=${balance.get(MushroomLevel.MEDIUM)}")
         _uiState.update { it.copy(currentBalance = balance) }
     }
 
