@@ -29,6 +29,14 @@ open class LogFileWriter(private val context: Context) {
     private val todayFile: File
         get() = File(logDir, "app_log_${LocalDate.now().format(DATE_FORMAT)}.txt")
 
+    /** 从 Context 获取当前 App 版本字符串 */
+    protected open val appVersion: String
+        get() = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
+        } catch (_: Exception) {
+            "?"
+        }
+
     /**
      * 写入一行日志到当日文件。
      * 每次写入后检查是否需要清理。
@@ -37,7 +45,7 @@ open class LogFileWriter(private val context: Context) {
         try {
             val timestamp = LocalDateTime.now().format(TIME_FORMAT)
             val sb = StringBuilder()
-            sb.append("$timestamp ${level.name}/$tag: $message")
+            sb.append("$timestamp [${appVersion}] ${level.name}/$tag: $message")
             throwable?.let {
                 sb.append("\n")
                 sb.append(it.stackTraceToString())
@@ -57,7 +65,7 @@ open class LogFileWriter(private val context: Context) {
     fun writeSessionStart() {
         try {
             val timestamp = LocalDateTime.now().format(TIME_FORMAT)
-            val marker = "========== SESSION START @ $timestamp ==========\n"
+            val marker = "========== SESSION START @ $timestamp [${appVersion}] ==========\n"
             todayFile.appendText(marker, Charsets.UTF_8)
         } catch (_: Exception) {}
     }
