@@ -2,6 +2,7 @@ package com.mushroom.core.data.repository
 
 import com.mushroom.core.data.db.dao.MushroomLedgerDao
 import com.mushroom.core.data.mapper.MushroomLedgerMapper
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.core.domain.entity.MushroomBalance
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.MushroomSource
@@ -51,11 +52,17 @@ class MushroomRepositoryImpl @Inject constructor(
     }
 
     override suspend fun recordTransaction(transaction: MushroomTransaction) {
-        ledgerDao.insert(MushroomLedgerMapper.toDb(transaction))
+        val entity = MushroomLedgerMapper.toDb(transaction)
+        MushroomLogger.w("MushroomRepo", "recordTransaction: level=${entity.level} action=${entity.action} amount=${entity.amount}")
+        ledgerDao.insert(entity)
     }
 
     override suspend fun recordTransactions(transactions: List<MushroomTransaction>) {
-        ledgerDao.insertAll(transactions.map(MushroomLedgerMapper::toDb))
+        val entities = transactions.map { MushroomLedgerMapper.toDb(it) }
+        entities.forEach { e ->
+            MushroomLogger.w("MushroomRepo", "recordTransactions: level=${e.level} action=${e.action} amount=${e.amount}")
+        }
+        ledgerDao.insertAll(entities)
     }
 
     override suspend fun getLatestEarnBySource(sourceType: MushroomSource, sourceId: Long): MushroomTransaction? =
