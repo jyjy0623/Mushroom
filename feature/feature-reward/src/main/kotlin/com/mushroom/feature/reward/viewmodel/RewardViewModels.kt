@@ -10,6 +10,7 @@ import com.mushroom.core.domain.entity.Reward
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.core.domain.entity.TimeLimitConfig
 import com.mushroom.core.domain.entity.TimeRewardBalance
+import com.mushroom.core.logging.MushroomLogger
 import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.feature.reward.usecase.ClaimRewardUseCase
 import com.mushroom.feature.reward.usecase.CreateRewardUseCase
@@ -159,6 +160,8 @@ sealed class RewardDetailViewEvent {
     object ClaimSuccess : RewardDetailViewEvent()
 }
 
+private const val TAG = "RewardDetailViewModel"
+
 @HiltViewModel
 class RewardDetailViewModel @Inject constructor(
     private val getPuzzleProgressUseCase: GetPuzzleProgressUseCase,
@@ -226,8 +229,11 @@ class RewardDetailViewModel @Inject constructor(
     }
 
     private suspend fun refreshMushroomBalance() {
-        kotlinx.coroutines.delay(100)
+        // Give DB transaction time to commit and Flow to propagate
+        kotlinx.coroutines.delay(500)
+        kotlinx.coroutines.yield()
         val balance = mushroomRepo.getBalance().first()
+        MushroomLogger.i(TAG, "refreshMushroomBalance: SMALL=${balance.get(MushroomLevel.SMALL)} MEDIUM=${balance.get(MushroomLevel.MEDIUM)}")
         _uiState.update { it.copy(currentBalance = balance) }
     }
 
