@@ -26,12 +26,19 @@ enum class RewardStatus { ACTIVE, COMPLETED, CLAIMED, ARCHIVED }
 
 data class TimeLimitConfig(
     val unitMinutes: Int,
-    val costMushroomLevel: MushroomLevel,    // 每次消耗蘑菇等级
-    val costMushroomCount: Int,              // 每次消耗蘑菇数量（默认 5）
+    /** 新字段：每次兑换消耗积分（>0 时优先使用，否则 fallback 到旧字段） */
+    val costPoints: Int? = null,
+    /** 旧字段（兼容已有数据）：null 表示已迁移到 costPoints */
+    val costMushroomLevel: MushroomLevel? = null,
+    /** 旧字段（兼容已有数据）：null 表示已迁移到 costPoints */
+    val costMushroomCount: Int? = null,
     val periodType: PeriodType?,             // null = 不限次数
     val maxTimesPerPeriod: Int?,             // 每周期最多几次（null = 不限）
     val requireParentConfirm: Boolean
-)
+) {
+    /** 是否使用新版积分兑换逻辑 */
+    val isPointsBased: Boolean get() = costPoints != null && costPoints > 0
+}
 
 enum class PeriodType { WEEKLY, MONTHLY }
 

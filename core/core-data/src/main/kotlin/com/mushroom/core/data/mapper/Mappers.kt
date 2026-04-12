@@ -207,8 +207,9 @@ object RewardMapper {
     private fun encodeTimeLimitConfig(c: TimeLimitConfig): String =
         buildJsonObject {
             put("unitMinutes", c.unitMinutes)
-            put("costMushroomLevel", c.costMushroomLevel.name)
-            put("costMushroomCount", c.costMushroomCount)
+            c.costPoints?.let { put("costPoints", it) }
+            c.costMushroomLevel?.let { put("costMushroomLevel", it.name) }
+            c.costMushroomCount?.let { put("costMushroomCount", it) }
             c.periodType?.let { put("periodType", it.name) }
             c.maxTimesPerPeriod?.let { put("maxTimesPerPeriod", it) }
             put("requireParentConfirm", c.requireParentConfirm)
@@ -218,10 +219,10 @@ object RewardMapper {
         val obj = Json.parseToJsonElement(s).jsonObject
         return TimeLimitConfig(
             unitMinutes = obj["unitMinutes"]!!.jsonPrimitive.int,
+            costPoints = obj["costPoints"]?.jsonPrimitive?.intOrNull,
             costMushroomLevel = obj["costMushroomLevel"]?.jsonPrimitive?.content
-                ?.let { runCatching { MushroomLevel.valueOf(it) }.getOrNull() }
-                ?: MushroomLevel.SMALL,
-            costMushroomCount = obj["costMushroomCount"]?.jsonPrimitive?.intOrNull ?: 5,
+                ?.let { runCatching { MushroomLevel.valueOf(it) }.getOrNull() },
+            costMushroomCount = obj["costMushroomCount"]?.jsonPrimitive?.intOrNull,
             periodType = obj["periodType"]?.jsonPrimitive?.content
                 ?.let { runCatching { PeriodType.valueOf(it) }.getOrNull() },
             maxTimesPerPeriod = obj["maxTimesPerPeriod"]?.jsonPrimitive?.intOrNull,

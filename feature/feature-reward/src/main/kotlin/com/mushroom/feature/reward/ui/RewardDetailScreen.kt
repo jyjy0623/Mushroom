@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,11 +32,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -333,23 +337,175 @@ private fun TimeRewardContent(
         }
     }
 
-    // 一键兑换卡片
+    if (config.isPointsBased) {
+        // 新版积分兑换
+        TimePointsExchangeCard(
+            config = config,
+            currentBalance = uiState.currentBalance,
+            isExchanging = uiState.isExchanging,
+            balance = balance,
+            onExchange = onExchange
+        )
+    } else {
+        // 旧版兼容（固定蘑菇等级兑换）
+        LegacyTimeExchangeCard(
+            config = config,
+            isExchanging = uiState.isExchanging,
+            balance = balance,
+            onExchange = onExchange
+        )
+    }
+}
+
+@Composable
+private fun TimePointsExchangeCard(
+    config: com.mushroom.core.domain.entity.TimeLimitConfig,
+    currentBalance: com.mushroom.core.domain.entity.MushroomBalance,
+    isExchanging: Boolean,
+    balance: com.mushroom.core.domain.entity.TimeRewardBalance?,
+    onExchange: (MushroomLevel, Int) -> Unit
+) {
+    var selectedLevel by remember { mutableStateOf(MushroomLevel.SMALL) }
+    var amount by remember { mutableStateOf(1) }
+
+    val contributedPoints = amount * selectedLevel.exchangePoints
+    val costPoints = config.costPoints ?: return
+    val canExchange = run {
+        val pt = config.periodType
+        val mt = config.maxTimesPerPeriod
+        if (pt == null || mt == null) return@run true
+        val usedTimes = balance?.usedTimes ?: 0
+        usedTimes < mt
+    }
+    val totalPoints = currentBalance.totalPoints()
+    val available = currentBalance.get(selectedLevel)
+
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("兑换积分", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+            // 当前积分余额
+            Text(
+                "当前积分：$totalPoints 分",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                "每次兑换需消耗 $costPoints 积分，获得 ${config.unitMinutes} 积分",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            HorizontalDivider()
+
+            // 蘑菇等级选择
+            Text("选择消耗的蘑菇", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MushroomLevel.values().forEach { level ->
+                    val isSelected = selectedLevel == level
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        else MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline,
+                                shape = CircleShape
+                            )
+                            .clickable { selectedLevel = level },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(level.themedEmoji(), fontSize = 18.sp)
+                    }
+                }
+            }
+            Text(
+                "已选：${selectedLevel.themedEmoji()} ${selectedLevel.themedDisplayName()}（${available}个，${available * selectedLevel.exchangePoints}分）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            // 数量选择
+            OutlinedTextField(
+                value = amount.toString(),
+                onValueChange = { newVal ->
+                    val parsed = newVal.toIntOrNull()
+                    if (parsed != null && parsed >= 1) amount = parsed
+                    else if (newVal.isEmpty()) amount = 1
+                },
+                label = { Text("消耗数量") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            // 预览
+            Text(
+                "贡献积分：$contributedPoints 分（${selectedLevel.themedEmoji()}×$amount）",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (contributedPoints >= costPoints) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error
+            )
+
+            Button(
+                onClick = { onExchange(selectedLevel, amount) },
+                enabled = !isExchanging && canExchange && contributedPoints >= costPoints && available >= amount,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    when {
+                        isExchanging -> "兑换中…"
+                        !canExchange -> "本期已达上限"
+                        contributedPoints < costPoints -> "积分不足（需 $costPoints 分）"
+                        available < amount -> "${selectedLevel.themedDisplayName()}不足"
+                        else -> "确认兑换（消耗 $contributedPoints 分）"
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegacyTimeExchangeCard(
+    config: com.mushroom.core.domain.entity.TimeLimitConfig,
+    isExchanging: Boolean,
+    balance: com.mushroom.core.domain.entity.TimeRewardBalance?,
+    onExchange: (MushroomLevel, Int) -> Unit
+) {
+    val oldLevel = config.costMushroomLevel ?: MushroomLevel.SMALL
+    val oldCount = config.costMushroomCount ?: 5
+
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("兑换积分", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("兑换时长（旧版配置）", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "该奖品为旧版配置，建议管理员重新编辑",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "消耗：${config.costMushroomLevel.themedEmoji()} ${config.costMushroomLevel.themedDisplayName()} × ${config.costMushroomCount}",
+                    "消耗：${oldLevel.themedEmoji()} ${oldLevel.themedDisplayName()} × $oldCount",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "获得：⭐ ${config.unitMinutes} 积分",
+                    "获得：${config.unitMinutes} 分钟",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -365,13 +521,13 @@ private fun TimeRewardContent(
             }
 
             Button(
-                onClick = { onExchange(config.costMushroomLevel, config.costMushroomCount) },
-                enabled = !uiState.isExchanging && canExchange,
+                onClick = { onExchange(oldLevel, oldCount) },
+                enabled = !isExchanging && canExchange,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     when {
-                        uiState.isExchanging -> "兑换中…"
+                        isExchanging -> "兑换中…"
                         !canExchange -> "本期已达上限"
                         else -> "确认兑换"
                     }

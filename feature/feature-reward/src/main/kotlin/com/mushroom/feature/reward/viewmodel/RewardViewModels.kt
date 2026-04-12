@@ -10,6 +10,7 @@ import com.mushroom.core.domain.entity.Reward
 import com.mushroom.core.domain.entity.RewardType
 import com.mushroom.core.domain.entity.TimeLimitConfig
 import com.mushroom.core.domain.entity.TimeRewardBalance
+import com.mushroom.core.domain.repository.MushroomRepository
 import com.mushroom.feature.reward.usecase.ClaimRewardUseCase
 import com.mushroom.feature.reward.usecase.CreateRewardUseCase
 import com.mushroom.feature.reward.usecase.DeleteRewardUseCase
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -163,7 +165,8 @@ class RewardDetailViewModel @Inject constructor(
     private val getTimeRewardBalanceUseCase: GetTimeRewardBalanceUseCase,
     private val exchangeMushroomsUseCase: ExchangeMushroomsUseCase,
     private val claimRewardUseCase: ClaimRewardUseCase,
-    private val getAllNonArchivedRewardsUseCase: GetAllNonArchivedRewardsUseCase
+    private val getAllNonArchivedRewardsUseCase: GetAllNonArchivedRewardsUseCase,
+    private val mushroomRepo: MushroomRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RewardDetailUiState())
@@ -195,6 +198,10 @@ class RewardDetailViewModel @Inject constructor(
             val balance = getTimeRewardBalanceUseCase(rewardId)
             _uiState.update { it.copy(timeBalance = balance) }
         }
+        viewModelScope.launch {
+            val mushroomBalance = mushroomRepo.getBalance().first()
+            _uiState.update { it.copy(currentBalance = mushroomBalance) }
+        }
     }
 
     fun exchange(rewardId: Long, level: MushroomLevel, amount: Int) {
@@ -204,6 +211,7 @@ class RewardDetailViewModel @Inject constructor(
             result.onSuccess { progress ->
                 _uiState.update { it.copy(isExchanging = false, puzzleProgress = progress) }
                 refreshTimeBalance(rewardId)
+                refreshMushroomBalance()
                 _viewEvent.emit(RewardDetailViewEvent.ExchangeSuccess)
             }.onFailure { e ->
                 _uiState.update { it.copy(isExchanging = false, error = e.message) }
@@ -215,6 +223,11 @@ class RewardDetailViewModel @Inject constructor(
     private suspend fun refreshTimeBalance(rewardId: Long) {
         val balance = getTimeRewardBalanceUseCase(rewardId)
         _uiState.update { it.copy(timeBalance = balance) }
+    }
+
+    private suspend fun refreshMushroomBalance() {
+        val balance = mushroomRepo.getBalance().first()
+        _uiState.update { it.copy(currentBalance = balance) }
     }
 
     fun claimReward(rewardId: Long) {
@@ -245,8 +258,7 @@ data class RewardCreateUiState(
     val requiredPointsText: String = "100",
     // TIME_BASED fields
     val unitMinutesText: String = "30",
-    val costMushroomLevel: MushroomLevel = MushroomLevel.SMALL,
-    val costMushroomCountText: String = "5",
+    val costPointsText: String = "5",
     val periodType: PeriodType? = null,             // null = 不限次数
     val maxTimesPerPeriodText: String = "",          // 空 = 不限
     // form state
@@ -276,8 +288,7 @@ class RewardCreateViewModel @Inject constructor(
     fun updatePuzzlePiecesText(value: String) = _uiState.update { it.copy(puzzlePiecesText = value) }
     fun updateRequiredPointsText(value: String) = _uiState.update { it.copy(requiredPointsText = value) }
     fun updateUnitMinutesText(value: String) = _uiState.update { it.copy(unitMinutesText = value) }
-    fun updateCostMushroomLevel(value: MushroomLevel) = _uiState.update { it.copy(costMushroomLevel = value) }
-    fun updateCostMushroomCountText(value: String) = _uiState.update { it.copy(costMushroomCountText = value) }
+    fun updateCostPointsText(value: String) = _uiState.update { it.copy(costPointsText = value) }
     fun updatePeriodType(value: PeriodType?) = _uiState.update { it.copy(periodType = value) }
     fun updateMaxTimesPerPeriodText(value: String) = _uiState.update { it.copy(maxTimesPerPeriodText = value) }
 
@@ -288,7 +299,7 @@ class RewardCreateViewModel @Inject constructor(
         val puzzlePieces = state.puzzlePiecesText.toIntOrNull() ?: 0
         val requiredPoints = state.requiredPointsText.toIntOrNull() ?: 0
         val unitMinutes = state.unitMinutesText.toIntOrNull() ?: 0
-        val costMushroomCount = state.costMushroomCountText.toIntOrNull() ?: 0
+        val costPoints = state.costPointsText.toIntOrNull() ?: 0
         val maxTimesPerPeriod = state.maxTimesPerPeriodText.toIntOrNull()
 
         if (state.name.isBlank()) errors["name"] = "请输入奖品名称"
@@ -297,8 +308,8 @@ class RewardCreateViewModel @Inject constructor(
             if (requiredPoints < 1) errors["requiredPoints"] = "所需积分至少为 1"
         }
         if (state.type == RewardType.TIME_BASED) {
-            if (unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
-            if (costMushroomCount < 1) errors["costMushroomCount"] = "每次消耗数量至少为 1"
+            if (unitMinutes < 1) errors["unitMinutes"] = "每次获得积分至少为 1"
+            if (costPoints < 1) errors["costPoints"] = "每次消耗积分至少为 1"
             if (state.periodType != null && state.maxTimesPerPeriodText.isNotBlank() && (maxTimesPerPeriod == null || maxTimesPerPeriod < 1))
                 errors["maxTimesPerPeriod"] = "次数上限至少为 1"
         }
@@ -318,8 +329,7 @@ class RewardCreateViewModel @Inject constructor(
                 timeLimitConfig = if (state.type == RewardType.TIME_BASED) {
                     TimeLimitConfig(
                         unitMinutes = unitMinutes,
-                        costMushroomLevel = state.costMushroomLevel,
-                        costMushroomCount = costMushroomCount,
+                        costPoints = costPoints,
                         periodType = state.periodType,
                         maxTimesPerPeriod = if (state.periodType != null && state.maxTimesPerPeriodText.isNotBlank()) maxTimesPerPeriod else null,
                         requireParentConfirm = false

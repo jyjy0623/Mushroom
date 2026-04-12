@@ -166,16 +166,14 @@ fun RewardCreateScreen(
                 )
                 RewardType.TIME_BASED -> TimeConfigSection(
                     unitMinutesText = uiState.unitMinutesText,
-                    costMushroomLevel = uiState.costMushroomLevel,
-                    costMushroomCountText = uiState.costMushroomCountText,
+                    costPointsText = uiState.costPointsText,
                     periodType = uiState.periodType,
                     maxTimesPerPeriodText = uiState.maxTimesPerPeriodText,
                     unitMinutesError = uiState.validationErrors["unitMinutes"],
-                    costMushroomCountError = uiState.validationErrors["costMushroomCount"],
+                    costPointsError = uiState.validationErrors["costPoints"],
                     maxTimesError = uiState.validationErrors["maxTimesPerPeriod"],
                     onUnitMinutesChange = viewModel::updateUnitMinutesText,
-                    onCostMushroomLevelChange = viewModel::updateCostMushroomLevel,
-                    onCostMushroomCountChange = viewModel::updateCostMushroomCountText,
+                    onCostPointsChange = viewModel::updateCostPointsText,
                     onPeriodTypeChange = viewModel::updatePeriodType,
                     onMaxTimesChange = viewModel::updateMaxTimesPerPeriodText
                 )
@@ -347,16 +345,14 @@ private fun PhysicalConfigSection(
 @Composable
 private fun TimeConfigSection(
     unitMinutesText: String,
-    costMushroomLevel: MushroomLevel,
-    costMushroomCountText: String,
+    costPointsText: String,
     periodType: PeriodType?,
     maxTimesPerPeriodText: String,
     unitMinutesError: String?,
-    costMushroomCountError: String?,
+    costPointsError: String?,
     maxTimesError: String?,
     onUnitMinutesChange: (String) -> Unit,
-    onCostMushroomLevelChange: (MushroomLevel) -> Unit,
-    onCostMushroomCountChange: (String) -> Unit,
+    onCostPointsChange: (String) -> Unit,
     onPeriodTypeChange: (PeriodType?) -> Unit,
     onMaxTimesChange: (String) -> Unit
 ) {
@@ -388,50 +384,16 @@ private fun TimeConfigSection(
                 singleLine = true
             )
 
-            // 每次消耗
-            Text(stringResource(CoreUiR.string.consume_currency), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 等级选择
-                MushroomLevel.values().forEach { level ->
-                    val isSelected = costMushroomLevel == level
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                        else MaterialTheme.colorScheme.surface,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .border(
-                                width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outline,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .clickable { onCostMushroomLevelChange(level) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(level.themedEmoji(), fontSize = 16.sp)
-                    }
-                }
-            }
-            Text(
-                "已选：${costMushroomLevel.themedEmoji()} ${costMushroomLevel.themedDisplayName()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            // 每次消耗积分
             OutlinedTextField(
-                value = costMushroomCountText,
-                onValueChange = onCostMushroomCountChange,
-                label = { Text("数量 *") },
+                value = costPointsText,
+                onValueChange = onCostPointsChange,
+                label = { Text("每次消耗积分 *") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = costMushroomCountError != null,
-                supportingText = if (costMushroomCountError != null) ({ Text(costMushroomCountError) })
-                                 else ({ Text("默认 5 个") }),
+                isError = costPointsError != null,
+                supportingText = if (costPointsError != null) ({ Text(costPointsError) })
+                                 else ({ Text("用户消耗对应积分来兑换") }),
                 singleLine = true
             )
 

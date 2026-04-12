@@ -81,7 +81,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
 
             when (reward.type) {
                 RewardType.PHYSICAL -> exchangePhysical(reward, mushroomLevel, amount)
-                RewardType.TIME_BASED -> exchangeTimeBased(reward)
+                RewardType.TIME_BASED -> exchangeTimeBased(reward, mushroomLevel, amount)
             }
         }.onFailure { MushroomLogger.e(TAG, "ExchangeMushroomsUseCase failed", it) }
     }
@@ -150,6 +150,8 @@ class ExchangeMushroomsUseCase @Inject constructor(
 
     private suspend fun exchangeTimeBased(
         reward: Reward,
+        mushroomLevel: MushroomLevel,
+        amount: Int
     ): PuzzleProgress {
         val config = reward.timeLimitConfig ?: error("时长型奖品缺少配置")
 
@@ -168,35 +170,68 @@ class ExchangeMushroomsUseCase @Inject constructor(
 
         rewardRepo.updateTimeRewardUsage(reward.id, periodStart, usedTimes + 1)
 
-        // 余额检验：固定消耗等级和数量
-        val mushroomBalance = mushroomRepo.getBalance().first()
-        val available = mushroomBalance.get(config.costMushroomLevel)
-        check(available >= config.costMushroomCount) {
-            "${config.costMushroomLevel.themedDisplayName(appContext)}余额不足（需要 ${config.costMushroomCount}，当前 $available）"
+        if (config.isPointsBased) {
+            // 新版积分兑换逻辑
+            val contributedPoints = amount * mushroomLevel.exchangePoints
+            check(contributedPoints >= config.costPoints!!) {
+                "积分不足：${mushroomLevel.themedDisplayName(appContext)}×$amount = ${contributedPoints}分，兑换需要 ${config.costPoints} 分"
+            }
+
+            rewardRepo.insertExchange(
+                RewardExchange(
+                    rewardId = reward.id,
+                    mushroomLevel = mushroomLevel,
+                    mushroomCount = amount,
+                    puzzlePiecesUnlocked = 0,
+                    minutesGained = config.unitMinutes,
+                    createdAt = LocalDateTime.now()
+                )
+            )
+
+            mushroomRepo.recordTransaction(
+                MushroomTransaction(
+                    level = mushroomLevel,
+                    action = MushroomAction.SPEND,
+                    amount = amount,
+                    sourceType = MushroomSource.EXCHANGE,
+                    sourceId = reward.id,
+                    note = "兑换积分奖品「${reward.name}」消耗 ${contributedPoints} 分，获得 ${config.unitMinutes} 积分",
+                    createdAt = LocalDateTime.now()
+                )
+            )
+        } else {
+            // 旧版蘑菇兑换逻辑（兼容已有数据）
+            val oldLevel = config.costMushroomLevel ?: MushroomLevel.SMALL
+            val oldCount = config.costMushroomCount ?: 5
+            val mushroomBalance = mushroomRepo.getBalance().first()
+            val available = mushroomBalance.get(oldLevel)
+            check(available >= oldCount) {
+                "${oldLevel.themedDisplayName(appContext)}余额不足（需要 ${oldCount}，当前 $available）"
+            }
+
+            rewardRepo.insertExchange(
+                RewardExchange(
+                    rewardId = reward.id,
+                    mushroomLevel = oldLevel,
+                    mushroomCount = oldCount,
+                    puzzlePiecesUnlocked = 0,
+                    minutesGained = config.unitMinutes,
+                    createdAt = LocalDateTime.now()
+                )
+            )
+
+            mushroomRepo.recordTransaction(
+                MushroomTransaction(
+                    level = oldLevel,
+                    action = MushroomAction.SPEND,
+                    amount = oldCount,
+                    sourceType = MushroomSource.EXCHANGE,
+                    sourceId = reward.id,
+                    note = "兑换时长奖品「${reward.name}」${config.unitMinutes}分钟",
+                    createdAt = LocalDateTime.now()
+                )
+            )
         }
-
-        rewardRepo.insertExchange(
-            RewardExchange(
-                rewardId = reward.id,
-                mushroomLevel = config.costMushroomLevel,
-                mushroomCount = config.costMushroomCount,
-                puzzlePiecesUnlocked = 0,
-                minutesGained = config.unitMinutes,
-                createdAt = LocalDateTime.now()
-            )
-        )
-
-        mushroomRepo.recordTransaction(
-            MushroomTransaction(
-                level = config.costMushroomLevel,
-                action = MushroomAction.SPEND,
-                amount = config.costMushroomCount,
-                sourceType = MushroomSource.EXCHANGE,
-                sourceId = reward.id,
-                note = "兑换时长奖品「${reward.name}」${config.unitMinutes}分钟",
-                createdAt = LocalDateTime.now()
-            )
-        )
 
         return PuzzleProgress(rewardId = reward.id, totalPieces = 0, unlockedPieces = 0)
     }
