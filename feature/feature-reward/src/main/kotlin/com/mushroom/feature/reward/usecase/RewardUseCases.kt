@@ -207,9 +207,9 @@ class ExchangeMushroomsUseCase @Inject constructor(
             )
 
             // 超额积分退还为小蘑菇（1:1）
-            MushroomLogger.i(TAG, "exchangeTimeBased: excessPoints=$excessPoints contributedPoints=$contributedPoints costPoints=$costPoints")
+            MushroomLogger.w(TAG, "exchangeTimeBased: excessPoints=$excessPoints contributedPoints=$contributedPoints costPoints=$costPoints")
             if (excessPoints > 0) {
-                MushroomLogger.i(TAG, "exchangeTimeBased: 记录超额退还 EARN, amount=$excessPoints")
+                MushroomLogger.w(TAG, "exchangeTimeBased: 记录超额退还 EARN, amount=$excessPoints")
                 mushroomRepo.recordTransaction(
                     MushroomTransaction(
                         level = MushroomLevel.SMALL,
@@ -221,7 +221,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
                         createdAt = LocalDateTime.now()
                     )
                 )
-                MushroomLogger.i(TAG, "exchangeTimeBased: 超额退还 EARN 已记录")
+                MushroomLogger.w(TAG, "exchangeTimeBased: 超额退还 EARN 已记录")
             }
         } else {
             // 旧版蘑菇兑换逻辑（兼容已有数据）
