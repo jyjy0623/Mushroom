@@ -385,7 +385,7 @@ private fun TimePointsExchangeCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("兑换积分", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text("兑换时长", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
             // 当前积分余额
             Text(
@@ -395,7 +395,7 @@ private fun TimePointsExchangeCard(
             )
 
             Text(
-                "每次兑换需消耗 $costPoints 积分，获得 ${config.unitMinutes} 积分",
+                "每次兑换需消耗 $costPoints 积分，获得 ${config.unitMinutes} 分钟",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )

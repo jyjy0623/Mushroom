@@ -308,7 +308,7 @@ class RewardCreateViewModel @Inject constructor(
             if (requiredPoints < 1) errors["requiredPoints"] = "所需积分至少为 1"
         }
         if (state.type == RewardType.TIME_BASED) {
-            if (unitMinutes < 1) errors["unitMinutes"] = "每次获得积分至少为 1"
+            if (unitMinutes < 1) errors["unitMinutes"] = "每次时长至少为 1 分钟"
             if (costPoints < 1) errors["costPoints"] = "每次消耗积分至少为 1"
             if (state.periodType != null && state.maxTimesPerPeriodText.isNotBlank() && (maxTimesPerPeriod == null || maxTimesPerPeriod < 1))
                 errors["maxTimesPerPeriod"] = "次数上限至少为 1"
