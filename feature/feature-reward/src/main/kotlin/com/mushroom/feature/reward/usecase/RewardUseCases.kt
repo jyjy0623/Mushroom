@@ -173,9 +173,14 @@ class ExchangeMushroomsUseCase @Inject constructor(
         if (config.isPointsBased) {
             // 新版积分兑换逻辑
             val contributedPoints = amount * mushroomLevel.exchangePoints
-            check(contributedPoints >= config.costPoints!!) {
-                "积分不足：${mushroomLevel.themedDisplayName(appContext)}×$amount = ${contributedPoints}分，兑换需要 ${config.costPoints} 分"
+            val costPoints = config.costPoints!!
+            check(contributedPoints >= costPoints) {
+                "积分不足：${mushroomLevel.themedDisplayName(appContext)}×$amount = ${contributedPoints}分，兑换需要 ${costPoints} 分"
             }
+
+            // 实际消耗：只扣 costPoints 价值的蘑菇，不足一个的按比例扣
+            // 超额部分按 1:1 折算为小蘑菇退还
+            val excessPoints = contributedPoints - costPoints
 
             rewardRepo.insertExchange(
                 RewardExchange(
@@ -188,6 +193,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
                 )
             )
 
+            // 记录消耗蘑菇
             mushroomRepo.recordTransaction(
                 MushroomTransaction(
                     level = mushroomLevel,
@@ -195,10 +201,25 @@ class ExchangeMushroomsUseCase @Inject constructor(
                     amount = amount,
                     sourceType = MushroomSource.EXCHANGE,
                     sourceId = reward.id,
-                    note = "兑换积分奖品「${reward.name}」消耗 ${contributedPoints} 分，获得 ${config.unitMinutes} 积分",
+                    note = "兑换时长奖品「${reward.name}」消耗 ${costPoints} 积分，获得 ${config.unitMinutes} 分钟",
                     createdAt = LocalDateTime.now()
                 )
             )
+
+            // 超额积分退还为小蘑菇（1:1）
+            if (excessPoints > 0) {
+                mushroomRepo.recordTransaction(
+                    MushroomTransaction(
+                        level = MushroomLevel.SMALL,
+                        action = MushroomAction.EARN,
+                        amount = excessPoints,
+                        sourceType = MushroomSource.EXCHANGE,
+                        sourceId = reward.id,
+                        note = "兑换时长奖品「${reward.name}」超额退还 ${excessPoints} 积分 → 小蘑菇",
+                        createdAt = LocalDateTime.now()
+                    )
+                )
+            }
         } else {
             // 旧版蘑菇兑换逻辑（兼容已有数据）
             val oldLevel = config.costMushroomLevel ?: MushroomLevel.SMALL
@@ -227,7 +248,7 @@ class ExchangeMushroomsUseCase @Inject constructor(
                     amount = oldCount,
                     sourceType = MushroomSource.EXCHANGE,
                     sourceId = reward.id,
-                    note = "兑换时长奖品「${reward.name}」${config.unitMinutes}分钟",
+                    note = "兑换时长奖品「${reward.name}」消耗 ${oldCount} 个${oldLevel.themedDisplayName(appContext)}，获得 ${config.unitMinutes} 分钟",
                     createdAt = LocalDateTime.now()
                 )
             )
