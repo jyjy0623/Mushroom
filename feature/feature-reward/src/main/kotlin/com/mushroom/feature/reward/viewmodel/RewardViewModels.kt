@@ -229,10 +229,10 @@ class RewardDetailViewModel @Inject constructor(
     }
 
     private suspend fun refreshMushroomBalance() {
-        // Give DB transaction time to commit and Flow to propagate
+        // Give DB transaction time to commit
         kotlinx.coroutines.delay(500)
-        kotlinx.coroutines.yield()
-        val balance = mushroomRepo.getBalance().first()
+        // Use direct suspend query to bypass Flow timing issues
+        val balance = mushroomRepo.getBalanceSnapshot()
         MushroomLogger.w(TAG, "refreshMushroomBalance: SMALL=${balance.get(MushroomLevel.SMALL)} MEDIUM=${balance.get(MushroomLevel.MEDIUM)}")
         _uiState.update { it.copy(currentBalance = balance) }
     }

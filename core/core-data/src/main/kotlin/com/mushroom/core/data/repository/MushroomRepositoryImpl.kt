@@ -60,4 +60,14 @@ class MushroomRepositoryImpl @Inject constructor(
 
     override suspend fun getLatestEarnBySource(sourceType: MushroomSource, sourceId: Long): MushroomTransaction? =
         ledgerDao.getLatestEarnBySource(sourceType.name, sourceId)?.let(MushroomLedgerMapper::toDomain)
+
+    override suspend fun getBalanceSnapshot(): MushroomBalance {
+        val rows = ledgerDao.getBalanceByLevelSnapshot()
+        val balanceMap = MushroomLevel.values().associateWith { 0 }.toMutableMap()
+        rows.forEach { row ->
+            val level = runCatching { MushroomLevel.valueOf(row.level) }.getOrNull() ?: return@forEach
+            balanceMap[level] = maxOf(0, row.balance)
+        }
+        return MushroomBalance(balanceMap)
+    }
 }

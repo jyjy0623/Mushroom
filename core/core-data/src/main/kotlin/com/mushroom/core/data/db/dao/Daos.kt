@@ -83,6 +83,9 @@ interface MushroomLedgerDao {
     """)
     fun getBalanceByLevel(): Flow<List<LevelBalance>>
 
+    @Query("SELECT level, SUM(CASE WHEN action = 'EARN' THEN amount ELSE 0 END) - SUM(CASE WHEN action IN ('DEDUCT', 'SPEND') THEN amount ELSE 0 END) AS balance FROM mushroom_ledger GROUP BY level")
+    suspend fun getBalanceByLevelSnapshot(): List<LevelBalance>
+
     @Query("SELECT * FROM mushroom_ledger ORDER BY created_at DESC LIMIT :limit")
     fun getLedger(limit: Int): Flow<List<MushroomLedgerEntity>>
 

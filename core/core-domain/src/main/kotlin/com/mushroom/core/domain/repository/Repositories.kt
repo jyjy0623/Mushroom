@@ -41,6 +41,8 @@ interface MushroomRepository {
     suspend fun getLatestEarnBySource(sourceType: MushroomSource, sourceId: Long): MushroomTransaction?
     suspend fun recordTransaction(transaction: MushroomTransaction)
     suspend fun recordTransactions(transactions: List<MushroomTransaction>)
+    /** 直接查询余额（绕过 Flow 时机问题） */
+    suspend fun getBalanceSnapshot(): MushroomBalance
 }
 
 interface DeductionRepository {
