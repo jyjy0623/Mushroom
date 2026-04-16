@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -62,6 +60,7 @@ import coil.compose.AsyncImage
 import java.io.File
 import com.mushroom.core.domain.entity.MushroomLevel
 import com.mushroom.core.domain.entity.RewardType
+import com.mushroom.core.ui.NumberTextField
 import com.mushroom.core.ui.themedDisplayName
 import com.mushroom.core.ui.themedEmoji
 import com.mushroom.core.ui.R as CoreUiR
@@ -366,7 +365,8 @@ private fun TimePointsExchangeCard(
     onExchange: (MushroomLevel, Int) -> Unit
 ) {
     var selectedLevel by remember { mutableStateOf(MushroomLevel.SMALL) }
-    var amount by remember { mutableStateOf(1) }
+    var amountText by remember { mutableStateOf("1") }
+    val amount = amountText.toIntOrNull() ?: 0
 
     val contributedPoints = amount * selectedLevel.exchangePoints
     val costPoints = config.costPoints ?: return
@@ -435,17 +435,11 @@ private fun TimePointsExchangeCard(
             )
 
             // 数量选择
-            OutlinedTextField(
-                value = amount.toString(),
-                onValueChange = { newVal ->
-                    val parsed = newVal.toIntOrNull()
-                    if (parsed != null && parsed >= 1) amount = parsed
-                    else if (newVal.isEmpty()) amount = 1
-                },
+            NumberTextField(
+                value = amountText,
+                onValueChange = { newVal -> amountText = newVal },
                 label = { Text("消耗数量") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
+                modifier = Modifier.fillMaxWidth()
             )
 
             // 预览
