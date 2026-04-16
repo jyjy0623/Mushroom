@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  自定义 lint 规则配置
+
+  BackspaceInputBug: 检测 OutlinedTextField 中 Int 状态 + isEmpty() → 默认值的反模式
+  这个问题会导致用户无法通过 backspace 删除输入框中的最后一个数字。
+-->
+<lint>
+    <!-- 启用自定义规则 -->
+    <custom-rule class="com.mushroom.lintrules.OutlinedTextFieldBackspaceDetector" />
+
+    <!-- 忽略第三方代码中的警告 -->
+    <ignore path="**/thirdparty/**" />
+    <ignore path="**/gen/**" />
+    <ignore path="**/build/**" />
+</lint>
