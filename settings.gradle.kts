@@ -47,3 +47,6 @@ include(":feature:feature-account")
 // service modules
 include(":service:service-task-generator")
 include(":service:service-notification")
+
+// lint rules
+include(":lint-rules")
