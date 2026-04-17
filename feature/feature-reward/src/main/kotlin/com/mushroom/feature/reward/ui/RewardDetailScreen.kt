@@ -367,8 +367,7 @@ private fun TimePointsExchangeCard(
 ) {
     var selectedLevel by remember { mutableStateOf(MushroomLevel.SMALL) }
     var amountText by remember { mutableStateOf("1") }
-    private val amount: Int
-        get() = amountText.toIntOrNull() ?: 0
+    val amount: Int = amountText.toIntOrNull() ?: 0
 
     val contributedPoints = amount * selectedLevel.exchangePoints
     val costPoints = config.costPoints ?: return
